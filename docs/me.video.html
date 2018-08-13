@@ -22,64 +22,6 @@
 			<ul class="nav">
 				
 				<li class="dropdown">
-					<a href="externals.list.html" class="dropdown-toggle" data-toggle="dropdown">Externals<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="external-Array.html">Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Error.html">Error</a>
-						</li>
-						
-						<li>
-							<a href="external-Float32Array.html">Float32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Function.html">Function</a>
-						</li>
-						
-						<li>
-							<a href="external-Math.html">Math</a>
-						</li>
-						
-						<li>
-							<a href="external-Number.html">Number</a>
-						</li>
-						
-						<li>
-							<a href="external-Object.html">Object</a>
-						</li>
-						
-						<li>
-							<a href="external-String.html">String</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint8Array.html">Uint8Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint16Array.html">Uint16Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint32Array.html">Uint32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-window.html">window</a>
-						</li>
-						
-
-					</ul>
-				</li>
-				
-				<li class="dropdown">
 					<a href="namespaces.list.html" class="dropdown-toggle" data-toggle="dropdown">Namespaces<b
 						class="caret"></b></a>
 
@@ -134,6 +76,10 @@
 						</li>
 						
 						<li>
+							<a href="me.Math.html">me.Math</a>
+						</li>
+						
+						<li>
 							<a href="me.plugin.html">me.plugin</a>
 						</li>
 						
@@ -163,6 +109,22 @@
 						
 						<li>
 							<a href="me.utils.html">me.utils</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.array.html">me.utils.array</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.file.html">me.utils.file</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.function.html">me.utils.function</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.string.html">me.utils.string</a>
 						</li>
 						
 						<li>
@@ -201,6 +163,10 @@
 						
 						<li>
 							<a href="me.Body.Error.html">me.Body.Error</a>
+						</li>
+						
+						<li>
+							<a href="me.Camera2d.html">me.Camera2d</a>
 						</li>
 						
 						<li>
@@ -456,10 +422,6 @@
 						</li>
 						
 						<li>
-							<a href="me.Viewport.html">me.Viewport</a>
-						</li>
-						
-						<li>
 							<a href="me.WebGLRenderer.html">me.WebGLRenderer</a>
 						</li>
 						
@@ -469,44 +431,6 @@
 						
 						<li>
 							<a href="me.WebGLRenderer.Texture.html">me.WebGLRenderer.Texture</a>
-						</li>
-						
-
-					</ul>
-				</li>
-				
-				<li class="dropdown">
-					<a href="global.html" class="dropdown-toggle" data-toggle="dropdown">Global<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="global.html">all</a>
-						</li>
-						
-						<li>
-							<a href="global.html#catch">catch</a>
-						</li>
-						
-						<li>
-							<a href="global.html#finally">finally</a>
-						</li>
-						
-						<li>
-							<a href="global.html">race</a>
-						</li>
-						
-						<li>
-							<a href="global.html">reject</a>
-						</li>
-						
-						<li>
-							<a href="global.html">resolve</a>
-						</li>
-						
-						<li>
-							<a href="global.html#then">then</a>
 						</li>
 						
 
@@ -805,7 +729,7 @@ There is no constructor function for me.video</div>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    video.js, line 273
+    video.js, line 285
 	</dd>
 	
 
@@ -1077,7 +1001,7 @@ There is no constructor function for me.video</div>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    video.js, line 352
+    video.js, line 381
 	</dd>
 	
 
@@ -1228,7 +1152,7 @@ There is no constructor function for me.video</div>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    video.js, line 314
+    video.js, line 343
 	</dd>
 	
 
@@ -1318,7 +1242,7 @@ There is no constructor function for me.video</div>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    video.js, line 380
+    video.js, line 409
 	</dd>
 	
 
@@ -1374,12 +1298,21 @@ There is no constructor function for me.video</div>
     
     <div class="description">
         Initialize the "video" system (create a canvas based on the given arguments, and the related renderer). <br>
-melonJS support various scaling mode : <br>
- - <i>`fit`</i> : Letterboxed; content is scaled to design aspect ratio <br>
- - <i>`fill-max`</i> : Canvas is resized to fit maximum design resolution; content is scaled to design aspect ratio <br>
- - <i>`flex-height`</i> : Canvas height is resized to fit; content is scaled to design aspect ratio <br>
- - <i>`flex-width`</i> : Canvas width is resized to fit; content is scaled to design aspect ratio <br>
- - <i>`stretch`</i> : Canvas is resized to fit; content is scaled to screen aspect ratio
+melonJS support various scaling mode, that can be enabled <u>once the scale option is set to <b>`auto`</b></u> : <br>
+ - <i><b>`fit`</b></i> : Letterboxed; content is scaled to design aspect ratio <br>
+<center><img src="images/scale-fit.png"/></center><br>
+ - <i><b>`fill-min`</b></i> : Canvas is resized to fit minimum design resolution; content is scaled to design aspect ratio <br>
+<center><img src="images/scale-fill-min.png"/></center><br>
+ - <i><b>`fill-max`</b></i> : Canvas is resized to fit maximum design resolution; content is scaled to design aspect ratio <br>
+<center><img src="images/scale-fill-max.png"/></center><br>
+ - <i><b>`flex`</b><</i> : Canvas width & height is resized to fit; content is scaled to design aspect ratio <br>
+<center><img src="images/scale-flex.png"/></center><br>
+ - <i><b>`flex-width`</b></i> : Canvas width is resized to fit; content is scaled to design aspect ratio <br>
+<center><img src="images/scale-flex-width.png"/></center><br>
+ - <i><b>`flex-height`</b></i> : Canvas height is resized to fit; content is scaled to design aspect ratio <br>
+<center><img src="images/scale-flex-height.png"/></center><br>
+ - <i><b>`stretch`</b></i> : Canvas is resized to fit; content is scaled to screen aspect ratio
+<center><img src="images/scale-stretch.png"/></center><br>
     </div>
     
 
@@ -1724,7 +1657,7 @@ melonJS support various scaling mode : <br>
                 </td>
             
 
-            <td class="description last">('fit','fill-min','fill-max','flex','flex-width','flex-height','stretch') screen scaling modes</td>
+            <td class="description last">screen scaling modes ('fit','fill-min','fill-max','flex','flex-width','flex-height','stretch')</td>
         </tr>
 
 	
@@ -1843,6 +1776,45 @@ melonJS support various scaling mode : <br>
             
 
             <td class="description last">whether to enable or not video scaling interpolation</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>consoleHeader</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    true
+                
+                </td>
+            
+
+            <td class="description last">whether to display melonJS version and basic device information in the console</td>
         </tr>
 
 	
@@ -2071,7 +2043,7 @@ me.video.init(640, 480, {
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    video.js, line 334
+    video.js, line 363
 	</dd>
 	
 
@@ -2214,7 +2186,7 @@ me.video.init(640, 480, {
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    video.js, line 496
+    video.js, line 525
 	</dd>
 	
 
@@ -2265,7 +2237,7 @@ me.video.init(640, 480, {
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-01-21T15:15:26+08:00 using the <a
+		on 2018-08-13T15:19:54+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

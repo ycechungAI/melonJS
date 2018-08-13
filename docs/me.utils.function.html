@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 	<meta charset="utf-8">
-	<title>melonJS External: Object</title>
+	<title>melonJS Namespace: function</title>
 
 	<!--[if lt IE 9]>
 	<script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
@@ -20,64 +20,6 @@
 		<div class="navbar-inner">
 			<a class="brand" href="index.html"><img src="images/melon.png" height="30" ></a>
 			<ul class="nav">
-				
-				<li class="dropdown">
-					<a href="externals.list.html" class="dropdown-toggle" data-toggle="dropdown">Externals<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="external-Array.html">Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Error.html">Error</a>
-						</li>
-						
-						<li>
-							<a href="external-Float32Array.html">Float32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Function.html">Function</a>
-						</li>
-						
-						<li>
-							<a href="external-Math.html">Math</a>
-						</li>
-						
-						<li>
-							<a href="external-Number.html">Number</a>
-						</li>
-						
-						<li>
-							<a href="external-Object.html">Object</a>
-						</li>
-						
-						<li>
-							<a href="external-String.html">String</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint8Array.html">Uint8Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint16Array.html">Uint16Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint32Array.html">Uint32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-window.html">window</a>
-						</li>
-						
-
-					</ul>
-				</li>
 				
 				<li class="dropdown">
 					<a href="namespaces.list.html" class="dropdown-toggle" data-toggle="dropdown">Namespaces<b
@@ -134,6 +76,10 @@
 						</li>
 						
 						<li>
+							<a href="me.Math.html">me.Math</a>
+						</li>
+						
+						<li>
 							<a href="me.plugin.html">me.plugin</a>
 						</li>
 						
@@ -163,6 +109,22 @@
 						
 						<li>
 							<a href="me.utils.html">me.utils</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.array.html">me.utils.array</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.file.html">me.utils.file</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.function.html">me.utils.function</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.string.html">me.utils.string</a>
 						</li>
 						
 						<li>
@@ -201,6 +163,10 @@
 						
 						<li>
 							<a href="me.Body.Error.html">me.Body.Error</a>
+						</li>
+						
+						<li>
+							<a href="me.Camera2d.html">me.Camera2d</a>
 						</li>
 						
 						<li>
@@ -456,10 +422,6 @@
 						</li>
 						
 						<li>
-							<a href="me.Viewport.html">me.Viewport</a>
-						</li>
-						
-						<li>
 							<a href="me.WebGLRenderer.html">me.WebGLRenderer</a>
 						</li>
 						
@@ -469,44 +431,6 @@
 						
 						<li>
 							<a href="me.WebGLRenderer.Texture.html">me.WebGLRenderer.Texture</a>
-						</li>
-						
-
-					</ul>
-				</li>
-				
-				<li class="dropdown">
-					<a href="global.html" class="dropdown-toggle" data-toggle="dropdown">Global<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="global.html">all</a>
-						</li>
-						
-						<li>
-							<a href="global.html#catch">catch</a>
-						</li>
-						
-						<li>
-							<a href="global.html#finally">finally</a>
-						</li>
-						
-						<li>
-							<a href="global.html">race</a>
-						</li>
-						
-						<li>
-							<a href="global.html">reject</a>
-						</li>
-						
-						<li>
-							<a href="global.html">resolve</a>
-						</li>
-						
-						<li>
-							<a href="global.html#then">then</a>
 						</li>
 						
 
@@ -526,12 +450,14 @@
 					
 
 
-	<h1 class="page-title">External: Object</h1>
+	<h1 class="page-title">Namespace: function</h1>
 <section>
 
 <header>
     <h2>
-    Object
+        <span class="ancestors"><a href="me.html">me</a><a href="me.utils.html">.utils</a>.</span>
+    
+    function
     </h2>
     
 </header>
@@ -542,7 +468,7 @@
 
     
         
-            <div class="description">The built in Object object.</div>
+            <div class="description">a collection of utility functions</div>
         
 
         
@@ -570,19 +496,12 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    object.js, line 7
+    function.js, line 9
 	</dd>
 	
 
 	
 
-	
-	<dt class="tag-see">See:</dt>
-	<dd class="tag-see">
-		<ul>
-			<li><a href="https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Object">Object</a></li>
-			</ul>
-	</dd>
 	
 
 	
@@ -611,7 +530,7 @@
         <dl>
             
 <dt>
-    <h4 class="name toc-target" id="assign"><span class="type-signature"></span>assign<span class="signature">(target, sources)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+    <h4 class="name toc-target" id="defer"><span class="type-signature">&lt;static> </span>defer<span class="signature">(fn, scope)</span><span class="type-signature"> &rarr; {Number}</span></h4>
 
     
 </dt>
@@ -619,12 +538,7 @@
 
     
     <div class="description">
-        The Object.assign() method is used to copy the values of all enumerable own properties from one or more source objects to a target object.
-The Object.assign method only copies enumerable and own properties from a source object to a target object.
-It uses [[Get]] on the source and [[Put]] on the target, so it will invoke getters and setters.
-Therefore it assigns properties versus just copying or defining new properties.
-This may make it unsuitable for merging new properties into a prototype if the merge sources contain getters.
-For copying propertiy definitions, including their enumerability, into prototypes Object.getOwnPropertyDescriptor and Object.defineProperty should be used instead.
+        Executes a function as soon as the interpreter is idle (stack empty).
     </div>
     
 
@@ -646,6 +560,8 @@ For copying propertiy definitions, including their enumerability, into prototype
 		<th>Type</th>
 
 		
+		<th>Argument</th>
+		
 
 		
 
@@ -658,7 +574,38 @@ For copying propertiy definitions, including their enumerability, into prototype
 
         <tr>
             
-                <td class="name"><code>target</code></td>
+                <td class="name"><code>fn</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">The function to be deferred.</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>scope</code></td>
             
 
             <td class="type">
@@ -671,33 +618,47 @@ For copying propertiy definitions, including their enumerability, into prototype
             </td>
 
             
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
 
             
 
-            <td class="description last">The target object.</td>
+            <td class="description last">The execution scope of the deferred function.</td>
         </tr>
 
 	
 
         <tr>
             
-                <td class="name"><code>sources</code></td>
+                <td class="name"><code>arguments...</code></td>
             
 
             <td class="type">
             
-                
-<span class="param-type">Array.&lt;Object></span>
-
-
-            
             </td>
 
             
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
 
             
 
-            <td class="description last">The source object(s).</td>
+            <td class="description last">Optional additional arguments to carry for the
+function.</td>
         </tr>
 
 	
@@ -731,19 +692,12 @@ For copying propertiy definitions, including their enumerability, into prototype
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    object.js, line 65
+    function.js, line 18
 	</dd>
 	
 
 	
 
-	
-	<dt class="tag-see">See:</dt>
-	<dd class="tag-see">
-		<ul>
-			<li><a href="https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Object/assign">https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Object/assign</a></li>
-			</ul>
-	</dd>
 	
 
 	
@@ -763,7 +717,8 @@ For copying propertiy definitions, including their enumerability, into prototype
     
             
 <div class="param-desc">
-    The target object gets returned.
+    id that can be used to clear the deferred function using
+clearTimeout
 </div>
 
 
@@ -774,7 +729,7 @@ For copying propertiy definitions, including their enumerability, into prototype
 	</dt>
 	<dd>
 		
-<span class="param-type">Object</span>
+<span class="param-type">Number</span>
 
 
 	</dd>
@@ -786,14 +741,9 @@ For copying propertiy definitions, including their enumerability, into prototype
     
         <h5>Example</h5>
         
-    <pre class="sunlight-highlight-javascript">// Merging objects
-var o1 = { a: 1 };
-var o2 = { b: 2 };
-var o3 = { c: 3 };
-
-var obj = Object.assign(o1, o2, o3);
-console.log(obj);
-// { a: 1, b: 2, c: 3 }</pre>
+    <pre class="sunlight-highlight-javascript">// execute myFunc() when the stack is empty,
+// with the current context and &#x27;myArgument&#x27; as parameter
+me.utils.function.defer(fn, this, &#x27;myArgument&#x27;);</pre>
 
 
     
@@ -802,7 +752,7 @@ console.log(obj);
         
             
 <dt>
-    <h4 class="name toc-target" id="is"><span class="type-signature"></span>is<span class="signature">(a, b)</span><span class="type-signature"> &rarr; {Boolean}</span></h4>
+    <h4 class="name toc-target" id="throttle"><span class="type-signature">&lt;static> </span>throttle<span class="signature">(fn, delay, no_trailing)</span><span class="type-signature"></span></h4>
 
     
 </dt>
@@ -810,7 +760,8 @@ console.log(obj);
 
     
     <div class="description">
-        The Object.is() method determines whether two values are the same value.
+        returns a function that, when invoked will only be triggered at most
+once during a given window of time
     </div>
     
 
@@ -844,13 +795,13 @@ console.log(obj);
 
         <tr>
             
-                <td class="name"><code>a</code></td>
+                <td class="name"><code>fn</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">Object</span>
+<span class="param-type">function</span>
 
 
             
@@ -860,20 +811,20 @@ console.log(obj);
 
             
 
-            <td class="description last">The first value to compare</td>
+            <td class="description last">the function to be throttled.</td>
         </tr>
 
 	
 
         <tr>
             
-                <td class="name"><code>b</code></td>
+                <td class="name"><code>delay</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">Object</span>
+<span class="param-type">Number</span>
 
 
             
@@ -883,7 +834,30 @@ console.log(obj);
 
             
 
-            <td class="description last">The second value to compare</td>
+            <td class="description last">The delay in ms</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>no_trailing</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">no_trailing</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">disable the execution on the trailing edge</td>
         </tr>
 
 	
@@ -917,19 +891,12 @@ console.log(obj);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    object.js, line 24
+    function.js, line 40
 	</dd>
 	
 
 	
 
-	
-	<dt class="tag-see">See:</dt>
-	<dd class="tag-see">
-		<ul>
-			<li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is">Object.is</a></li>
-			</ul>
-	</dd>
 	
 
 	
@@ -945,46 +912,6 @@ console.log(obj);
     
 
     
-    <h5>Returns:</h5>
-    
-            
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type">Boolean</span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-        <h5>Example</h5>
-        
-    <pre class="sunlight-highlight-javascript">// Strings are equal
-var s = &quot;foo&quot;;
-Object.is(s, &quot;foo&quot;); //&gt; true
-
-// 0 and -0 are not equal
-Object.is(0, -0); //&gt;false
-
-// NaN and NaN are equal
-Object.is(NaN, NaN); //&gt; true
-
-// Two object references are not equal
-Object.is({}, {}); //&gt; false
-
-// Two vars referencing one object are equal
-var a = {}, b = a;
-Object.is(a, b); //&gt; true</pre>
-
 
     
 </dd>
@@ -1015,7 +942,7 @@ Object.is(a, b); //&gt; true</pre>
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-01-21T15:15:25+08:00 using the <a
+		on 2018-08-13T15:19:54+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

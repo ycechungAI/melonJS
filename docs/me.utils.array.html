@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 	<meta charset="utf-8">
-	<title>melonJS External: Error</title>
+	<title>melonJS Namespace: array</title>
 
 	<!--[if lt IE 9]>
 	<script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
@@ -20,64 +20,6 @@
 		<div class="navbar-inner">
 			<a class="brand" href="index.html"><img src="images/melon.png" height="30" ></a>
 			<ul class="nav">
-				
-				<li class="dropdown">
-					<a href="externals.list.html" class="dropdown-toggle" data-toggle="dropdown">Externals<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="external-Array.html">Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Error.html">Error</a>
-						</li>
-						
-						<li>
-							<a href="external-Float32Array.html">Float32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Function.html">Function</a>
-						</li>
-						
-						<li>
-							<a href="external-Math.html">Math</a>
-						</li>
-						
-						<li>
-							<a href="external-Number.html">Number</a>
-						</li>
-						
-						<li>
-							<a href="external-Object.html">Object</a>
-						</li>
-						
-						<li>
-							<a href="external-String.html">String</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint8Array.html">Uint8Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint16Array.html">Uint16Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint32Array.html">Uint32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-window.html">window</a>
-						</li>
-						
-
-					</ul>
-				</li>
 				
 				<li class="dropdown">
 					<a href="namespaces.list.html" class="dropdown-toggle" data-toggle="dropdown">Namespaces<b
@@ -134,6 +76,10 @@
 						</li>
 						
 						<li>
+							<a href="me.Math.html">me.Math</a>
+						</li>
+						
+						<li>
 							<a href="me.plugin.html">me.plugin</a>
 						</li>
 						
@@ -163,6 +109,22 @@
 						
 						<li>
 							<a href="me.utils.html">me.utils</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.array.html">me.utils.array</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.file.html">me.utils.file</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.function.html">me.utils.function</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.string.html">me.utils.string</a>
 						</li>
 						
 						<li>
@@ -201,6 +163,10 @@
 						
 						<li>
 							<a href="me.Body.Error.html">me.Body.Error</a>
+						</li>
+						
+						<li>
+							<a href="me.Camera2d.html">me.Camera2d</a>
 						</li>
 						
 						<li>
@@ -456,10 +422,6 @@
 						</li>
 						
 						<li>
-							<a href="me.Viewport.html">me.Viewport</a>
-						</li>
-						
-						<li>
 							<a href="me.WebGLRenderer.html">me.WebGLRenderer</a>
 						</li>
 						
@@ -469,44 +431,6 @@
 						
 						<li>
 							<a href="me.WebGLRenderer.Texture.html">me.WebGLRenderer.Texture</a>
-						</li>
-						
-
-					</ul>
-				</li>
-				
-				<li class="dropdown">
-					<a href="global.html" class="dropdown-toggle" data-toggle="dropdown">Global<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="global.html">all</a>
-						</li>
-						
-						<li>
-							<a href="global.html#catch">catch</a>
-						</li>
-						
-						<li>
-							<a href="global.html#finally">finally</a>
-						</li>
-						
-						<li>
-							<a href="global.html">race</a>
-						</li>
-						
-						<li>
-							<a href="global.html">reject</a>
-						</li>
-						
-						<li>
-							<a href="global.html">resolve</a>
-						</li>
-						
-						<li>
-							<a href="global.html#then">then</a>
 						</li>
 						
 
@@ -526,12 +450,14 @@
 					
 
 
-	<h1 class="page-title">External: Error</h1>
+	<h1 class="page-title">Namespace: array</h1>
 <section>
 
 <header>
     <h2>
-    Error
+        <span class="ancestors"><a href="me.html">me</a><a href="me.utils.html">.utils</a>.</span>
+    
+    array
     </h2>
     
 </header>
@@ -542,7 +468,7 @@
 
     
         
-            <div class="description">The built in Error object.</div>
+            <div class="description">a collection of array utility functions</div>
         
 
         
@@ -570,19 +496,12 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    error.js, line 7
+    array.js, line 9
 	</dd>
 	
 
 	
 
-	
-	<dt class="tag-see">See:</dt>
-	<dd class="tag-see">
-		<ul>
-			<li><a href="https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Error">Error</a></li>
-			</ul>
-	</dd>
 	
 
 	
@@ -605,6 +524,470 @@
 
     
 
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        <dl>
+            
+<dt>
+    <h4 class="name toc-target" id="random"><span class="type-signature">&lt;static> </span>random<span class="signature">(arr)</span><span class="type-signature"> &rarr; {any}</span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        return a random array element
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>arr</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">array to pick a element</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    array.js, line 37
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    random member of array
+</div>
+
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type">any</span>
+
+
+	</dd>
+</dl>
+
+
+        
+
+    
+        <h5>Example</h5>
+        
+    <pre class="sunlight-highlight-javascript">// Select a random array element
+var arr = [ &quot;foo&quot;, &quot;bar&quot;, &quot;baz&quot; ];
+console.log(me.utils.array.random(arr));</pre>
+
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="remove"><span class="type-signature">&lt;static> </span>remove<span class="signature">(arr, object)</span><span class="type-signature"> &rarr; {Array}</span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Remove the specified object from the given Array
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>arr</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">array from which to remove an object</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>object</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">to be removed</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    array.js, line 18
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    the modified Array
+</div>
+
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type">Array</span>
+
+
+	</dd>
+</dl>
+
+
+        
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="weightedRandom"><span class="type-signature">&lt;static> </span>weightedRandom<span class="signature">(arr)</span><span class="type-signature"> &rarr; {any}</span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        return a weighted random array element, favoring the earlier entries
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>arr</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">array to pick a element</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    array.js, line 54
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    random member of array
+</div>
+
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type">any</span>
+
+
+	</dd>
+</dl>
+
+
+        
+
+    
+</dd>
+
+        </dl>
     
 
     
@@ -630,7 +1013,7 @@
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-01-21T15:15:25+08:00 using the <a
+		on 2018-08-13T15:19:54+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

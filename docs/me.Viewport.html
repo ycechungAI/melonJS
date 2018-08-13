@@ -22,64 +22,6 @@
 			<ul class="nav">
 				
 				<li class="dropdown">
-					<a href="externals.list.html" class="dropdown-toggle" data-toggle="dropdown">Externals<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="external-Array.html">Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Error.html">Error</a>
-						</li>
-						
-						<li>
-							<a href="external-Float32Array.html">Float32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Function.html">Function</a>
-						</li>
-						
-						<li>
-							<a href="external-Math.html">Math</a>
-						</li>
-						
-						<li>
-							<a href="external-Number.html">Number</a>
-						</li>
-						
-						<li>
-							<a href="external-Object.html">Object</a>
-						</li>
-						
-						<li>
-							<a href="external-String.html">String</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint8Array.html">Uint8Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint16Array.html">Uint16Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint32Array.html">Uint32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-window.html">window</a>
-						</li>
-						
-
-					</ul>
-				</li>
-				
-				<li class="dropdown">
 					<a href="namespaces.list.html" class="dropdown-toggle" data-toggle="dropdown">Namespaces<b
 						class="caret"></b></a>
 
@@ -134,6 +76,10 @@
 						</li>
 						
 						<li>
+							<a href="me.Math.html">me.Math</a>
+						</li>
+						
+						<li>
 							<a href="me.plugin.html">me.plugin</a>
 						</li>
 						
@@ -163,6 +109,22 @@
 						
 						<li>
 							<a href="me.utils.html">me.utils</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.array.html">me.utils.array</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.file.html">me.utils.file</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.function.html">me.utils.function</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.string.html">me.utils.string</a>
 						</li>
 						
 						<li>
@@ -475,44 +437,6 @@
 					</ul>
 				</li>
 				
-				<li class="dropdown">
-					<a href="global.html" class="dropdown-toggle" data-toggle="dropdown">Global<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="global.html">all</a>
-						</li>
-						
-						<li>
-							<a href="global.html#catch">catch</a>
-						</li>
-						
-						<li>
-							<a href="global.html#finally">finally</a>
-						</li>
-						
-						<li>
-							<a href="global.html">race</a>
-						</li>
-						
-						<li>
-							<a href="global.html">reject</a>
-						</li>
-						
-						<li>
-							<a href="global.html">resolve</a>
-						</li>
-						
-						<li>
-							<a href="global.html#then">then</a>
-						</li>
-						
-
-					</ul>
-				</li>
-				
 			</ul>
 		</div>
 	</div>
@@ -706,7 +630,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 23
+    viewport.js, line 25
 	</dd>
 	
 
@@ -905,7 +829,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 29
+    viewport.js, line 31
 	</dd>
 	
 
@@ -923,7 +847,7 @@
         
             
 <dt>
-    <h4 class="name toc-target" id="bounds"><span class="type-signature">&lt;static, constant> </span>bounds<span class="type-signature"> :<a href="me.Rect.html">me.Rect</a></span></h4>
+    <h4 class="name toc-target" id="bounds"><span class="type-signature">&lt;static> </span>bounds<span class="type-signature"> :<a href="me.Rect.html">me.Rect</a></span></h4>
 
     
 </dt>
@@ -971,7 +895,81 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 48
+    viewport.js, line 50
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="damping"><span class="type-signature">&lt;static> </span>damping<span class="type-signature"> :Number</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        viewport damping for smooth transition [0 .. 1].
+1 being the maximum value and will snap the viewport to the target position
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">Number</span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+	<dt class="tag-default">Default Value:</dt>
+	<dd class="tag-default">
+		<ul class="dummy">
+			<li>1.0</li>
+		</ul>
+	</dd>
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    viewport.js, line 70
 	</dd>
 	
 
@@ -1361,7 +1359,7 @@ fade to the specified color
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 408
+    viewport.js, line 491
 	</dd>
 	
 
@@ -1382,6 +1380,13 @@ fade to the specified color
     
 
     
+
+    
+        <h5>Example</h5>
+        
+    <pre class="sunlight-highlight-javascript">// flash  the viewport to white for 75ms
+me.game.viewport.fadeIn(&quot;#FFFFFF&quot;, 75);</pre>
+
 
     
 </dd>
@@ -1577,7 +1582,7 @@ screen is filled with the specified color and slowly goes back to normal
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 389
+    viewport.js, line 465
 	</dd>
 	
 
@@ -1598,6 +1603,17 @@ screen is filled with the specified color and slowly goes back to normal
     
 
     
+
+    
+        <h5>Example</h5>
+        
+    <pre class="sunlight-highlight-javascript">// fade the viewport to white upon dying, reload the level, and then fade out back
+me.game.viewport.fadeIn(&quot;#fff&quot;, 150, function() {
+    me.audio.play(&quot;die&quot;, false);
+    me.levelDirector.reloadLevel();
+    me.game.viewport.fadeOut(&quot;#fff&quot;, 150);
+});</pre>
+
 
     
 </dd>
@@ -1693,7 +1709,7 @@ screen is filled with the specified color and slowly goes back to normal
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 451
+    viewport.js, line 537
 	</dd>
 	
 
@@ -1721,7 +1737,7 @@ screen is filled with the specified color and slowly goes back to normal
         
             
 <dt>
-    <h4 class="name toc-target" id="follow"><span class="type-signature">&lt;static> </span>follow<span class="signature">(target, <span class="optional">axis</span>)</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="follow"><span class="type-signature">&lt;static> </span>follow<span class="signature">(target, <span class="optional">axis</span>, <span class="optional">damping</span>)</span><span class="type-signature"></span></h4>
 
     
 </dt>
@@ -1799,8 +1815,7 @@ screen is filled with the specified color and slowly goes back to normal
                 </td>
             
 
-            <td class="description last">renderable or position
-Vector to follow</td>
+            <td class="description last">renderable or position vector to follow</td>
         </tr>
 
 	
@@ -1843,6 +1858,45 @@ Vector to follow</td>
         </tr>
 
 	
+
+        <tr>
+            
+                <td class="name"><code>damping</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    1
+                
+                </td>
+            
+
+            <td class="description last">default damping value</td>
+        </tr>
+
+	
 	</tbody>
 </table>
 
@@ -1873,7 +1927,7 @@ Vector to follow</td>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 215
+    viewport.js, line 264
 	</dd>
 	
 
@@ -1894,6 +1948,13 @@ Vector to follow</td>
     
 
     
+
+    
+        <h5>Example</h5>
+        
+    <pre class="sunlight-highlight-javascript">// set the viewport to follow this renderable on both axis, and enable damping
+me.game.viewport.follow(this, me.game.viewport.AXIS.BOTH, 0.1);</pre>
+
 
     
 </dd>
@@ -1944,7 +2005,7 @@ Vector to follow</td>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 440
+    viewport.js, line 526
 	</dd>
 	
 
@@ -2034,7 +2095,7 @@ Vector to follow</td>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 429
+    viewport.js, line 515
 	</dd>
 	
 
@@ -2173,7 +2234,7 @@ Vector to follow</td>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 466
+    viewport.js, line 552
 	</dd>
 	
 
@@ -2387,7 +2448,7 @@ converted value</td>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 478
+    viewport.js, line 564
 	</dd>
 	
 
@@ -2549,7 +2610,7 @@ converted value</td>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 254
+    viewport.js, line 317
 	</dd>
 	
 
@@ -2599,7 +2660,7 @@ me.game.viewport.move(0, -4);</pre>
 
     
     <div class="description">
-        move the viewport  upper-left position to the specified coordinates
+        move the viewport upper-left position to the specified coordinates
     </div>
     
 
@@ -2706,7 +2767,7 @@ me.game.viewport.move(0, -4);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 270
+    viewport.js, line 333
 	</dd>
 	
 
@@ -2892,7 +2953,7 @@ me.game.viewport.move(0, -4);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 124
+    viewport.js, line 154
 	</dd>
 	
 
@@ -3035,7 +3096,7 @@ me.game.viewport.move(0, -4);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 172
+    viewport.js, line 210
 	</dd>
 	
 
@@ -3248,7 +3309,7 @@ the viewport is bound to the given coordinates and cannot move/be scrolled outsi
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 198
+    viewport.js, line 244
 	</dd>
 	
 
@@ -3393,7 +3454,7 @@ the followed renderable can move without scrolling the viewport.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 144
+    viewport.js, line 178
 	</dd>
 	
 
@@ -3686,7 +3747,7 @@ while shaking</td>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 364
+    viewport.js, line 440
 	</dd>
 	
 
@@ -3764,7 +3825,7 @@ me.game.viewport.shake(10, 500, me.game.viewport.AXIS.BOTH);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 243
+    viewport.js, line 306
 	</dd>
 	
 
@@ -3959,7 +4020,7 @@ converted value</td>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    viewport.js, line 499
+    viewport.js, line 585
 	</dd>
 	
 
@@ -4029,7 +4090,7 @@ converted value</td>
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-01-21T15:15:26+08:00 using the <a
+		on 2018-07-13T11:39:55+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

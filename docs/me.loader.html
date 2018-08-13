@@ -22,64 +22,6 @@
 			<ul class="nav">
 				
 				<li class="dropdown">
-					<a href="externals.list.html" class="dropdown-toggle" data-toggle="dropdown">Externals<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="external-Array.html">Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Error.html">Error</a>
-						</li>
-						
-						<li>
-							<a href="external-Float32Array.html">Float32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Function.html">Function</a>
-						</li>
-						
-						<li>
-							<a href="external-Math.html">Math</a>
-						</li>
-						
-						<li>
-							<a href="external-Number.html">Number</a>
-						</li>
-						
-						<li>
-							<a href="external-Object.html">Object</a>
-						</li>
-						
-						<li>
-							<a href="external-String.html">String</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint8Array.html">Uint8Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint16Array.html">Uint16Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint32Array.html">Uint32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-window.html">window</a>
-						</li>
-						
-
-					</ul>
-				</li>
-				
-				<li class="dropdown">
 					<a href="namespaces.list.html" class="dropdown-toggle" data-toggle="dropdown">Namespaces<b
 						class="caret"></b></a>
 
@@ -134,6 +76,10 @@
 						</li>
 						
 						<li>
+							<a href="me.Math.html">me.Math</a>
+						</li>
+						
+						<li>
 							<a href="me.plugin.html">me.plugin</a>
 						</li>
 						
@@ -163,6 +109,22 @@
 						
 						<li>
 							<a href="me.utils.html">me.utils</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.array.html">me.utils.array</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.file.html">me.utils.file</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.function.html">me.utils.function</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.string.html">me.utils.string</a>
 						</li>
 						
 						<li>
@@ -201,6 +163,10 @@
 						
 						<li>
 							<a href="me.Body.Error.html">me.Body.Error</a>
+						</li>
+						
+						<li>
+							<a href="me.Camera2d.html">me.Camera2d</a>
 						</li>
 						
 						<li>
@@ -456,10 +422,6 @@
 						</li>
 						
 						<li>
-							<a href="me.Viewport.html">me.Viewport</a>
-						</li>
-						
-						<li>
 							<a href="me.WebGLRenderer.html">me.WebGLRenderer</a>
 						</li>
 						
@@ -469,44 +431,6 @@
 						
 						<li>
 							<a href="me.WebGLRenderer.Texture.html">me.WebGLRenderer.Texture</a>
-						</li>
-						
-
-					</ul>
-				</li>
-				
-				<li class="dropdown">
-					<a href="global.html" class="dropdown-toggle" data-toggle="dropdown">Global<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="global.html">all</a>
-						</li>
-						
-						<li>
-							<a href="global.html#catch">catch</a>
-						</li>
-						
-						<li>
-							<a href="global.html#finally">finally</a>
-						</li>
-						
-						<li>
-							<a href="global.html">race</a>
-						</li>
-						
-						<li>
-							<a href="global.html">reject</a>
-						</li>
-						
-						<li>
-							<a href="global.html">resolve</a>
-						</li>
-						
-						<li>
-							<a href="global.html#then">then</a>
 						</li>
 						
 
@@ -670,7 +594,7 @@ client-side SSL certificates or HTTP authentication as described in the Terminol
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 285
+    loader.js, line 312
 	</dd>
 	
 
@@ -761,7 +685,7 @@ authorization headers or TLS client certificates. Setting withCredentials has no
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 305
+    loader.js, line 332
 	</dd>
 	
 
@@ -894,7 +818,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 659
+    loader.js, line 694
 	</dd>
 	
 
@@ -918,6 +842,10 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
     <h5>Returns:</h5>
     
             
+<div class="param-desc">
+    requested element or null if not found
+</div>
+
 
 
 <dl>
@@ -941,7 +869,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
         
             
 <dt>
-    <h4 class="name toc-target" id="getImage"><span class="type-signature">&lt;static> </span>getImage<span class="signature">(Image)</span><span class="type-signature"> &rarr; {Image}</span></h4>
+    <h4 class="name toc-target" id="getImage"><span class="type-signature">&lt;static> </span>getImage<span class="signature">(image)</span><span class="type-signature"> &rarr; {HTMLImageElement}</span></h4>
 
     
 </dt>
@@ -983,7 +911,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 
         <tr>
             
-                <td class="name"><code>Image</code></td>
+                <td class="name"><code>image</code></td>
             
 
             <td class="type">
@@ -1033,7 +961,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 681
+    loader.js, line 712
 	</dd>
 	
 
@@ -1057,6 +985,10 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
     <h5>Returns:</h5>
     
             
+<div class="param-desc">
+    requested element or null if not found
+</div>
+
 
 
 <dl>
@@ -1065,7 +997,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 	</dt>
 	<dd>
 		
-<span class="param-type">Image</span>
+<span class="param-type">HTMLImageElement</span>
 
 
 	</dd>
@@ -1172,7 +1104,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 704
+    loader.js, line 731
 	</dd>
 	
 
@@ -1271,7 +1203,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 724
+    loader.js, line 749
 	</dd>
 	
 
@@ -1410,7 +1342,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 638
+    loader.js, line 676
 	</dd>
 	
 
@@ -1434,6 +1366,10 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
     <h5>Returns:</h5>
     
             
+<div class="param-desc">
+    requested element or null if not found
+</div>
+
 
 
 <dl>
@@ -1752,7 +1688,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 465
+    loader.js, line 495
 	</dd>
 	
 
@@ -1839,7 +1775,7 @@ me.loader.load({
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 259
+    loader.js, line 286
 	</dd>
 	
 
@@ -1919,7 +1855,7 @@ giving the actual progress [0 ... 1], as argument, and an object describing the 
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 271
+    loader.js, line 298
 	</dd>
 	
 
@@ -2111,7 +2047,7 @@ me.loader.onProgress = this.updateProgress.bind(this);</pre>
 
             
 
-            <td class="description last">"audio", binary", "image", "json", "tmx", "tsx"</td>
+            <td class="description last">"audio", binary", "image", "json", ,"js", "tmx", "tsx"</td>
         </tr>
 
 	
@@ -2294,7 +2230,7 @@ me.loader.onProgress = this.updateProgress.bind(this);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 404
+    loader.js, line 432
 	</dd>
 	
 
@@ -2337,7 +2273,9 @@ me.loader.onProgress = this.updateProgress.bind(this);</pre>
   // binary file
   {name: &quot;ymTrack&quot;, type: &quot;binary&quot;, src: &quot;data/audio/main.ym&quot;},
   // JSON file (used for texturePacker)
-  {name: &quot;texture&quot;, type: &quot;json&quot;, src: &quot;data/gfx/texture.json&quot;}
+  {name: &quot;texture&quot;, type: &quot;json&quot;, src: &quot;data/gfx/texture.json&quot;},
+  // JavaScript file
+  {name: &quot;plugin&quot;, type: &quot;js&quot;, src: &quot;data/js/plugin.js&quot;}
 ];
 ...
 // set all resources to be loaded
@@ -2425,7 +2363,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
                 </td>
             
 
-            <td class="description last">"*", "audio", binary", "image", "json", "tmx", "tsx"</td>
+            <td class="description last">"*", "audio", binary", "image", "json", "js", "tmx", "tsx"</td>
         </tr>
 
 	
@@ -2498,7 +2436,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 374
+    loader.js, line 401
 	</dd>
 	
 
@@ -2523,7 +2461,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
     
         <h5>Example</h5>
         
-    <pre class="sunlight-highlight-javascript">// change the base URL relative address
+    <pre class="sunlight-highlight-javascript">// change the base URL relative address for audio assets
 me.loader.setBaseURL(&quot;audio&quot;, &quot;data/audio/&quot;);
 // change the base URL absolute address for all object types
 me.loader.setBaseURL(&quot;*&quot;, &quot;http://myurl.com/&quot;)</pre>
@@ -2627,7 +2565,7 @@ me.loader.setBaseURL(&quot;*&quot;, &quot;http://myurl.com/&quot;)</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 526
+    loader.js, line 560
 	</dd>
 	
 
@@ -2727,7 +2665,7 @@ me.loader.setBaseURL(&quot;*&quot;, &quot;http://myurl.com/&quot;)</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 583
+    loader.js, line 621
 	</dd>
 	
 
@@ -2784,7 +2722,7 @@ me.loader.setBaseURL(&quot;*&quot;, &quot;http://myurl.com/&quot;)</pre>
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-01-21T15:15:26+08:00 using the <a
+		on 2018-08-13T15:19:54+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

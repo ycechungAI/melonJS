@@ -22,64 +22,6 @@
 			<ul class="nav">
 				
 				<li class="dropdown">
-					<a href="externals.list.html" class="dropdown-toggle" data-toggle="dropdown">Externals<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="external-Array.html">Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Error.html">Error</a>
-						</li>
-						
-						<li>
-							<a href="external-Float32Array.html">Float32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Function.html">Function</a>
-						</li>
-						
-						<li>
-							<a href="external-Math.html">Math</a>
-						</li>
-						
-						<li>
-							<a href="external-Number.html">Number</a>
-						</li>
-						
-						<li>
-							<a href="external-Object.html">Object</a>
-						</li>
-						
-						<li>
-							<a href="external-String.html">String</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint8Array.html">Uint8Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint16Array.html">Uint16Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint32Array.html">Uint32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-window.html">window</a>
-						</li>
-						
-
-					</ul>
-				</li>
-				
-				<li class="dropdown">
 					<a href="namespaces.list.html" class="dropdown-toggle" data-toggle="dropdown">Namespaces<b
 						class="caret"></b></a>
 
@@ -134,6 +76,10 @@
 						</li>
 						
 						<li>
+							<a href="me.Math.html">me.Math</a>
+						</li>
+						
+						<li>
 							<a href="me.plugin.html">me.plugin</a>
 						</li>
 						
@@ -163,6 +109,22 @@
 						
 						<li>
 							<a href="me.utils.html">me.utils</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.array.html">me.utils.array</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.file.html">me.utils.file</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.function.html">me.utils.function</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.string.html">me.utils.string</a>
 						</li>
 						
 						<li>
@@ -201,6 +163,10 @@
 						
 						<li>
 							<a href="me.Body.Error.html">me.Body.Error</a>
+						</li>
+						
+						<li>
+							<a href="me.Camera2d.html">me.Camera2d</a>
 						</li>
 						
 						<li>
@@ -456,10 +422,6 @@
 						</li>
 						
 						<li>
-							<a href="me.Viewport.html">me.Viewport</a>
-						</li>
-						
-						<li>
 							<a href="me.WebGLRenderer.html">me.WebGLRenderer</a>
 						</li>
 						
@@ -469,44 +431,6 @@
 						
 						<li>
 							<a href="me.WebGLRenderer.Texture.html">me.WebGLRenderer.Texture</a>
-						</li>
-						
-
-					</ul>
-				</li>
-				
-				<li class="dropdown">
-					<a href="global.html" class="dropdown-toggle" data-toggle="dropdown">Global<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="global.html">all</a>
-						</li>
-						
-						<li>
-							<a href="global.html#catch">catch</a>
-						</li>
-						
-						<li>
-							<a href="global.html#finally">finally</a>
-						</li>
-						
-						<li>
-							<a href="global.html">race</a>
-						</li>
-						
-						<li>
-							<a href="global.html">reject</a>
-						</li>
-						
-						<li>
-							<a href="global.html">resolve</a>
-						</li>
-						
-						<li>
-							<a href="global.html#then">then</a>
 						</li>
 						
 
@@ -595,7 +519,7 @@
             <td class="type">
             
                 
-<span class="param-type">Canvas</span>
+<span class="param-type">HTMLCanvasElement</span>
 
 
             
@@ -809,7 +733,46 @@
                 </td>
             
 
-            <td class="description last">Whether to enable anti-aliasing</td>
+            <td class="description last">Whether to enable anti-aliasing, use false (default) for a pixelated effect.</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>failIfMajorPerformanceCaveat</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    true
+                
+                </td>
+            
+
+            <td class="description last">If true, the renderer will switch to CANVAS mode if the performances of a WebGL context would be dramatically lower than that of a native application making equivalent OpenGL calls.</td>
         </tr>
 
 	
@@ -849,6 +812,45 @@
             
 
             <td class="description last">Whether to enable transparency on the canvas (performance hit when enabled)</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>blendMode</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    "normal"
+                
+                </td>
+            
+
+            <td class="description last">the default blend mode to use ("normal", "multiply")</td>
         </tr>
 
 	
@@ -1045,7 +1047,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderer.js, line 28
+    renderer.js, line 30
 	</dd>
 	
 
@@ -1097,7 +1099,101 @@
         <dl>
             
 <dt>
-    <h4 class="name toc-target" id="getCanvas"><span class="type-signature">&lt;static> </span>getCanvas<span class="signature">()</span><span class="type-signature"> &rarr; {Canvas}</span></h4>
+    <h4 class="name toc-target" id="getBlendMode"><span class="type-signature">&lt;static> </span>getBlendMode<span class="signature">()</span><span class="type-signature"> &rarr; {String}</span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        returns the current blend mode for this renderer
+    </div>
+    
+
+    
+
+    
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    renderer.js, line 126
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    blend mode
+</div>
+
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type">String</span>
+
+
+	</dd>
+</dl>
+
+
+        
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="getCanvas"><span class="type-signature">&lt;static> </span>getCanvas<span class="signature">()</span><span class="type-signature"> &rarr; {HTMLCanvasElement}</span></h4>
 
     
 </dt>
@@ -1140,7 +1236,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderer.js, line 133
+    renderer.js, line 92
 	</dd>
 	
 
@@ -1172,7 +1268,7 @@
 	</dt>
 	<dd>
 		
-<span class="param-type">Canvas</span>
+<span class="param-type">HTMLCanvasElement</span>
 
 
 	</dd>
@@ -1279,7 +1375,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderer.js, line 233
+    renderer.js, line 207
 	</dd>
 	
 
@@ -1307,7 +1403,7 @@
         
             
 <dt>
-    <h4 class="name toc-target" id="getContext2d"><span class="type-signature">&lt;static> </span>getContext2d<span class="signature">(canvas, <span class="optional">opaque</span>)</span><span class="type-signature"> &rarr; {Context2d}</span></h4>
+    <h4 class="name toc-target" id="getContext2d"><span class="type-signature">&lt;static> </span>getContext2d<span class="signature">(canvas, <span class="optional">transparent</span>)</span><span class="type-signature"> &rarr; {Context2d}</span></h4>
 
     
 </dt>
@@ -1316,7 +1412,7 @@
     
     <div class="description">
         Returns the 2D Context object of the given Canvas<br>
-Also configures anti-aliasing based on constructor options.
+Also configures anti-aliasing and blend modes based on constructor options.
     </div>
     
 
@@ -1360,7 +1456,7 @@ Also configures anti-aliasing based on constructor options.
             <td class="type">
             
                 
-<span class="param-type">Canvas</span>
+<span class="param-type">HTMLCanvasElement</span>
 
 
             
@@ -1389,7 +1485,7 @@ Also configures anti-aliasing based on constructor options.
 
         <tr>
             
-                <td class="name"><code>opaque</code></td>
+                <td class="name"><code>transparent</code></td>
             
 
             <td class="type">
@@ -1416,12 +1512,12 @@ Also configures anti-aliasing based on constructor options.
             
                 <td class="default">
                 
-                    false
+                    true
                 
                 </td>
             
 
-            <td class="description last">True to disable transparency</td>
+            <td class="description last">use false to disable transparency</td>
         </tr>
 
 	
@@ -1455,7 +1551,7 @@ Also configures anti-aliasing based on constructor options.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderer.js, line 167
+    renderer.js, line 137
 	</dd>
 	
 
@@ -1545,7 +1641,7 @@ Also configures anti-aliasing based on constructor options.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderer.js, line 222
+    renderer.js, line 196
 	</dd>
 	
 
@@ -1592,7 +1688,7 @@ Also configures anti-aliasing based on constructor options.
         
             
 <dt>
-    <h4 class="name toc-target" id="getScreenCanvas"><span class="type-signature">&lt;static> </span>getScreenCanvas<span class="signature">()</span><span class="type-signature"> &rarr; {Canvas}</span></h4>
+    <h4 class="name toc-target" id="getScreenCanvas"><span class="type-signature">&lt;static> </span>getScreenCanvas<span class="signature">()</span><span class="type-signature"> &rarr; {HTMLCanvasElement}</span></h4>
 
     
 </dt>
@@ -1635,7 +1731,7 @@ Also configures anti-aliasing based on constructor options.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderer.js, line 144
+    renderer.js, line 103
 	</dd>
 	
 
@@ -1667,7 +1763,7 @@ Also configures anti-aliasing based on constructor options.
 	</dt>
 	<dd>
 		
-<span class="param-type">Canvas</span>
+<span class="param-type">HTMLCanvasElement</span>
 
 
 	</dd>
@@ -1726,7 +1822,7 @@ Also configures anti-aliasing based on constructor options.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderer.js, line 155
+    renderer.js, line 114
 	</dd>
 	
 
@@ -1816,7 +1912,7 @@ Also configures anti-aliasing based on constructor options.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderer.js, line 211
+    renderer.js, line 185
 	</dd>
 	
 
@@ -1906,7 +2002,7 @@ Also configures anti-aliasing based on constructor options.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderer.js, line 244
+    renderer.js, line 218
 	</dd>
 	
 
@@ -2068,7 +2164,7 @@ Also configures anti-aliasing based on constructor options.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderer.js, line 255
+    renderer.js, line 229
 	</dd>
 	
 
@@ -2104,8 +2200,7 @@ Also configures anti-aliasing based on constructor options.
 
     
     <div class="description">
-        enable/disable image smoothing (scaling interpolation) for the specified 2d Context<br>
-(!) this might not be supported by all browsers <br>
+        enable/disable image smoothing (scaling interpolation) for the given context
     </div>
     
 
@@ -2244,7 +2339,7 @@ Also configures anti-aliasing based on constructor options.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderer.js, line 268
+    renderer.js, line 246
 	</dd>
 	
 
@@ -2295,7 +2390,7 @@ Also configures anti-aliasing based on constructor options.
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-01-21T15:15:26+08:00 using the <a
+		on 2018-08-13T15:19:54+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

@@ -22,64 +22,6 @@
 			<ul class="nav">
 				
 				<li class="dropdown">
-					<a href="externals.list.html" class="dropdown-toggle" data-toggle="dropdown">Externals<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="external-Array.html">Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Error.html">Error</a>
-						</li>
-						
-						<li>
-							<a href="external-Float32Array.html">Float32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Function.html">Function</a>
-						</li>
-						
-						<li>
-							<a href="external-Math.html">Math</a>
-						</li>
-						
-						<li>
-							<a href="external-Number.html">Number</a>
-						</li>
-						
-						<li>
-							<a href="external-Object.html">Object</a>
-						</li>
-						
-						<li>
-							<a href="external-String.html">String</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint8Array.html">Uint8Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint16Array.html">Uint16Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint32Array.html">Uint32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-window.html">window</a>
-						</li>
-						
-
-					</ul>
-				</li>
-				
-				<li class="dropdown">
 					<a href="namespaces.list.html" class="dropdown-toggle" data-toggle="dropdown">Namespaces<b
 						class="caret"></b></a>
 
@@ -134,6 +76,10 @@
 						</li>
 						
 						<li>
+							<a href="me.Math.html">me.Math</a>
+						</li>
+						
+						<li>
 							<a href="me.plugin.html">me.plugin</a>
 						</li>
 						
@@ -163,6 +109,22 @@
 						
 						<li>
 							<a href="me.utils.html">me.utils</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.array.html">me.utils.array</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.file.html">me.utils.file</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.function.html">me.utils.function</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.string.html">me.utils.string</a>
 						</li>
 						
 						<li>
@@ -201,6 +163,10 @@
 						
 						<li>
 							<a href="me.Body.Error.html">me.Body.Error</a>
+						</li>
+						
+						<li>
+							<a href="me.Camera2d.html">me.Camera2d</a>
 						</li>
 						
 						<li>
@@ -456,10 +422,6 @@
 						</li>
 						
 						<li>
-							<a href="me.Viewport.html">me.Viewport</a>
-						</li>
-						
-						<li>
 							<a href="me.WebGLRenderer.html">me.WebGLRenderer</a>
 						</li>
 						
@@ -469,44 +431,6 @@
 						
 						<li>
 							<a href="me.WebGLRenderer.Texture.html">me.WebGLRenderer.Texture</a>
-						</li>
-						
-
-					</ul>
-				</li>
-				
-				<li class="dropdown">
-					<a href="global.html" class="dropdown-toggle" data-toggle="dropdown">Global<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="global.html">all</a>
-						</li>
-						
-						<li>
-							<a href="global.html#catch">catch</a>
-						</li>
-						
-						<li>
-							<a href="global.html#finally">finally</a>
-						</li>
-						
-						<li>
-							<a href="global.html">race</a>
-						</li>
-						
-						<li>
-							<a href="global.html">reject</a>
-						</li>
-						
-						<li>
-							<a href="global.html">resolve</a>
-						</li>
-						
-						<li>
-							<a href="global.html#then">then</a>
 						</li>
 						
 
@@ -595,7 +519,7 @@
             <td class="type">
             
                 
-<span class="param-type">Canvas</span>
+<span class="param-type">HTMLCanvasElement</span>
 
 
             
@@ -1147,7 +1071,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 70
+    canvas_renderer.js, line 116
 	</dd>
 	
 
@@ -1325,7 +1249,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 99
+    canvas_renderer.js, line 145
 	</dd>
 	
 
@@ -1515,7 +1439,200 @@ erasing any previously drawn content.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 119
+    canvas_renderer.js, line 162
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="clipRect"><span class="type-signature">&lt;static> </span>clipRect<span class="signature">(x, y, width, height)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        clip the given region from the original canvas. Once a region is clipped,
+all future drawing will be limited to the clipped region.
+You can however save the current region using the save(),
+and restore it (with the restore() method) any time in the future.
+(<u>this is an experimental feature !</u>)
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>x</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>y</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>width</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>height</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    canvas_renderer.js, line 668
 	</dd>
 	
 
@@ -1658,7 +1775,7 @@ erasing any previously drawn content.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 134
+    canvas_renderer.js, line 177
 	</dd>
 	
 
@@ -1997,7 +2114,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 153
+    canvas_renderer.js, line 196
 	</dd>
 	
 
@@ -2219,7 +2336,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 205
+    canvas_renderer.js, line 248
 	</dd>
 	
 
@@ -2355,7 +2472,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 539
+    canvas_renderer.js, line 578
 	</dd>
 	
 
@@ -2670,7 +2787,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 228
+    canvas_renderer.js, line 271
 	</dd>
 	
 
@@ -2859,7 +2976,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 254
+    canvas_renderer.js, line 297
 	</dd>
 	
 
@@ -2930,7 +3047,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 82
+    canvas_renderer.js, line 128
 	</dd>
 	
 
@@ -2958,7 +3075,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
         
             
 <dt>
-    <h4 class="name toc-target" id="getContext"><span class="type-signature">&lt;static> </span>getContext<span class="signature">()</span><span class="type-signature"> &rarr; {Context2d}</span></h4>
+    <h4 class="name toc-target" id="getContext"><span class="type-signature">&lt;static> </span>getContext<span class="signature">()</span><span class="type-signature"> &rarr; {CanvasRenderingContext2D}</span></h4>
 
     
 </dt>
@@ -3001,7 +3118,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 272
+    canvas_renderer.js, line 315
 	</dd>
 	
 
@@ -3033,7 +3150,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	</dt>
 	<dd>
 		
-<span class="param-type">Context2d</span>
+<span class="param-type">CanvasRenderingContext2D</span>
 
 
 	</dd>
@@ -3091,7 +3208,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 292
+    canvas_renderer.js, line 84
 	</dd>
 	
 
@@ -3162,7 +3279,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 336
+    canvas_renderer.js, line 371
 	</dd>
 	
 
@@ -3282,7 +3399,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 347
+    canvas_renderer.js, line 386
 	</dd>
 	
 
@@ -3353,7 +3470,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 326
+    canvas_renderer.js, line 361
 	</dd>
 	
 
@@ -3496,7 +3613,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 358
+    canvas_renderer.js, line 397
 	</dd>
 	
 
@@ -3567,7 +3684,182 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 302
+    canvas_renderer.js, line 335
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="setBlendMode"><span class="type-signature">&lt;static> </span>setBlendMode<span class="signature">(context, <span class="optional">mode</span>)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        set a blend mode for the given context
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+		<th>Argument</th>
+		
+
+		
+		<th>Default</th>
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>context</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Context2d</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>mode</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    "normal"
+                
+                </td>
+            
+
+            <td class="description last">blend mode : "normal", "multiply"</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    canvas_renderer.js, line 94
 	</dd>
 	
 
@@ -3690,7 +3982,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 370
+    canvas_renderer.js, line 409
 	</dd>
 	
 
@@ -3810,7 +4102,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 386
+    canvas_renderer.js, line 425
 	</dd>
 	
 
@@ -3930,7 +4222,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 397
+    canvas_renderer.js, line 436
 	</dd>
 	
 
@@ -4051,7 +4343,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 573
+    canvas_renderer.js, line 612
 	</dd>
 	
 
@@ -4366,7 +4658,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 408
+    canvas_renderer.js, line 447
 	</dd>
 	
 
@@ -4555,7 +4847,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 433
+    canvas_renderer.js, line 472
 	</dd>
 	
 
@@ -4744,7 +5036,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 472
+    canvas_renderer.js, line 511
 	</dd>
 	
 
@@ -4864,7 +5156,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 494
+    canvas_renderer.js, line 533
 	</dd>
 	
 
@@ -5053,7 +5345,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 521
+    canvas_renderer.js, line 560
 	</dd>
 	
 
@@ -5173,7 +5465,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 586
+    canvas_renderer.js, line 625
 	</dd>
 	
 
@@ -5316,7 +5608,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 613
+    canvas_renderer.js, line 652
 	</dd>
 	
 
@@ -5367,7 +5659,7 @@ identity one, and then apply the given transformation matrix.
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-01-21T15:15:25+08:00 using the <a
+		on 2018-08-13T15:19:54+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

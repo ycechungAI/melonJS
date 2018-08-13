@@ -22,64 +22,6 @@
 			<ul class="nav">
 				
 				<li class="dropdown">
-					<a href="externals.list.html" class="dropdown-toggle" data-toggle="dropdown">Externals<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="external-Array.html">Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Error.html">Error</a>
-						</li>
-						
-						<li>
-							<a href="external-Float32Array.html">Float32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Function.html">Function</a>
-						</li>
-						
-						<li>
-							<a href="external-Math.html">Math</a>
-						</li>
-						
-						<li>
-							<a href="external-Number.html">Number</a>
-						</li>
-						
-						<li>
-							<a href="external-Object.html">Object</a>
-						</li>
-						
-						<li>
-							<a href="external-String.html">String</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint8Array.html">Uint8Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint16Array.html">Uint16Array</a>
-						</li>
-						
-						<li>
-							<a href="external-Uint32Array.html">Uint32Array</a>
-						</li>
-						
-						<li>
-							<a href="external-window.html">window</a>
-						</li>
-						
-
-					</ul>
-				</li>
-				
-				<li class="dropdown">
 					<a href="namespaces.list.html" class="dropdown-toggle" data-toggle="dropdown">Namespaces<b
 						class="caret"></b></a>
 
@@ -134,6 +76,10 @@
 						</li>
 						
 						<li>
+							<a href="me.Math.html">me.Math</a>
+						</li>
+						
+						<li>
 							<a href="me.plugin.html">me.plugin</a>
 						</li>
 						
@@ -163,6 +109,22 @@
 						
 						<li>
 							<a href="me.utils.html">me.utils</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.array.html">me.utils.array</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.file.html">me.utils.file</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.function.html">me.utils.function</a>
+						</li>
+						
+						<li>
+							<a href="me.utils.string.html">me.utils.string</a>
 						</li>
 						
 						<li>
@@ -201,6 +163,10 @@
 						
 						<li>
 							<a href="me.Body.Error.html">me.Body.Error</a>
+						</li>
+						
+						<li>
+							<a href="me.Camera2d.html">me.Camera2d</a>
 						</li>
 						
 						<li>
@@ -456,10 +422,6 @@
 						</li>
 						
 						<li>
-							<a href="me.Viewport.html">me.Viewport</a>
-						</li>
-						
-						<li>
 							<a href="me.WebGLRenderer.html">me.WebGLRenderer</a>
 						</li>
 						
@@ -469,44 +431,6 @@
 						
 						<li>
 							<a href="me.WebGLRenderer.Texture.html">me.WebGLRenderer.Texture</a>
-						</li>
-						
-
-					</ul>
-				</li>
-				
-				<li class="dropdown">
-					<a href="global.html" class="dropdown-toggle" data-toggle="dropdown">Global<b
-						class="caret"></b></a>
-
-					<ul class="dropdown-menu ">
-						
-						<li>
-							<a href="global.html">all</a>
-						</li>
-						
-						<li>
-							<a href="global.html#catch">catch</a>
-						</li>
-						
-						<li>
-							<a href="global.html#finally">finally</a>
-						</li>
-						
-						<li>
-							<a href="global.html">race</a>
-						</li>
-						
-						<li>
-							<a href="global.html">reject</a>
-						</li>
-						
-						<li>
-							<a href="global.html">resolve</a>
-						</li>
-						
-						<li>
-							<a href="global.html#then">then</a>
 						</li>
 						
 
@@ -649,7 +573,7 @@
 
             
 
-            <td class="description last">Contains additional parameters for the animation sheet
+            <td class="description last">Configuration parameters for the Sprite object
                 <h6>Properties</h6>
                 
 
@@ -688,7 +612,10 @@
 <span class="param-type">me.video.renderer.Texture</span>
 |
 
-<span class="param-type">Image</span>
+<span class="param-type">HTMLImageElement</span>
+|
+
+<span class="param-type">HTMLCanvasElement</span>
 |
 
 <span class="param-type">String</span>
@@ -1134,7 +1061,7 @@ Set to zero if you do not wish an object to be drawn
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 180
+    renderable.js, line 209
 	</dd>
 	
 
@@ -1229,7 +1156,7 @@ or undefined if it has not been added to one.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 192
+    renderable.js, line 221
 	</dd>
 	
 
@@ -1575,7 +1502,7 @@ defining the animation. Can also use objects to specify delay for each frame, se
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    sprite.js, line 211
+    sprite.js, line 206
 	</dd>
 	
 
@@ -1633,6 +1560,8 @@ defining the animation. Can also use objects to specify delay for each frame, se
         
     <pre class="sunlight-highlight-javascript">// walking animation
 this.addAnimation(&quot;walk&quot;, [ 0, 1, 2, 3, 4, 5 ]);
+// standing animation
+this.addAnimation(&quot;stand&quot;, [ 11, 12 ]);
 // eating animation
 this.addAnimation(&quot;eat&quot;, [ 6, 6 ]);
 // rolling animation
@@ -1644,7 +1573,9 @@ this.addAnimation(&quot;turn&quot;, [{ name: 0, delay: 200 }, { name: 1, delay: 
 // can do this with atlas values as well:
 this.addAnimation(&quot;turn&quot;, [{ name: &quot;turnone&quot;, delay: 200 }, { name: &quot;turntwo&quot;, delay: 100 }])
 // define an dying animation that stop on the last frame
-this.addAnimation(&quot;die&quot;, [{ name: 3, delay: 200 }, { name: 4, delay: 100 }, { name: 5, delay: Infinity }])</pre>
+this.addAnimation(&quot;die&quot;, [{ name: 3, delay: 200 }, { name: 4, delay: 100 }, { name: 5, delay: Infinity }])
+// set the standing animation as default
+this.setCurrentAnimation(&quot;stand&quot;);</pre>
 
 
     
@@ -1768,7 +1699,7 @@ this.addAnimation(&quot;die&quot;, [{ name: 3, delay: 200 }, { name: 4, delay: 1
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    sprite.js, line 185
+    sprite.js, line 180
 	</dd>
 	
 
@@ -1849,7 +1780,7 @@ this.flicker(1000, function () {
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    sprite.js, line 428
+    sprite.js, line 433
 	</dd>
 	
 
@@ -1992,7 +1923,7 @@ this.flicker(1000, function () {
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    sprite.js, line 364
+    sprite.js, line 369
 	</dd>
 	
 
@@ -2090,7 +2021,7 @@ this.flicker(1000, function () {
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    sprite.js, line 174
+    sprite.js, line 169
 	</dd>
 	
 
@@ -2249,7 +2180,7 @@ this.flicker(1000, function () {
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    sprite.js, line 401
+    sprite.js, line 406
 	</dd>
 	
 
@@ -2424,7 +2355,7 @@ complete, or callback</td>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    sprite.js, line 310
+    sprite.js, line 309
 	</dd>
 	
 
@@ -2577,7 +2508,7 @@ this.setCurrentAnimation(&quot;die&quot;, (function () {
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    sprite.js, line 380
+    sprite.js, line 385
 	</dd>
 	
 
@@ -2642,7 +2573,7 @@ mySprite.setRegion(game.texture.getRegion(&quot;shadedDark13.png&quot;));</pre>
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-01-21T15:15:26+08:00 using the <a
+		on 2018-08-13T15:19:54+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>
