@@ -1071,7 +1071,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 116
+    canvas_renderer.js, line 115
 	</dd>
 	
 
@@ -1249,7 +1249,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 145
+    canvas_renderer.js, line 144
 	</dd>
 	
 
@@ -1439,7 +1439,7 @@ erasing any previously drawn content.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 162
+    canvas_renderer.js, line 161
 	</dd>
 	
 
@@ -1632,7 +1632,7 @@ and restore it (with the restore() method) any time in the future.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 668
+    canvas_renderer.js, line 671
 	</dd>
 	
 
@@ -1668,7 +1668,7 @@ and restore it (with the restore() method) any time in the future.
 
     
     <div class="description">
-        Create a pattern with the specified repition
+        Create a pattern with the specified repetition
     </div>
     
 
@@ -1775,7 +1775,7 @@ and restore it (with the restore() method) any time in the future.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 177
+    canvas_renderer.js, line 176
 	</dd>
 	
 
@@ -1838,7 +1838,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
         
             
 <dt>
-    <h4 class="name toc-target" id="drawImage"><span class="type-signature">&lt;static> </span>drawImage<span class="signature">(image, sx, sy, sw, sh, dx, dy, dw, dh)</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="drawImage"><span class="type-signature">&lt;static> </span>drawImage<span class="signature">(image, sx, sy, sw, sh, dx, dy, dWidth, dHeight)</span><span class="type-signature"></span></h4>
 
     
 </dt>
@@ -1846,7 +1846,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
     
     <div class="description">
-        Draw an image using the canvas api
+        Draw an image onto the main using the canvas api
     </div>
     
 
@@ -1886,7 +1886,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
             <td class="type">
             
                 
-<span class="param-type">image</span>
+<span class="param-type">Image</span>
 
 
             
@@ -1896,7 +1896,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Source image</td>
+            <td class="description last">An element to draw into the context. The specification permits any canvas image source (CanvasImageSource), specifically, a CSSImageValue, an HTMLImageElement, an SVGImageElement, an HTMLVideoElement, an HTMLCanvasElement, an ImageBitmap, or an OffscreenCanvas.</td>
         </tr>
 
 	
@@ -1919,7 +1919,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Source x-coordinate</td>
+            <td class="description last">The X coordinate of the top left corner of the sub-rectangle of the source image to draw into the destination context.</td>
         </tr>
 
 	
@@ -1942,7 +1942,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Source y-coordinate</td>
+            <td class="description last">The Y coordinate of the top left corner of the sub-rectangle of the source image to draw into the destination context.</td>
         </tr>
 
 	
@@ -1965,7 +1965,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Source width</td>
+            <td class="description last">The width of the sub-rectangle of the source image to draw into the destination context. If not specified, the entire rectangle from the coordinates specified by sx and sy to the bottom-right corner of the image is used.</td>
         </tr>
 
 	
@@ -1988,7 +1988,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Source height</td>
+            <td class="description last">The height of the sub-rectangle of the source image to draw into the destination context.</td>
         </tr>
 
 	
@@ -2011,7 +2011,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Destination x-coordinate</td>
+            <td class="description last">The X coordinate in the destination canvas at which to place the top-left corner of the source image.</td>
         </tr>
 
 	
@@ -2034,14 +2034,14 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Destination y-coordinate</td>
+            <td class="description last">The Y coordinate in the destination canvas at which to place the top-left corner of the source image.</td>
         </tr>
 
 	
 
         <tr>
             
-                <td class="name"><code>dw</code></td>
+                <td class="name"><code>dWidth</code></td>
             
 
             <td class="type">
@@ -2057,14 +2057,14 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Destination width</td>
+            <td class="description last">The width to draw the image in the destination canvas. This allows scaling of the drawn image. If not specified, the image is not scaled in width when drawn.</td>
         </tr>
 
 	
 
         <tr>
             
-                <td class="name"><code>dh</code></td>
+                <td class="name"><code>dHeight</code></td>
             
 
             <td class="type">
@@ -2080,7 +2080,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Destination height</td>
+            <td class="description last">The height to draw the image in the destination canvas. This allows scaling of the drawn image. If not specified, the image is not scaled in height when drawn.</td>
         </tr>
 
 	
@@ -2114,7 +2114,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 196
+    canvas_renderer.js, line 195
 	</dd>
 	
 
@@ -2139,11 +2139,12 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
     
         <h5>Example</h5>
         
-    <pre class="sunlight-highlight-javascript">// Can be used in three ways:
+    <pre class="sunlight-highlight-javascript">// Position the image on the canvas:
 renderer.drawImage(image, dx, dy);
-renderer.drawImage(image, dx, dy, dw, dh);
-renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
-// dx, dy, dw, dh being the destination target &amp; dimensions. sx, sy, sw, sh being the position &amp; dimensions to take from the image</pre>
+// Position the image on the canvas, and specify width and height of the image:
+renderer.drawImage(image, dx, dy, dWidth, dHeight);
+// Clip the image and position the clipped part on the canvas:
+renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);</pre>
 
 
     
@@ -2336,7 +2337,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 248
+    canvas_renderer.js, line 251
 	</dd>
 	
 
@@ -2472,7 +2473,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 578
+    canvas_renderer.js, line 581
 	</dd>
 	
 
@@ -2787,7 +2788,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 271
+    canvas_renderer.js, line 274
 	</dd>
 	
 
@@ -2976,7 +2977,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 297
+    canvas_renderer.js, line 300
 	</dd>
 	
 
@@ -3047,7 +3048,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 128
+    canvas_renderer.js, line 127
 	</dd>
 	
 
@@ -3118,7 +3119,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 315
+    canvas_renderer.js, line 318
 	</dd>
 	
 
@@ -3208,7 +3209,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 84
+    canvas_renderer.js, line 82
 	</dd>
 	
 
@@ -3279,7 +3280,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 371
+    canvas_renderer.js, line 374
 	</dd>
 	
 
@@ -3399,7 +3400,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 386
+    canvas_renderer.js, line 389
 	</dd>
 	
 
@@ -3470,7 +3471,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 361
+    canvas_renderer.js, line 364
 	</dd>
 	
 
@@ -3613,7 +3614,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 397
+    canvas_renderer.js, line 400
 	</dd>
 	
 
@@ -3684,7 +3685,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 335
+    canvas_renderer.js, line 338
 	</dd>
 	
 
@@ -3712,7 +3713,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
         
             
 <dt>
-    <h4 class="name toc-target" id="setBlendMode"><span class="type-signature">&lt;static> </span>setBlendMode<span class="signature">(context, <span class="optional">mode</span>)</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="setBlendMode"><span class="type-signature">&lt;static> </span>setBlendMode<span class="signature">(<span class="optional">mode</span>, <span class="optional">context</span>)</span><span class="type-signature"></span></h4>
 
     
 </dt>
@@ -3758,41 +3759,6 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 
         <tr>
             
-                <td class="name"><code>context</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Context2d</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last"></td>
-        </tr>
-
-	
-
-        <tr>
-            
                 <td class="name"><code>mode</code></td>
             
 
@@ -3829,6 +3795,43 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
         </tr>
 
 	
+
+        <tr>
+            
+                <td class="name"><code>context</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Context2d</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
 	</tbody>
 </table>
 
@@ -3859,7 +3862,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 94
+    canvas_renderer.js, line 92
 	</dd>
 	
 
@@ -3982,7 +3985,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 409
+    canvas_renderer.js, line 412
 	</dd>
 	
 
@@ -4102,7 +4105,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 425
+    canvas_renderer.js, line 428
 	</dd>
 	
 
@@ -4222,7 +4225,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 436
+    canvas_renderer.js, line 439
 	</dd>
 	
 
@@ -4343,7 +4346,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 612
+    canvas_renderer.js, line 615
 	</dd>
 	
 
@@ -4658,7 +4661,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 447
+    canvas_renderer.js, line 450
 	</dd>
 	
 
@@ -4847,7 +4850,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 472
+    canvas_renderer.js, line 475
 	</dd>
 	
 
@@ -5036,7 +5039,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 511
+    canvas_renderer.js, line 514
 	</dd>
 	
 
@@ -5156,7 +5159,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 533
+    canvas_renderer.js, line 536
 	</dd>
 	
 
@@ -5345,7 +5348,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 560
+    canvas_renderer.js, line 563
 	</dd>
 	
 
@@ -5465,7 +5468,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 625
+    canvas_renderer.js, line 628
 	</dd>
 	
 
@@ -5608,7 +5611,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 652
+    canvas_renderer.js, line 655
 	</dd>
 	
 
@@ -5659,7 +5662,7 @@ identity one, and then apply the given transformation matrix.
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-08-13T15:19:54+08:00 using the <a
+		on 2018-09-11T09:38:57+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

@@ -1,5 +1,5 @@
 /**
- * melonJS Game Engine v6.0.0
+ * melonJS Game Engine v6.1.0
  * http://www.melonjs.org
  * @license {@link http://www.opensource.org/licenses/mit-license.php|MIT}
  * @copyright (C) 2011 - 2018 Olivier Biot
@@ -636,15 +636,16 @@ me.Error = me.Object.extend.bind(Error)({
             // Android Device ?
             me.device.android = /Android/i.test(me.device.ua);
             me.device.android2 = /Android 2/i.test(me.device.ua);
+            // Linux platform
+            me.device.linux = /Linux/i.test(me.device.ua);
             // Chrome OS ?
             me.device.chromeOS = /CrOS/.test(me.device.ua);
             // Windows Device ?
             me.device.wp = /Windows Phone/i.test(me.device.ua);
-            // Kindle device ?
+            // Blackberry device ?
             me.device.BlackBerry = /BlackBerry/i.test(me.device.ua);
             // Kindle device ?
             me.device.Kindle = /Kindle|Silk.*Mobile Safari/i.test(me.device.ua);
-
             // Mobile platform
             me.device.isMobile = /Mobi/i.test(me.device.ua) ||
                                  me.device.iOS ||
@@ -654,10 +655,8 @@ me.Error = me.Object.extend.bind(Error)({
                                  me.device.Kindle || false;
             // ejecta
             me.device.ejecta = (typeof window.ejecta !== "undefined");
-
             // Wechat
             me.device.isWeixin = /MicroMessenger/i.test(me.device.ua);
-
             // cocoon/cocoonJS
             me.device.cocoon = navigator.isCocoonJS ||  // former cocoonJS
                                (typeof window.Cocoon !== "undefined"); // new cocoon
@@ -812,6 +811,15 @@ me.Error = me.Object.extend.bind(Error)({
          * @memberOf me.device
          */
         api.android2 = false;
+
+        /**
+         * equals to true if the device is a Linux platform.
+         * @type Boolean
+         * @readonly
+         * @name linux
+         * @memberOf me.device
+         */
+        api.linux = false;
 
        /**
         * equals to true if the game is running under Ejecta.
@@ -1792,7 +1800,7 @@ me.Error = me.Object.extend.bind(Error)({
 
                 api.world.preDraw(renderer);
 
-                // update all objects,
+                // draw all objects,
                 // specifying the viewport as the rectangle area to redraw
                 api.world.draw(renderer, viewport);
 
@@ -1832,7 +1840,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @ignore
      */
     me.mod = "melonJS";
-    me.version = "6.0.0";
+    me.version = "6.1.0";
     /**
      * global system settings and browser capabilities
      * @namespace
@@ -1956,14 +1964,14 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @function
          * @param {String} first First version string to compare
-         * @param {String} [second="6.0.0"] Second version string to compare
+         * @param {String} [second="6.1.0"] Second version string to compare
          * @return {Number} comparison result <br>&lt; 0 : first &lt; second<br>
          * 0 : first == second<br>
          * &gt; 0 : first &gt; second
          * @example
-         * if (me.sys.checkVersion("6.0.0") > 0) {
+         * if (me.sys.checkVersion("6.1.0") > 0) {
          *     console.error(
-         *         "melonJS is too old. Expected: 6.0.0, Got: " + me.version
+         *         "melonJS is too old. Expected: 6.1.0, Got: " + me.version
          *     );
          * }
          */
@@ -9601,6 +9609,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @function
          * @param {Number} duration expressed in milliseconds
          * @param {Function} callback Function to call when flickering ends
+         * @return {me.Sprite} Reference to this object for method chaining
          * @example
          * // make the object flicker for 1 second
          * // and then remove it
@@ -9618,6 +9627,7 @@ me.Error = me.Object.extend.bind(Error)({
                 this._flicker.callback = callback;
                 this._flicker.isFlickering = true;
             }
+            return this;
         },
 
         /**
@@ -9632,8 +9642,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @param {Number[]|String[]|Object[]} index list of sprite index or name
          * defining the animation. Can also use objects to specify delay for each frame, see below
          * @param {Number} [animationspeed] cycling speed for animation in ms
-         * @return {Number} frame amount of frame added to the animation
-         * (delay between each frame).
+         * @return {Number} frame amount of frame added to the animation (delay between each frame).
          * @see me.Sprite#animationspeed
          * @example
          * // walking animation
@@ -9730,8 +9739,8 @@ me.Error = me.Object.extend.bind(Error)({
          * @memberOf me.Sprite
          * @function
          * @param {String} name animation id
-         * @param {String|Function} [onComplete] animation id to switch to when
-         * complete, or callback
+         * @param {String|Function} [onComplete] animation id to switch to when complete, or callback
+         * @return {me.Sprite} Reference to this object for method chaining
          * @example
          * // set "walk" animation
          * this.setCurrentAnimation("walk");
@@ -9781,6 +9790,25 @@ me.Error = me.Object.extend.bind(Error)({
             } else {
                 throw new me.Renderable.Error("animation id '" + name + "' not defined");
             }
+            return this;
+        },
+
+        /**
+         * reverse the given or current animation if none is specified
+         * @name reverseAnimation
+         * @memberOf me.Sprite
+         * @function
+         * @param {String} [name] animation id
+         * @return {me.Sprite} Reference to this object for method chaining
+         * @see me.Sprite#animationspeed
+         */
+        reverseAnimation : function (name) {
+            if (typeof name !== "undefined" && typeof this.anim[name] !== "undefined") {
+                this.anim[name].frames.reverse();
+            } else {
+                this.current.frames.reverse();
+            }
+            return this;
         },
 
         /**
@@ -9806,6 +9834,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @memberOf me.Sprite
          * @function
          * @param {Object} region typically returned through me.Texture.getRegion()
+         * @return {me.Sprite} Reference to this object for method chaining
          * @example
          * // change the sprite to "shadedDark13.png";
          * mySprite.setRegion(game.texture.getRegion("shadedDark13.png"));
@@ -9818,6 +9847,8 @@ me.Error = me.Object.extend.bind(Error)({
             // update the default "current" size
             this.current.width = region.width;
             this.current.height = region.height;
+
+            return this;
         },
 
         /**
@@ -9826,6 +9857,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @memberOf me.Sprite
          * @function
          * @param {Number} [index=0] animation frame index
+         * @return {me.Sprite} Reference to this object for method chaining
          * @example
          * // reset the current animation to the first frame
          * this.setAnimationFrame();
@@ -9845,6 +9877,7 @@ me.Error = me.Object.extend.bind(Error)({
             if (frame.anchorPoint) {
                 this.anchorPoint.setV(frame.anchorPoint);
             }
+            return this;
         },
 
         /**
@@ -11856,14 +11889,7 @@ me.Error = me.Object.extend.bind(Error)({
                         settings.height]);
 
             if (settings.image) {
-                this.renderable = new me.Sprite(0, 0, {
-                    "image" : settings.image,
-                    "framewidth" : ~~(settings.framewidth || settings.width),
-                    "frameheight" : ~~(settings.frameheight || settings.height),
-                    "spacing" : ~~settings.spacing,
-                    "margin" : ~~settings.margin,
-                    "anchorPoint" : settings.anchorPoint
-                });
+                this.renderable = new me.Sprite(0, 0, settings);
             }
 
             // Update anchorPoint
@@ -15443,10 +15469,14 @@ me.Error = me.Object.extend.bind(Error)({
             settings.doubleBuffering = !!(settings.doubleBuffering);
             settings.useParentDOMSize = !!(settings.useParentDOMSize);
             settings.autoScale = (settings.scale === "auto") || false;
+            settings.transparent = !!(settings.transparent);
+            settings.antiAlias = !!(settings.antiAlias);
+            settings.failIfMajorPerformanceCaveat = !!(settings.failIfMajorPerformanceCaveat);
+            settings.subPixel = !!(settings.subPixel);
+            settings.verbose = !!(settings.verbose);
             if (settings.scaleMethod.search(/^(fill-(min|max)|fit|flex(-(width|height))?|stretch)$/) !== 0) {
                 settings.scaleMethod = "fit";
             }
-            settings.transparent = !!(settings.transparent);
 
             // override renderer settings if &webgl is defined in the URL
             if (me.game.HASH.webgl === true) {
@@ -15551,7 +15581,7 @@ me.Error = me.Object.extend.bind(Error)({
             settings.wrapper.appendChild(canvas);
 
             // stop here if not supported
-            if (!canvas.getContext) {
+            if (typeof canvas.getContext === "undefined") {
                 return false;
             }
 
@@ -15563,10 +15593,8 @@ me.Error = me.Object.extend.bind(Error)({
              * @type {me.Renderer|me.CanvasRenderer|me.WebGLRenderer}
              */
             switch (settings.renderer) {
-                case api.WEBGL:
-                    this.renderer = new me.WebGLRenderer(canvas, game_width, game_height, settings);
-                    break;
                 case api.AUTO:
+                case api.WEBGL:
                     this.renderer = autoDetectRenderer(canvas, game_width, game_height, settings);
                     break;
                 default:
@@ -15862,23 +15890,28 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          */
         init : function (c, width, height, options) {
-            options = options || {};
+            /**
+             * The given constructor options
+             * @public
+             * @name settings
+             * @memberOf me.Renderer
+             * @enum {Object}
+             */
+            this.settings = options;
 
             /**
-            * @ignore
-            */
+             * @ignore
+             */
             this.currentScissor = new Int32Array([ 0, 0, this.width, this.height ]);
 
-            // rendering options
-            this.transparent = !!(options.transparent);
-            this.doubleBuffering = !!(options.doubleBuffering);
-            this.antiAlias = !!(options.antiAlias);
-            this.failIfMajorPerformanceCaveat = !!(options.failIfMajorPerformanceCaveat);
-            this.subPixel = !!(options.subPixel);
-            this.verbose = !!(options.verbose);
+            /**
+             * @ignore
+             */
+            this.currentBlendMode = "normal";
 
-            this.gameWidthZoom = options.zoomX || width;
-            this.gameHeightZoom = options.zoomY || height;
+            // canvas size after scaling
+            this.gameWidthZoom = this.settings.zoomX || width;
+            this.gameHeightZoom = this.settings.zoomY || height;
 
             // canvas object and context
             this.canvas = this.backBufferCanvas = c;
@@ -15909,7 +15942,7 @@ me.Error = me.Object.extend.bind(Error)({
          */
         reset : function () {
             this.resetTransform();
-            this.setBlendMode(this.context, this.blendMode);
+            this.setBlendMode(this.settings.blendMode);
             this.cache.reset();
             this.currentScissor[0] = 0;
             this.currentScissor[1] = 0;
@@ -15959,7 +15992,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @return {String} blend mode
          */
         getBlendMode : function () {
-            return this.blendMode;
+            return this.currentBlendMode;
         },
 
         /**
@@ -15994,7 +16027,7 @@ me.Error = me.Object.extend.bind(Error)({
             if (me.device.cocoon) {
                 // cocoonJS specific extension
                 _context = c.getContext("2d", {
-                    "antialias" : this.antiAlias,
+                    "antialias" : this.settings.antiAlias,
                     "alpha" : transparent
                 });
             }
@@ -16006,7 +16039,7 @@ me.Error = me.Object.extend.bind(Error)({
             if (!_context.canvas) {
                 _context.canvas = c;
             }
-            this.setAntiAlias(_context, this.antiAlias);
+            this.setAntiAlias(_context, this.settings.antiAlias);
             return _context;
         },
 
@@ -16173,6 +16206,18 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          */
         put : function (image, texture) {
+            var width = image.width;
+            var height = image.height;
+
+            // warn if a non POT texture is added to the cache
+            if (!me.Math.isPowerOfTwo(width) || !me.Math.isPowerOfTwo(height)) {
+                var src = typeof image.src !== "undefined" ? image.src : image;
+                console.warn(
+                    "[Texture] " + src + " is not a POT texture " +
+                    "(" + width + "x" + height + ")"
+                );
+            }
+
             this.validate();
             this.cache.set(image, texture);
             this.units.set(texture, this.length++);
@@ -16226,18 +16271,14 @@ me.Error = me.Object.extend.bind(Error)({
             me.Renderer.prototype.init.apply(this, [c, width, height, options]);
 
             // defined the 2d context
-            this.context = this.getContext2d(this.canvas, this.transparent);
-
-            this.setBlendMode(this.context, options.blendMode);
+            this.context = this.getContext2d(this.canvas, this.settings.transparent);
 
             // create the back buffer if we use double buffering
-            if (this.doubleBuffering) {
+            if (this.settings.doubleBuffering) {
                 this.backBufferCanvas = me.video.createCanvas(width, height, false);
                 this.backBufferContext2D = this.getContext2d(this.backBufferCanvas);
 
-                this.setBlendMode(this.backBufferContext2D, options.blendMode);
-
-                if (this.transparent) {
+                if (this.settings.transparent) {
                     // Clears the front buffer for each frame blit
                     this.context.globalCompositeOperation = "copy";
                 }
@@ -16247,13 +16288,15 @@ me.Error = me.Object.extend.bind(Error)({
                 this.backBufferContext2D = this.context;
             }
 
+            this.setBlendMode(this.settings.blendMode);
+
             // apply the default color to the 2d context
             this.setColor(this.currentColor);
 
             // create a texture cache
             this.cache = new me.Renderer.TextureCache();
 
-            if (options.textureSeamFix !== false  && !this.antiAlias) {
+            if (this.settings.textureSeamFix !== false  && !this.settings.antiAlias) {
                 // enable the tile texture seam fix with the canvas renderer
                 this.uvOffset = 1;
             }
@@ -16286,11 +16329,12 @@ me.Error = me.Object.extend.bind(Error)({
          * @name setBlendMode
          * @memberOf me.CanvasRenderer
          * @function
-         * @param {Context2d} context
          * @param {String} [mode="normal"] blend mode : "normal", "multiply"
+         * @param {Context2d} [context]
          */
-        setBlendMode : function (context, mode) {
-            this.blendMode = mode;
+        setBlendMode : function (mode, context) {
+            context = context || this.getContext();
+            this.currentBlendMode = mode;
             switch (mode) {
                 case "multiply" :
                     context.globalCompositeOperation = "multiply";
@@ -16298,10 +16342,10 @@ me.Error = me.Object.extend.bind(Error)({
 
                 default : // normal
                     context.globalCompositeOperation = "source-over";
-                    this.blendMode = "normal";
+                    this.currentBlendMode = "normal";
                     break;
             }
-    },
+        },
 
         /**
          * prepare the framebuffer for drawing a new frame
@@ -16310,7 +16354,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @function
          */
         clear : function () {
-            if (this.transparent) {
+            if (this.settings.transparent) {
                 this.clearColor("rgba(0,0,0,0)", true);
             }
         },
@@ -16322,7 +16366,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @function
          */
         flush : function () {
-            if (this.doubleBuffering) {
+            if (this.settings.doubleBuffering) {
                 this.context.drawImage(
                     this.backBufferCanvas, 0, 0,
                     this.backBufferCanvas.width, this.backBufferCanvas.height,
@@ -16365,7 +16409,7 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * Create a pattern with the specified repition
+         * Create a pattern with the specified repetition
          * @name createPattern
          * @memberOf me.CanvasRenderer
          * @function
@@ -16384,25 +16428,26 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * Draw an image using the canvas api
+         * Draw an image onto the main using the canvas api
          * @name drawImage
          * @memberOf me.CanvasRenderer
          * @function
-         * @param {image} image Source image
-         * @param {Number} sx Source x-coordinate
-         * @param {Number} sy Source y-coordinate
-         * @param {Number} sw Source width
-         * @param {Number} sh Source height
-         * @param {Number} dx Destination x-coordinate
-         * @param {Number} dy Destination y-coordinate
-         * @param {Number} dw Destination width
-         * @param {Number} dh Destination height
+         * @param {Image} image An element to draw into the context. The specification permits any canvas image source (CanvasImageSource), specifically, a CSSImageValue, an HTMLImageElement, an SVGImageElement, an HTMLVideoElement, an HTMLCanvasElement, an ImageBitmap, or an OffscreenCanvas.
+         * @param {Number} sx The X coordinate of the top left corner of the sub-rectangle of the source image to draw into the destination context.
+         * @param {Number} sy The Y coordinate of the top left corner of the sub-rectangle of the source image to draw into the destination context.
+         * @param {Number} sw The width of the sub-rectangle of the source image to draw into the destination context. If not specified, the entire rectangle from the coordinates specified by sx and sy to the bottom-right corner of the image is used.
+         * @param {Number} sh The height of the sub-rectangle of the source image to draw into the destination context.
+         * @param {Number} dx The X coordinate in the destination canvas at which to place the top-left corner of the source image.
+         * @param {Number} dy The Y coordinate in the destination canvas at which to place the top-left corner of the source image.
+         * @param {Number} dWidth The width to draw the image in the destination canvas. This allows scaling of the drawn image. If not specified, the image is not scaled in width when drawn.
+         * @param {Number} dHeight The height to draw the image in the destination canvas. This allows scaling of the drawn image. If not specified, the image is not scaled in height when drawn.
          * @example
-         * // Can be used in three ways:
+         * // Position the image on the canvas:
          * renderer.drawImage(image, dx, dy);
-         * renderer.drawImage(image, dx, dy, dw, dh);
-         * renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
-         * // dx, dy, dw, dh being the destination target & dimensions. sx, sy, sw, sh being the position & dimensions to take from the image
+         * // Position the image on the canvas, and specify width and height of the image:
+         * renderer.drawImage(image, dx, dy, dWidth, dHeight);
+         * // Clip the image and position the clipped part on the canvas:
+         * renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
          */
         drawImage : function (image, sx, sy, sw, sh, dx, dy, dw, dh) {
             if (this.backBufferContext2D.globalAlpha < 1 / 255) {
@@ -16410,29 +16455,32 @@ me.Error = me.Object.extend.bind(Error)({
                 return;
             }
 
-            if (this.subPixel === false) {
-                if (typeof sw === "undefined") {
-                    sw = dw = image.width;
-                    sh = dh = image.height;
-                    dx = sx;
-                    dy = sy;
-                    sx = 0;
-                    sy = 0;
-                }
-                else if (typeof dx === "undefined") {
-                    dx = sx;
-                    dy = sy;
-                    dw = sw;
-                    dh = sh;
-                    sw = image.width;
-                    sh = image.height;
-                    sx = 0;
-                    sy = 0;
-                }
-                this.backBufferContext2D.drawImage(image, sx, sy, sw, sh, ~~dx, ~~dy, dw, dh);
-            } else {
-                this.backBufferContext2D.drawImage.apply(this.backBufferContext2D, arguments);
+            if (typeof sw === "undefined") {
+                sw = dw = image.width;
+                sh = dh = image.height;
+                dx = sx;
+                dy = sy;
+                sx = 0;
+                sy = 0;
             }
+            else if (typeof dx === "undefined") {
+                dx = sx;
+                dy = sy;
+                dw = sw;
+                dh = sh;
+                sw = image.width;
+                sh = image.height;
+                sx = 0;
+                sy = 0;
+            }
+
+            if (this.settings.subPixel === false) {
+                // clamp to pixel grid
+                dx = ~~dx;
+                dy = ~~dy;
+            }
+
+            this.backBufferContext2D.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
         },
 
         /**
@@ -16538,13 +16586,13 @@ me.Error = me.Object.extend.bind(Error)({
                 this.canvas.style.height = (this.canvas.height / me.device.devicePixelRatio) + "px";
             }
 
-            if (this.doubleBuffering && this.transparent) {
+            if (this.settings.doubleBuffering && this.settings.transparent) {
                 // Clears the front buffer for each frame blit
                 this.context.globalCompositeOperation = "copy";
             } else {
-                this.setBlendMode(this.context, this.blendMode);
+                this.setBlendMode(this.settings.blendMode, this.context);
             }
-            this.setAntiAlias(this.context, this.antiAlias);
+            this.setAntiAlias(this.context, this.settings.antiAlias);
             this.flush();
         },
 
@@ -16824,7 +16872,7 @@ me.Error = me.Object.extend.bind(Error)({
             var tx = a[6],
                 ty = a[7];
 
-            if (this.subPixel === false) {
+            if (this.settings.subPixel === false) {
                 tx = ~~tx;
                 ty = ~~ty;
             }
@@ -16848,7 +16896,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @param {Number} y
          */
         translate : function (x, y) {
-            if (this.subPixel === false) {
+            if (this.settings.subPixel === false) {
                 this.backBufferContext2D.translate(~~x, ~~y);
             } else {
                 this.backBufferContext2D.translate(x, y);
@@ -17005,7 +17053,7 @@ me.Error = me.Object.extend.bind(Error)({
                     if (typeof(atlas.framewidth) !== "undefined" &&
                         typeof(atlas.frameheight) !== "undefined") {
                         this.format = "Spritesheet (fixed cell size)";
-                        if (typeof(this.source) !== undefined) {
+                        if (typeof(this.source) !== "undefined") {
                             // overwrite if specified
                             atlas.image = this.source;
                         }
@@ -17465,16 +17513,10 @@ me.Error = me.Object.extend.bind(Error)({
         api.createTexture = function (gl, unit, image, filter, repeat, w, h, b, premultipliedAlpha) {
             repeat = repeat || "no-repeat";
 
-            if (!me.Math.isPowerOfTwo(w || image.width) || !me.Math.isPowerOfTwo(h || image.height)) {
-                console.warn(
-                    "[WebGL Renderer] " + image + " is not a POT texture " +
-                    "(" + (w || image.width) + "x" + (h || image.height) + ")"
-                );
-            }
-
-            var texture = gl.createTexture(),
-                rs = (repeat.search(/^repeat(-x)?$/) === 0) ? gl.REPEAT : gl.CLAMP_TO_EDGE,
-                rt = (repeat.search(/^repeat(-y)?$/) === 0) ? gl.REPEAT : gl.CLAMP_TO_EDGE;
+            var isPOT = me.Math.isPowerOfTwo(w || image.width) && me.Math.isPowerOfTwo(h || image.height);
+            var texture = gl.createTexture();
+            var rs = (repeat.search(/^repeat(-x)?$/) === 0) && isPOT ? gl.REPEAT : gl.CLAMP_TO_EDGE;
+            var rt = (repeat.search(/^repeat(-y)?$/) === 0) && isPOT ? gl.REPEAT : gl.CLAMP_TO_EDGE;
 
             gl.activeTexture(gl.TEXTURE0 + unit);
             gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -17539,7 +17581,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @name gl
              * @memberOf me.WebGLRenderer
              */
-            this.context = this.gl = this.getContextGL(c, this.transparent);
+            this.context = this.gl = this.getContextGL(c, this.settings.transparent);
 
             /**
              * @ignore
@@ -17575,7 +17617,7 @@ me.Error = me.Object.extend.bind(Error)({
             this.currentTransform = new me.Matrix2d();
 
             // Create a compositor
-            var Compositor = options.compositor || me.WebGLRenderer.Compositor;
+            var Compositor = this.settings.compositor || me.WebGLRenderer.Compositor;
             this.compositor = new Compositor(this);
 
 
@@ -17585,7 +17627,7 @@ me.Error = me.Object.extend.bind(Error)({
             this.gl.enable(this.gl.BLEND);
 
             // set default mode
-            this.setBlendMode(this.gl, options.blendMode);
+            this.setBlendMode(this.settings.blendMode);
 
             // Create a texture cache
             this.cache = new me.Renderer.TextureCache(
@@ -17703,8 +17745,9 @@ me.Error = me.Object.extend.bind(Error)({
         createPattern : function (image, repeat) {
 
             if (!me.Math.isPowerOfTwo(image.width) || !me.Math.isPowerOfTwo(image.height)) {
+                var src = typeof image.src !== "undefined" ? image.src : image;
                 throw new me.video.Error(
-                    "[WebGL Renderer] " + image + " is not a POT texture " +
+                    "[WebGL Renderer] " + src + " is not a POT texture " +
                     "(" + image.width + "x" + image.height + ")"
                 );
             }
@@ -17805,25 +17848,24 @@ me.Error = me.Object.extend.bind(Error)({
          * @name drawImage
          * @memberOf me.WebGLRenderer
          * @function
-         * @param {Image} image Source image
-         * @param {Number} sx Source x-coordinate
-         * @param {Number} sy Source y-coordinate
-         * @param {Number} sw Source width
-         * @param {Number} sh Source height
-         * @param {Number} dx Destination x-coordinate
-         * @param {Number} dy Destination y-coordinate
-         * @param {Number} dw Destination width
-         * @param {Number} dh Destination height
+         * @param {Image} image An element to draw into the context. The specification permits any canvas image source (CanvasImageSource), specifically, a CSSImageValue, an HTMLImageElement, an SVGImageElement, an HTMLVideoElement, an HTMLCanvasElement, an ImageBitmap, or an OffscreenCanvas.
+         * @param {Number} sx The X coordinate of the top left corner of the sub-rectangle of the source image to draw into the destination context.
+         * @param {Number} sy The Y coordinate of the top left corner of the sub-rectangle of the source image to draw into the destination context.
+         * @param {Number} sw The width of the sub-rectangle of the source image to draw into the destination context. If not specified, the entire rectangle from the coordinates specified by sx and sy to the bottom-right corner of the image is used.
+         * @param {Number} sh The height of the sub-rectangle of the source image to draw into the destination context.
+         * @param {Number} dx The X coordinate in the destination canvas at which to place the top-left corner of the source image.
+         * @param {Number} dy The Y coordinate in the destination canvas at which to place the top-left corner of the source image.
+         * @param {Number} dWidth The width to draw the image in the destination canvas. This allows scaling of the drawn image. If not specified, the image is not scaled in width when drawn.
+         * @param {Number} dHeight The height to draw the image in the destination canvas. This allows scaling of the drawn image. If not specified, the image is not scaled in height when drawn.
          * @example
-         * // Can be used in three ways:
+         * // Position the image on the canvas:
          * renderer.drawImage(image, dx, dy);
-         * renderer.drawImage(image, dx, dy, dw, dh);
-         * renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
-         * // dx, dy, dw, dh being the destination target & dimensions. sx, sy, sw, sh being the position & dimensions to take from the image
+         * // Position the image on the canvas, and specify width and height of the image:
+         * renderer.drawImage(image, dx, dy, dWidth, dHeight);
+         * // Clip the image and position the clipped part on the canvas:
+         * renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
          */
         drawImage : function (image, sx, sy, sw, sh, dx, dy, dw, dh) {
-            // TODO: Replace the function signature with:
-            // drawImage(Image|Object, sx, sy, sw, sh, dx, dy, dw, dh)
             if (typeof sw === "undefined") {
                 sw = dw = image.width;
                 sh = dh = image.height;
@@ -17843,7 +17885,7 @@ me.Error = me.Object.extend.bind(Error)({
                 sy = 0;
             }
 
-            if (this.subPixel === false) {
+            if (this.settings.subPixel === false) {
                 // clamp to pixel grid
                 dx = ~~dx;
                 dy = ~~dy;
@@ -17904,17 +17946,11 @@ me.Error = me.Object.extend.bind(Error)({
          * @param {Boolean} [transparent=true] use false to disable transparency
          * @return {WebGLRenderingContext}
          */
-        getContextGL : function (c, transparent) {
-            if (typeof c === "undefined" || c === null) {
+        getContextGL : function (canvas, transparent) {
+            if (typeof canvas === "undefined" || canvas === null) {
                 throw new me.video.Error(
                     "You must pass a canvas element in order to create " +
                     "a GL context"
-                );
-            }
-
-            if (typeof c.getContext === "undefined") {
-                throw new me.video.Error(
-                    "Your browser does not support WebGL."
                 );
             }
 
@@ -17924,16 +17960,21 @@ me.Error = me.Object.extend.bind(Error)({
 
             var attr = {
                 alpha : transparent,
-                antialias : this.antiAlias,
+                antialias : this.settings.antiAlias,
                 depth : false,
                 premultipliedAlpha: transparent,
-                failIfMajorPerformanceCaveat : this.failIfMajorPerformanceCaveat
+                failIfMajorPerformanceCaveat : this.settings.failIfMajorPerformanceCaveat
             };
 
-            return (
-                c.getContext("webgl", attr) ||
-                c.getContext("experimental-webgl", attr)
-            );
+            var gl = canvas.getContext("webgl", attr) || canvas.getContext("experimental-webgl", attr);
+
+            if (!gl) {
+                throw new me.video.Error(
+                    "A WebGL context could not be created."
+                );
+            }
+
+            return gl;
         },
 
         /**
@@ -17953,20 +17994,22 @@ me.Error = me.Object.extend.bind(Error)({
          * @name setBlendMode
          * @memberOf me.WebGLRenderer
          * @function
-         * @param {Context2d} context
          * @param {String} [mode="normal"] blend mode : "normal", "multiply"
+         * @param {WebGLRenderingContext} [gl]
          */
-        setBlendMode : function (gl, mode) {
-            this.blendMode = mode;
+        setBlendMode : function (mode, gl) {
+            gl = gl || this.gl;
+
             gl.enable(gl.BLEND);
             switch (mode) {
                 case "multiply" :
                     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+                    this.currentBlendMode = mode;
                     break;
 
                 default :
                     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-                    this.blendMode = "normal";
+                    this.currentBlendMode = "normal";
                     break;
             }
         },
@@ -18278,7 +18321,7 @@ me.Error = me.Object.extend.bind(Error)({
          */
         transform : function (mat2d) {
             this.currentTransform.multiply(mat2d);
-            if (this.subPixel === false) {
+            if (this.settings.subPixel === false) {
                 // snap position values to pixel grid
                 var a = this.currentTransform.val;
                 a[6] = ~~a[6];
@@ -18295,7 +18338,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @param {Number} y
          */
         translate : function (x, y) {
-            if (this.subPixel === false) {
+            if (this.settings.subPixel === false) {
                 this.currentTransform.translate(~~x, ~~y);
             } else {
                 this.currentTransform.translate(x, y);
@@ -18711,7 +18754,7 @@ me.Error = me.Object.extend.bind(Error)({
                     this.gl,
                     unit,
                     texture.source,
-                    this.renderer.antiAlias ? this.gl.LINEAR : this.gl.NEAREST,
+                    this.renderer.settings.antiAlias ? this.gl.LINEAR : this.gl.NEAREST,
                     texture.repeat,
                     w,
                     h,
@@ -18865,7 +18908,7 @@ me.Error = me.Object.extend.bind(Error)({
             var region = texture.getRegion(key);
             if (typeof(region) === "undefined") {
                 // TODO: Require proper atlas regions instead of caching arbitrary region keys
-                if (me.video.renderer.verbose === true) {
+                if (this.renderer.settings.verbose === true) {
                     console.warn("Adding texture region", key, "for texture", texture);
                 }
 
@@ -19144,7 +19187,7 @@ me.Error = me.Object.extend.bind(Error)({
 
         if (action) {
             if (!keyLocked[action]) {
-                var trigger = (typeof mouseButton !== undefined) ? mouseButton : keyCode;
+                var trigger = (typeof mouseButton !== "undefined") ? mouseButton : keyCode;
                 if (!keyRefs[action][trigger]) {
                     keyStatus[action]++;
                     keyRefs[action][trigger] = true;
@@ -19175,7 +19218,7 @@ me.Error = me.Object.extend.bind(Error)({
         me.event.publish(me.event.KEYUP, [ action, keyCode ]);
 
         if (action) {
-            var trigger = (typeof mouseButton !== undefined) ? mouseButton : keyCode;
+            var trigger = (typeof mouseButton !== "undefined") ? mouseButton : keyCode;
             keyRefs[action][trigger] = undefined;
 
             if (keyStatus[action] > 0) {
@@ -22582,14 +22625,25 @@ me.Error = me.Object.extend.bind(Error)({
             var properties = data.properties;
             var types = data.propertytypes;
             if (typeof(properties) !== "undefined") {
-                for (var name in properties) {
-                    if (properties.hasOwnProperty(name)) {
+                for (var property in properties) {
+                    if (properties.hasOwnProperty(property)) {
                         var type = "string";
+                        var name = property;
+                        var value = properties[property];
+                        // proof-check for new and old JSON format
+                        if (typeof properties[property].name !== "undefined") {
+                            name = properties[property].name;
+                        }
                         if (typeof(types) !== "undefined") {
-                            type = types[name];
+                            type = types[property];
+                        } else if (typeof properties[property].type !== "undefined") {
+                            type = properties[property].type;
+                        }
+                        if (typeof properties[property].value !== "undefined") {
+                            value = properties[property].value;
                         }
                         // set the value
-                        obj[name] = setTMXValue(name, type, properties[name]);
+                        obj[name] = setTMXValue(name, type, value);
                     }
                 }
             }
@@ -22923,7 +22977,9 @@ me.Error = me.Object.extend.bind(Error)({
             }
 
             // Adjust the Position to match Tiled
-            map.getRenderer().adjustPosition(this);
+            if (!map.isEditor) {
+                map.getRenderer().adjustPosition(this);
+            }
 
             // set the object properties
             me.TMXUtils.applyTMXProperties(this, tmxObj);
@@ -24944,6 +25000,9 @@ me.Error = me.Object.extend.bind(Error)({
             // tilemap version
             this.version = data.version;
 
+            // Check if map is from melon editor
+            this.isEditor = data.editor === "melon-editor";
+
             // map type (orthogonal or isometric)
             this.orientation = data.orientation;
             if (this.orientation === "isometric") {
@@ -26896,7 +26955,7 @@ me.Error = me.Object.extend.bind(Error)({
 })();
 
 /*!
- *  howler.js v2.0.14
+ *  howler.js v2.0.15
  *  howlerjs.com
  *
  *  (c) 2013-2018, James Simpson of GoldFire Studios
@@ -27202,8 +27261,6 @@ me.Error = me.Object.extend.bind(Error)({
       // then check if the audio actually played to determine if
       // audio has now been unlocked on iOS, Android, etc.
       var unlock = function(e) {
-        e.preventDefault();
-
         // Fix Android can not play in suspend state.
         Howler._autoResume();
 
@@ -27680,7 +27737,7 @@ me.Error = me.Object.extend.bind(Error)({
             var play = node.play();
 
             // Support older browsers that don't support promises, and thus don't have this issue.
-            if (typeof Promise !== 'undefined' && (play instanceof Promise || typeof play.then === 'function')) {
+            if (play && typeof Promise !== 'undefined' && (play instanceof Promise || typeof play.then === 'function')) {
               // Implements a lock to prevent DOMException: The play() request was interrupted by a call to pause().
               self._playLock = true;
 
@@ -29127,19 +29184,19 @@ me.Error = me.Object.extend.bind(Error)({
    * @param  {Howl}        self
    */
   var decodeAudioData = function(arraybuffer, self) {
+    // Fire a load error if something broke.
+    var error = function() {
+      self._emit('loaderror', null, 'Decoding audio data failed.');
+    };
+
     // Load the sound on success.
     var success = function(buffer) {
       if (buffer && self._sounds.length > 0) {
         cache[self._src] = buffer;
         loadSound(self, buffer);
       } else {
-        onError();
+        error();
       }
-    };
-
-    // Fire a load error if something broke.
-    var error = function() {
-      self._emit('loaderror', null, 'Decoding audio data failed.');
     };
 
     // Decode the buffer into an audio source.
@@ -29295,10 +29352,10 @@ me.Error = me.Object.extend.bind(Error)({
                  * this can be overridden by the plugin
                  * @public
                  * @type String
-                 * @default "6.0.0"
+                 * @default "6.1.0"
                  * @name me.plugin.Base#version
                  */
-                this.version = "6.0.0";
+                this.version = "6.1.0";
             }
         });
 

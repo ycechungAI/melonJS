@@ -1502,7 +1502,7 @@ defining the animation. Can also use objects to specify delay for each frame, se
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    sprite.js, line 206
+    sprite.js, line 208
 	</dd>
 	
 
@@ -1534,8 +1534,7 @@ defining the animation. Can also use objects to specify delay for each frame, se
     
             
 <div class="param-desc">
-    frame amount of frame added to the animation
-(delay between each frame).
+    frame amount of frame added to the animation (delay between each frame).
 </div>
 
 
@@ -1584,7 +1583,7 @@ this.setCurrentAnimation(&quot;stand&quot;);</pre>
         
             
 <dt>
-    <h4 class="name toc-target" id="flicker"><span class="type-signature">&lt;static> </span>flicker<span class="signature">(duration, callback)</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="flicker"><span class="type-signature">&lt;static> </span>flicker<span class="signature">(duration, callback)</span><span class="type-signature"> &rarr; {<a href="me.Sprite.html">me.Sprite</a>}</span></h4>
 
     
 </dt>
@@ -1720,6 +1719,29 @@ this.setCurrentAnimation(&quot;stand&quot;);</pre>
     
 
     
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    Reference to this object for method chaining
+</div>
+
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type"><a href="me.Sprite.html">me.Sprite</a></span>
+
+
+	</dd>
+</dl>
+
+
+        
 
     
         <h5>Example</h5>
@@ -1780,7 +1802,7 @@ this.flicker(1000, function () {
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    sprite.js, line 433
+    sprite.js, line 458
 	</dd>
 	
 
@@ -1923,7 +1945,7 @@ this.flicker(1000, function () {
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    sprite.js, line 369
+    sprite.js, line 389
 	</dd>
 	
 
@@ -2068,7 +2090,169 @@ this.flicker(1000, function () {
         
             
 <dt>
-    <h4 class="name toc-target" id="setAnimationFrame"><span class="type-signature">&lt;static> </span>setAnimationFrame<span class="signature">(<span class="optional">index</span>)</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="reverseAnimation"><span class="type-signature">&lt;static> </span>reverseAnimation<span class="signature">(<span class="optional">name</span>)</span><span class="type-signature"> &rarr; {<a href="me.Sprite.html">me.Sprite</a>}</span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        reverse the given or current animation if none is specified
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+		<th>Argument</th>
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>name</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">animation id</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    sprite.js, line 371
+	</dd>
+	
+
+	
+
+	
+	<dt class="tag-see">See:</dt>
+	<dd class="tag-see">
+		<ul>
+			<li><a href="me.Sprite.html#animationspeed">me.Sprite#animationspeed</a></li>
+			</ul>
+	</dd>
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    Reference to this object for method chaining
+</div>
+
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type"><a href="me.Sprite.html">me.Sprite</a></span>
+
+
+	</dd>
+</dl>
+
+
+        
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="setAnimationFrame"><span class="type-signature">&lt;static> </span>setAnimationFrame<span class="signature">(<span class="optional">index</span>)</span><span class="type-signature"> &rarr; {<a href="me.Sprite.html">me.Sprite</a>}</span></h4>
 
     
 </dt>
@@ -2180,7 +2364,7 @@ this.flicker(1000, function () {
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    sprite.js, line 406
+    sprite.js, line 429
 	</dd>
 	
 
@@ -2201,6 +2385,29 @@ this.flicker(1000, function () {
     
 
     
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    Reference to this object for method chaining
+</div>
+
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type"><a href="me.Sprite.html">me.Sprite</a></span>
+
+
+	</dd>
+</dl>
+
+
+        
 
     
         <h5>Example</h5>
@@ -2215,7 +2422,7 @@ this.setAnimationFrame();</pre>
         
             
 <dt>
-    <h4 class="name toc-target" id="setCurrentAnimation"><span class="type-signature">&lt;static> </span>setCurrentAnimation<span class="signature">(name, <span class="optional">onComplete</span>)</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="setCurrentAnimation"><span class="type-signature">&lt;static> </span>setCurrentAnimation<span class="signature">(name, <span class="optional">onComplete</span>)</span><span class="type-signature"> &rarr; {<a href="me.Sprite.html">me.Sprite</a>}</span></h4>
 
     
 </dt>
@@ -2320,8 +2527,7 @@ this will always change the animation & set the frame to zero
 
             
 
-            <td class="description last">animation id to switch to when
-complete, or callback</td>
+            <td class="description last">animation id to switch to when complete, or callback</td>
         </tr>
 
 	
@@ -2355,7 +2561,7 @@ complete, or callback</td>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    sprite.js, line 309
+    sprite.js, line 310
 	</dd>
 	
 
@@ -2376,6 +2582,29 @@ complete, or callback</td>
     
 
     
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    Reference to this object for method chaining
+</div>
+
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type"><a href="me.Sprite.html">me.Sprite</a></span>
+
+
+	</dd>
+</dl>
+
+
+        
 
     
         <h5>Example</h5>
@@ -2416,7 +2645,7 @@ this.setCurrentAnimation(&quot;die&quot;, (function () {
         
             
 <dt>
-    <h4 class="name toc-target" id="setRegion"><span class="type-signature">&lt;static> </span>setRegion<span class="signature">(region)</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="setRegion"><span class="type-signature">&lt;static> </span>setRegion<span class="signature">(region)</span><span class="type-signature"> &rarr; {<a href="me.Sprite.html">me.Sprite</a>}</span></h4>
 
     
 </dt>
@@ -2508,7 +2737,7 @@ this.setCurrentAnimation(&quot;die&quot;, (function () {
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    sprite.js, line 385
+    sprite.js, line 405
 	</dd>
 	
 
@@ -2536,6 +2765,29 @@ this.setCurrentAnimation(&quot;die&quot;, (function () {
     
 
     
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    Reference to this object for method chaining
+</div>
+
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type"><a href="me.Sprite.html">me.Sprite</a></span>
+
+
+	</dd>
+</dl>
+
+
+        
 
     
         <h5>Example</h5>
@@ -2573,7 +2825,7 @@ mySprite.setRegion(game.texture.getRegion(&quot;shadedDark13.png&quot;));</pre>
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-08-13T15:19:54+08:00 using the <a
+		on 2018-09-11T09:38:57+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

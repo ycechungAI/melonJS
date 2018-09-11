@@ -1344,7 +1344,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 236
+    webgl_renderer.js, line 237
 	</dd>
 	
 
@@ -1534,7 +1534,7 @@ erasing any previously drawn content.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 257
+    webgl_renderer.js, line 258
 	</dd>
 	
 
@@ -1727,7 +1727,7 @@ and restore it (with the restore() method) any time in the future.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 805
+    webgl_renderer.js, line 806
 	</dd>
 	
 
@@ -1933,7 +1933,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
         
             
 <dt>
-    <h4 class="name toc-target" id="drawImage"><span class="type-signature">&lt;static> </span>drawImage<span class="signature">(image, sx, sy, sw, sh, dx, dy, dw, dh)</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="drawImage"><span class="type-signature">&lt;static> </span>drawImage<span class="signature">(image, sx, sy, sw, sh, dx, dy, dWidth, dHeight)</span><span class="type-signature"></span></h4>
 
     
 </dt>
@@ -1991,7 +1991,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Source image</td>
+            <td class="description last">An element to draw into the context. The specification permits any canvas image source (CanvasImageSource), specifically, a CSSImageValue, an HTMLImageElement, an SVGImageElement, an HTMLVideoElement, an HTMLCanvasElement, an ImageBitmap, or an OffscreenCanvas.</td>
         </tr>
 
 	
@@ -2014,7 +2014,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Source x-coordinate</td>
+            <td class="description last">The X coordinate of the top left corner of the sub-rectangle of the source image to draw into the destination context.</td>
         </tr>
 
 	
@@ -2037,7 +2037,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Source y-coordinate</td>
+            <td class="description last">The Y coordinate of the top left corner of the sub-rectangle of the source image to draw into the destination context.</td>
         </tr>
 
 	
@@ -2060,7 +2060,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Source width</td>
+            <td class="description last">The width of the sub-rectangle of the source image to draw into the destination context. If not specified, the entire rectangle from the coordinates specified by sx and sy to the bottom-right corner of the image is used.</td>
         </tr>
 
 	
@@ -2083,7 +2083,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Source height</td>
+            <td class="description last">The height of the sub-rectangle of the source image to draw into the destination context.</td>
         </tr>
 
 	
@@ -2106,7 +2106,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Destination x-coordinate</td>
+            <td class="description last">The X coordinate in the destination canvas at which to place the top-left corner of the source image.</td>
         </tr>
 
 	
@@ -2129,14 +2129,14 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Destination y-coordinate</td>
+            <td class="description last">The Y coordinate in the destination canvas at which to place the top-left corner of the source image.</td>
         </tr>
 
 	
 
         <tr>
             
-                <td class="name"><code>dw</code></td>
+                <td class="name"><code>dWidth</code></td>
             
 
             <td class="type">
@@ -2152,14 +2152,14 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Destination width</td>
+            <td class="description last">The width to draw the image in the destination canvas. This allows scaling of the drawn image. If not specified, the image is not scaled in width when drawn.</td>
         </tr>
 
 	
 
         <tr>
             
-                <td class="name"><code>dh</code></td>
+                <td class="name"><code>dHeight</code></td>
             
 
             <td class="type">
@@ -2175,7 +2175,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 
             
 
-            <td class="description last">Destination height</td>
+            <td class="description last">The height to draw the image in the destination canvas. This allows scaling of the drawn image. If not specified, the image is not scaled in height when drawn.</td>
         </tr>
 
 	
@@ -2209,7 +2209,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 303
+    webgl_renderer.js, line 304
 	</dd>
 	
 
@@ -2234,11 +2234,12 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
     
         <h5>Example</h5>
         
-    <pre class="sunlight-highlight-javascript">// Can be used in three ways:
+    <pre class="sunlight-highlight-javascript">// Position the image on the canvas:
 renderer.drawImage(image, dx, dy);
-renderer.drawImage(image, dx, dy, dw, dh);
-renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
-// dx, dy, dw, dh being the destination target &amp; dimensions. sx, sy, sw, sh being the position &amp; dimensions to take from the image</pre>
+// Position the image on the canvas, and specify width and height of the image:
+renderer.drawImage(image, dx, dy, dWidth, dHeight);
+// Clip the image and position the clipped part on the canvas:
+renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);</pre>
 
 
     
@@ -2567,7 +2568,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 725
+    webgl_renderer.js, line 726
 	</dd>
 	
 
@@ -2827,7 +2828,7 @@ renderer.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 226
+    webgl_renderer.js, line 227
 	</dd>
 	
 
@@ -2899,7 +2900,7 @@ return a reference to the system 2d Context
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 439
+    webgl_renderer.js, line 438
 	</dd>
 	
 
@@ -3273,7 +3274,7 @@ return a reference to the system 2d Context
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 74
+    canvas_renderer.js, line 72
 	</dd>
 	
 
@@ -3486,7 +3487,7 @@ return a reference to the system 2d Context
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 511
+    webgl_renderer.js, line 512
 	</dd>
 	
 
@@ -3606,7 +3607,7 @@ return a reference to the system 2d Context
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 561
+    webgl_renderer.js, line 562
 	</dd>
 	
 
@@ -3677,7 +3678,7 @@ return a reference to the system 2d Context
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 545
+    webgl_renderer.js, line 546
 	</dd>
 	
 
@@ -3820,7 +3821,7 @@ return a reference to the system 2d Context
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 572
+    webgl_renderer.js, line 573
 	</dd>
 	
 
@@ -3891,7 +3892,7 @@ return a reference to the system 2d Context
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 488
+    webgl_renderer.js, line 489
 	</dd>
 	
 
@@ -3919,7 +3920,7 @@ return a reference to the system 2d Context
         
             
 <dt>
-    <h4 class="name toc-target" id="setBlendMode"><span class="type-signature">&lt;static> </span>setBlendMode<span class="signature">(context, <span class="optional">mode</span>)</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="setBlendMode"><span class="type-signature">&lt;static> </span>setBlendMode<span class="signature">(<span class="optional">mode</span>, <span class="optional">gl</span>)</span><span class="type-signature"></span></h4>
 
     
 </dt>
@@ -3965,41 +3966,6 @@ return a reference to the system 2d Context
 
         <tr>
             
-                <td class="name"><code>context</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Context2d</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last"></td>
-        </tr>
-
-	
-
-        <tr>
-            
                 <td class="name"><code>mode</code></td>
             
 
@@ -4036,6 +4002,43 @@ return a reference to the system 2d Context
         </tr>
 
 	
+
+        <tr>
+            
+                <td class="name"><code>gl</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">WebGLRenderingContext</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
 	</tbody>
 </table>
 
@@ -4066,7 +4069,7 @@ return a reference to the system 2d Context
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 451
+    webgl_renderer.js, line 450
 	</dd>
 	
 
@@ -4189,7 +4192,7 @@ return a reference to the system 2d Context
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 604
+    webgl_renderer.js, line 605
 	</dd>
 	
 
@@ -4309,7 +4312,7 @@ return a reference to the system 2d Context
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 593
+    webgl_renderer.js, line 594
 	</dd>
 	
 
@@ -4429,7 +4432,7 @@ return a reference to the system 2d Context
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 617
+    webgl_renderer.js, line 618
 	</dd>
 	
 
@@ -4550,7 +4553,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 759
+    webgl_renderer.js, line 760
 	</dd>
 	
 
@@ -4865,7 +4868,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 628
+    webgl_renderer.js, line 629
 	</dd>
 	
 
@@ -5054,7 +5057,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 644
+    webgl_renderer.js, line 645
 	</dd>
 	
 
@@ -5243,7 +5246,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 658
+    webgl_renderer.js, line 659
 	</dd>
 	
 
@@ -5363,7 +5366,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 677
+    webgl_renderer.js, line 678
 	</dd>
 	
 
@@ -5552,7 +5555,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 702
+    webgl_renderer.js, line 703
 	</dd>
 	
 
@@ -5672,7 +5675,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 772
+    webgl_renderer.js, line 773
 	</dd>
 	
 
@@ -5815,7 +5818,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    webgl_renderer.js, line 789
+    webgl_renderer.js, line 790
 	</dd>
 	
 
@@ -5866,7 +5869,7 @@ identity one, and then apply the given transformation matrix.
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-08-13T15:19:54+08:00 using the <a
+		on 2018-09-11T09:38:57+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>
