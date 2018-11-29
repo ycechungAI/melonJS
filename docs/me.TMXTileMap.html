@@ -150,11 +150,11 @@
 						</li>
 						
 						<li>
-							<a href="me.BitmapFont.html">me.BitmapFont</a>
+							<a href="me.BitmapText.html">me.BitmapText</a>
 						</li>
 						
 						<li>
-							<a href="me.BitmapFontData.html">me.BitmapFontData</a>
+							<a href="me.BitmapTextData.html">me.BitmapTextData</a>
 						</li>
 						
 						<li>
@@ -227,14 +227,6 @@
 						
 						<li>
 							<a href="me.Error.html">me.Error</a>
-						</li>
-						
-						<li>
-							<a href="me.Font.html">me.Font</a>
-						</li>
-						
-						<li>
-							<a href="me.Glyph.html">me.Glyph</a>
 						</li>
 						
 						<li>
@@ -338,11 +330,15 @@
 						</li>
 						
 						<li>
-							<a href="me.ScreenObject.html">me.ScreenObject</a>
+							<a href="me.Sprite.html">me.Sprite</a>
 						</li>
 						
 						<li>
-							<a href="me.Sprite.html">me.Sprite</a>
+							<a href="me.Stage.html">me.Stage</a>
+						</li>
+						
+						<li>
+							<a href="me.Text.html">me.Text</a>
 						</li>
 						
 						<li>
@@ -644,7 +640,7 @@ level.addTo(me.game.world, true);</pre>
         <dl>
             
 <dt>
-    <h4 class="name toc-target" id="cols"><span class="type-signature"></span>cols<span class="type-signature"> :Int</span></h4>
+    <h4 class="name toc-target" id="cols"><span class="type-signature"></span>cols<span class="type-signature"> :Number</span></h4>
 
     
 </dt>
@@ -660,7 +656,7 @@ level.addTo(me.game.world, true);</pre>
         <ul>
             <li>
                 
-<span class="param-type">Int</span>
+<span class="param-type">Number</span>
 
 
             </li>
@@ -693,6 +689,79 @@ level.addTo(me.game.world, true);</pre>
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
     TMXTiledMap.js, line 141
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="infinite"><span class="type-signature"></span>infinite<span class="type-signature"> :Number</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        is the map an infinite map
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">Number</span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+	<dt class="tag-default">Default Value:</dt>
+	<dd class="tag-default">
+		<ul class="dummy">
+			<li>0</li>
+		</ul>
+	</dd>
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    TMXTiledMap.js, line 172
 	</dd>
 	
 
@@ -758,7 +827,7 @@ level.addTo(me.game.world, true);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    TMXTiledMap.js, line 127
+    TMXTiledMap.js, line 133
 	</dd>
 	
 
@@ -776,7 +845,154 @@ level.addTo(me.game.world, true);</pre>
         
             
 <dt>
-    <h4 class="name toc-target" id="rows"><span class="type-signature"></span>rows<span class="type-signature"> :Int</span></h4>
+    <h4 class="name toc-target" id="orientation"><span class="type-signature"></span>orientation<span class="type-signature"> :String</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        the map orientation type. melonJS supports “orthogonal”, “isometric”, “staggered” and “hexagonal”.
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">String</span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+	<dt class="tag-default">Default Value:</dt>
+	<dd class="tag-default">
+		<ul class="dummy">
+			<li>"orthogonal"</li>
+		</ul>
+	</dd>
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    TMXTiledMap.js, line 181
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="renderorder"><span class="type-signature"></span>renderorder<span class="type-signature"> :String</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        the order in which tiles on orthogonal tile layers are rendered.
+(valid values are "left-down", "left-up", "right-down", "right-up")
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">String</span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+	<dt class="tag-default">Default Value:</dt>
+	<dd class="tag-default">
+		<ul class="dummy">
+			<li>"right-down"</li>
+		</ul>
+	</dd>
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    TMXTiledMap.js, line 190
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="rows"><span class="type-signature"></span>rows<span class="type-signature"> :Number</span></h4>
 
     
 </dt>
@@ -792,7 +1008,7 @@ level.addTo(me.game.world, true);</pre>
         <ul>
             <li>
                 
-<span class="param-type">Int</span>
+<span class="param-type">Number</span>
 
 
             </li>
@@ -842,7 +1058,73 @@ level.addTo(me.game.world, true);</pre>
         
             
 <dt>
-    <h4 class="name toc-target" id="tileheight"><span class="type-signature"></span>tileheight<span class="type-signature"> :Int</span></h4>
+    <h4 class="name toc-target" id="tiledversion"><span class="type-signature"></span>tiledversion<span class="type-signature"> :String</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        The Tiled version used to save the file (since Tiled 1.0.1).
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">String</span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    TMXTiledMap.js, line 208
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="tileheight"><span class="type-signature"></span>tileheight<span class="type-signature"> :Number</span></h4>
 
     
 </dt>
@@ -858,7 +1140,7 @@ level.addTo(me.game.world, true);</pre>
         <ul>
             <li>
                 
-<span class="param-type">Int</span>
+<span class="param-type">Number</span>
 
 
             </li>
@@ -908,7 +1190,7 @@ level.addTo(me.game.world, true);</pre>
         
             
 <dt>
-    <h4 class="name toc-target" id="tilewidth"><span class="type-signature"></span>tilewidth<span class="type-signature"> :Int</span></h4>
+    <h4 class="name toc-target" id="tilewidth"><span class="type-signature"></span>tilewidth<span class="type-signature"> :Number</span></h4>
 
     
 </dt>
@@ -924,7 +1206,7 @@ level.addTo(me.game.world, true);</pre>
         <ul>
             <li>
                 
-<span class="param-type">Int</span>
+<span class="param-type">Number</span>
 
 
             </li>
@@ -957,6 +1239,72 @@ level.addTo(me.game.world, true);</pre>
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
     TMXTiledMap.js, line 156
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="version"><span class="type-signature"></span>version<span class="type-signature"> :String</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        the TMX format version
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">String</span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    TMXTiledMap.js, line 200
 	</dd>
 	
 
@@ -1084,7 +1432,7 @@ level.addTo(me.game.world, true);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    TMXTiledMap.js, line 223
+    TMXTiledMap.js, line 263
 	</dd>
 	
 
@@ -1250,7 +1598,7 @@ level.addTo(me.game.world, true);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    TMXTiledMap.js, line 328
+    TMXTiledMap.js, line 369
 	</dd>
 	
 
@@ -1330,7 +1678,7 @@ level.addTo(me.game.world, true);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    TMXTiledMap.js, line 508
+    TMXTiledMap.js, line 561
 	</dd>
 	
 
@@ -1401,7 +1749,7 @@ level.addTo(me.game.world, true);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    TMXTiledMap.js, line 495
+    TMXTiledMap.js, line 548
 	</dd>
 	
 
@@ -1545,7 +1893,7 @@ ignoring all defined groups (no sub containers will be created)</td>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    TMXTiledMap.js, line 367
+    TMXTiledMap.js, line 408
 	</dd>
 	
 
@@ -1619,7 +1967,7 @@ ignoring all defined groups (no sub containers will be created)</td>
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-09-11T09:38:57+08:00 using the <a
+		on 2018-11-29T14:47:53+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

@@ -150,11 +150,11 @@
 						</li>
 						
 						<li>
-							<a href="me.BitmapFont.html">me.BitmapFont</a>
+							<a href="me.BitmapText.html">me.BitmapText</a>
 						</li>
 						
 						<li>
-							<a href="me.BitmapFontData.html">me.BitmapFontData</a>
+							<a href="me.BitmapTextData.html">me.BitmapTextData</a>
 						</li>
 						
 						<li>
@@ -227,14 +227,6 @@
 						
 						<li>
 							<a href="me.Error.html">me.Error</a>
-						</li>
-						
-						<li>
-							<a href="me.Font.html">me.Font</a>
-						</li>
-						
-						<li>
-							<a href="me.Glyph.html">me.Glyph</a>
 						</li>
 						
 						<li>
@@ -338,11 +330,15 @@
 						</li>
 						
 						<li>
-							<a href="me.ScreenObject.html">me.ScreenObject</a>
+							<a href="me.Sprite.html">me.Sprite</a>
 						</li>
 						
 						<li>
-							<a href="me.Sprite.html">me.Sprite</a>
+							<a href="me.Stage.html">me.Stage</a>
+						</li>
+						
+						<li>
+							<a href="me.Text.html">me.Text</a>
 						</li>
 						
 						<li>
@@ -987,6 +983,79 @@
         
             
 <dt>
+    <h4 class="name toc-target" id="name"><span class="type-signature">&lt;static> </span>name<span class="type-signature"> :String</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        the name of this camera
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">String</span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+	<dt class="tag-default">Default Value:</dt>
+	<dd class="tag-default">
+		<ul class="dummy">
+			<li>"default"</li>
+		</ul>
+	</dd>
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    camera2d.js, line 81
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        
+            
+<dt>
     <h4 class="name toc-target" id="alpha"><span class="type-signature"></span>alpha<span class="type-signature"> :Number</span></h4>
 
     
@@ -1052,7 +1121,7 @@ Set to zero if you do not wish an object to be drawn
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 209
+    renderable.js, line 213
 	</dd>
 	
 
@@ -1147,7 +1216,7 @@ or undefined if it has not been added to one.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 221
+    renderable.js, line 225
 	</dd>
 	
 
@@ -1359,7 +1428,7 @@ fade to the specified color
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 491
+    camera2d.js, line 511
 	</dd>
 	
 
@@ -1582,7 +1651,7 @@ screen is filled with the specified color and slowly goes back to normal
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 465
+    camera2d.js, line 485
 	</dd>
 	
 
@@ -1709,7 +1778,7 @@ me.game.viewport.fadeIn(&quot;#fff&quot;, 150, function() {
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 537
+    camera2d.js, line 557
 	</dd>
 	
 
@@ -1927,7 +1996,7 @@ me.game.viewport.fadeIn(&quot;#fff&quot;, 150, function() {
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 264
+    camera2d.js, line 273
 	</dd>
 	
 
@@ -2005,7 +2074,7 @@ me.game.viewport.follow(this, me.game.viewport.AXIS.BOTH, 0.1);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 526
+    camera2d.js, line 546
 	</dd>
 	
 
@@ -2095,7 +2164,7 @@ me.game.viewport.follow(this, me.game.viewport.AXIS.BOTH, 0.1);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 515
+    camera2d.js, line 535
 	</dd>
 	
 
@@ -2142,7 +2211,7 @@ me.game.viewport.follow(this, me.game.viewport.AXIS.BOTH, 0.1);</pre>
         
             
 <dt>
-    <h4 class="name toc-target" id="isVisible"><span class="type-signature">&lt;static> </span>isVisible<span class="signature">(rect)</span><span class="type-signature"> &rarr; {Boolean}</span></h4>
+    <h4 class="name toc-target" id="isVisible"><span class="type-signature">&lt;static> </span>isVisible<span class="signature">(object, <span class="optional">floating</span>)</span><span class="type-signature"> &rarr; {Boolean}</span></h4>
 
     
 </dt>
@@ -2150,7 +2219,7 @@ me.game.viewport.follow(this, me.game.viewport.AXIS.BOTH, 0.1);</pre>
 
     
     <div class="description">
-        check if the specified rectangle is in the camera
+        check if the specified renderable is in the camera
     </div>
     
 
@@ -2172,7 +2241,11 @@ me.game.viewport.follow(this, me.game.viewport.AXIS.BOTH, 0.1);</pre>
 		<th>Type</th>
 
 		
+		<th>Argument</th>
+		
 
+		
+		<th>Default</th>
 		
 
 		<th class="last">Description</th>
@@ -2184,23 +2257,74 @@ me.game.viewport.follow(this, me.game.viewport.AXIS.BOTH, 0.1);</pre>
 
         <tr>
             
-                <td class="name"><code>rect</code></td>
+                <td class="name"><code>object</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type"><a href="me.Rect.html">me.Rect</a></span>
+<span class="param-type"><a href="me.Renderable.html">me.Renderable</a></span>
 
 
             
             </td>
 
             
+                <td class="attributes">
+                
 
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
             
 
             <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>floating</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    ==object.floating
+                
+                </td>
+            
+
+            <td class="description last">if visibility check should be done against screen coordinates</td>
         </tr>
 
 	
@@ -2234,7 +2358,7 @@ me.game.viewport.follow(this, me.game.viewport.AXIS.BOTH, 0.1);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 552
+    camera2d.js, line 572
 	</dd>
 	
 
@@ -2448,7 +2572,7 @@ converted value</td>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 564
+    camera2d.js, line 591
 	</dd>
 	
 
@@ -2610,7 +2734,7 @@ converted value</td>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 317
+    camera2d.js, line 326
 	</dd>
 	
 
@@ -2767,7 +2891,7 @@ me.game.viewport.move(0, -4);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 333
+    camera2d.js, line 342
 	</dd>
 	
 
@@ -2953,7 +3077,7 @@ me.game.viewport.move(0, -4);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 154
+    camera2d.js, line 163
 	</dd>
 	
 
@@ -3096,7 +3220,7 @@ me.game.viewport.move(0, -4);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 210
+    camera2d.js, line 219
 	</dd>
 	
 
@@ -3309,7 +3433,7 @@ the camera is bound to the given coordinates and cannot move/be scrolled outside
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 244
+    camera2d.js, line 253
 	</dd>
 	
 
@@ -3454,7 +3578,7 @@ the followed renderable can move without scrolling the camera.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 178
+    camera2d.js, line 187
 	</dd>
 	
 
@@ -3747,7 +3871,7 @@ while shaking</td>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 440
+    camera2d.js, line 460
 	</dd>
 	
 
@@ -3825,7 +3949,7 @@ me.game.viewport.shake(10, 500, me.game.viewport.AXIS.BOTH);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 306
+    camera2d.js, line 315
 	</dd>
 	
 
@@ -4020,7 +4144,7 @@ converted value</td>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    camera2d.js, line 585
+    camera2d.js, line 612
 	</dd>
 	
 
@@ -4090,7 +4214,7 @@ converted value</td>
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-09-11T09:38:57+08:00 using the <a
+		on 2018-11-29T14:47:52+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

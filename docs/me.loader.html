@@ -150,11 +150,11 @@
 						</li>
 						
 						<li>
-							<a href="me.BitmapFont.html">me.BitmapFont</a>
+							<a href="me.BitmapText.html">me.BitmapText</a>
 						</li>
 						
 						<li>
-							<a href="me.BitmapFontData.html">me.BitmapFontData</a>
+							<a href="me.BitmapTextData.html">me.BitmapTextData</a>
 						</li>
 						
 						<li>
@@ -227,14 +227,6 @@
 						
 						<li>
 							<a href="me.Error.html">me.Error</a>
-						</li>
-						
-						<li>
-							<a href="me.Font.html">me.Font</a>
-						</li>
-						
-						<li>
-							<a href="me.Glyph.html">me.Glyph</a>
 						</li>
 						
 						<li>
@@ -338,11 +330,15 @@
 						</li>
 						
 						<li>
-							<a href="me.ScreenObject.html">me.ScreenObject</a>
+							<a href="me.Sprite.html">me.Sprite</a>
 						</li>
 						
 						<li>
-							<a href="me.Sprite.html">me.Sprite</a>
+							<a href="me.Stage.html">me.Stage</a>
+						</li>
+						
+						<li>
+							<a href="me.Text.html">me.Text</a>
 						</li>
 						
 						<li>
@@ -594,7 +590,7 @@ client-side SSL certificates or HTTP authentication as described in the Terminol
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 312
+    loader.js, line 335
 	</dd>
 	
 
@@ -685,7 +681,7 @@ authorization headers or TLS client certificates. Setting withCredentials has no
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 332
+    loader.js, line 355
 	</dd>
 	
 
@@ -818,7 +814,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 694
+    loader.js, line 729
 	</dd>
 	
 
@@ -961,7 +957,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 712
+    loader.js, line 747
 	</dd>
 	
 
@@ -1104,7 +1100,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 731
+    loader.js, line 766
 	</dd>
 	
 
@@ -1203,7 +1199,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 749
+    loader.js, line 784
 	</dd>
 	
 
@@ -1342,7 +1338,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 676
+    loader.js, line 711
 	</dd>
 	
 
@@ -1688,7 +1684,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 495
+    loader.js, line 522
 	</dd>
 	
 
@@ -1775,7 +1771,7 @@ me.loader.load({
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 286
+    loader.js, line 309
 	</dd>
 	
 
@@ -1855,7 +1851,7 @@ giving the actual progress [0 ... 1], as argument, and an object describing the 
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 298
+    loader.js, line 321
 	</dd>
 	
 
@@ -2047,7 +2043,7 @@ me.loader.onProgress = this.updateProgress.bind(this);</pre>
 
             
 
-            <td class="description last">"audio", binary", "image", "json", ,"js", "tmx", "tsx"</td>
+            <td class="description last">"audio", binary", "image", "json","js", "tmx", "tsx", "fontface"</td>
         </tr>
 
 	
@@ -2230,7 +2226,7 @@ me.loader.onProgress = this.updateProgress.bind(this);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 432
+    loader.js, line 457
 	</dd>
 	
 
@@ -2275,7 +2271,9 @@ me.loader.onProgress = this.updateProgress.bind(this);</pre>
   // JSON file (used for texturePacker)
   {name: &quot;texture&quot;, type: &quot;json&quot;, src: &quot;data/gfx/texture.json&quot;},
   // JavaScript file
-  {name: &quot;plugin&quot;, type: &quot;js&quot;, src: &quot;data/js/plugin.js&quot;}
+  {name: &quot;plugin&quot;, type: &quot;js&quot;, src: &quot;data/js/plugin.js&quot;},
+  // Font Face
+  { name: &quot;&#x27;kenpixel&#x27;&quot;, type: &quot;fontface&quot;,  src: &quot;url(&#x27;data/font/kenvector_future.woff2&#x27;)&quot; }
 ];
 ...
 // set all resources to be loaded
@@ -2436,7 +2434,7 @@ me.loader.preload(game.resources, this.loaded.bind(this));</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 401
+    loader.js, line 424
 	</dd>
 	
 
@@ -2565,7 +2563,7 @@ me.loader.setBaseURL(&quot;*&quot;, &quot;http://myurl.com/&quot;)</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 560
+    loader.js, line 591
 	</dd>
 	
 
@@ -2665,7 +2663,7 @@ me.loader.setBaseURL(&quot;*&quot;, &quot;http://myurl.com/&quot;)</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    loader.js, line 621
+    loader.js, line 656
 	</dd>
 	
 
@@ -2722,7 +2720,7 @@ me.loader.setBaseURL(&quot;*&quot;, &quot;http://myurl.com/&quot;)</pre>
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-09-11T09:38:57+08:00 using the <a
+		on 2018-11-29T14:47:52+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

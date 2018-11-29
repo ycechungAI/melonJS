@@ -150,11 +150,11 @@
 						</li>
 						
 						<li>
-							<a href="me.BitmapFont.html">me.BitmapFont</a>
+							<a href="me.BitmapText.html">me.BitmapText</a>
 						</li>
 						
 						<li>
-							<a href="me.BitmapFontData.html">me.BitmapFontData</a>
+							<a href="me.BitmapTextData.html">me.BitmapTextData</a>
 						</li>
 						
 						<li>
@@ -227,14 +227,6 @@
 						
 						<li>
 							<a href="me.Error.html">me.Error</a>
-						</li>
-						
-						<li>
-							<a href="me.Font.html">me.Font</a>
-						</li>
-						
-						<li>
-							<a href="me.Glyph.html">me.Glyph</a>
 						</li>
 						
 						<li>
@@ -338,11 +330,15 @@
 						</li>
 						
 						<li>
-							<a href="me.ScreenObject.html">me.ScreenObject</a>
+							<a href="me.Sprite.html">me.Sprite</a>
 						</li>
 						
 						<li>
-							<a href="me.Sprite.html">me.Sprite</a>
+							<a href="me.Stage.html">me.Stage</a>
+						</li>
+						
+						<li>
+							<a href="me.Text.html">me.Text</a>
 						</li>
 						
 						<li>
@@ -742,7 +738,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 122
+    renderable.js, line 126
 	</dd>
 	
 
@@ -818,7 +814,7 @@ a Renderable's anchor point defaults to (0.5,0.5), which corresponds to the cent
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 163
+    renderable.js, line 167
 	</dd>
 	
 
@@ -892,7 +888,7 @@ any defined transformation before calling the child draw method.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 180
+    renderable.js, line 184
 	</dd>
 	
 
@@ -1117,8 +1113,8 @@ update : function (dt) {
 <dd>
     
     <div class="description">
-        Define if a renderable follows screen coordinates (floating)<br>
-or the world coordinates (not floating)<br>
+        If true, this renderable will be rendered using screen coordinates,
+as opposed to world coordinates. Use this, for example, to define UI elements.
     </div>
     
 
@@ -1166,7 +1162,7 @@ or the world coordinates (not floating)<br>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 152
+    renderable.js, line 156
 	</dd>
 	
 
@@ -1234,7 +1230,7 @@ to an object container (including the `me.game.world` container)
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 100
+    renderable.js, line 99
 	</dd>
 	
 
@@ -1300,7 +1296,7 @@ to an object container (including the `me.game.world` container)
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 581
+    renderable.js, line 637
 	</dd>
 	
 
@@ -1325,7 +1321,7 @@ to an object container (including the `me.game.world` container)
 <dd>
     
     <div class="description">
-        Whether the renderable object is visible and within the viewport<br>
+        Whether the renderable object is visible and within the viewport
     </div>
     
 
@@ -1373,7 +1369,7 @@ to an object container (including the `me.game.world` container)
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 111
+    renderable.js, line 583
 	</dd>
 	
 
@@ -1519,7 +1515,7 @@ to an object container (including the `me.game.world` container)
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 142
+    renderable.js, line 146
 	</dd>
 	
 
@@ -1529,6 +1525,89 @@ to an object container (including the `me.game.world` container)
 
 	
 </dl>
+
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="onVisibilityChange"><span class="type-signature">&lt;static> </span>onVisibilityChange<span class="type-signature"> :function</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        an event handler that is called when the renderable leave or enter a camera viewport
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">function</span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+	<dt class="tag-default">Default Value:</dt>
+	<dd class="tag-default">
+		<ul class="dummy">
+			<li>undefined</li>
+		</ul>
+	</dd>
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    renderable.js, line 110
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+        <h5>Example</h5>
+        
+    <pre class="sunlight-highlight-javascript">this.onVisibilityChange = function(inViewport) {
+    if (inViewport === true) {
+        console.log(&quot;object has entered the in a camera viewport!&quot;);
+    }
+};</pre>
 
 
     
@@ -1585,7 +1664,7 @@ to an object container (including the `me.game.world` container)
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 259
+    renderable.js, line 262
 	</dd>
 	
 
@@ -1658,7 +1737,7 @@ to an object container (including the `me.game.world` container)
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 132
+    renderable.js, line 136
 	</dd>
 	
 
@@ -1724,7 +1803,7 @@ to an object container (including the `me.game.world` container)
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 557
+    renderable.js, line 613
 	</dd>
 	
 
@@ -1798,7 +1877,7 @@ Set to zero if you do not wish an object to be drawn
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 209
+    renderable.js, line 213
 	</dd>
 	
 
@@ -1884,7 +1963,7 @@ or undefined if it has not been added to one.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 221
+    renderable.js, line 225
 	</dd>
 	
 
@@ -2004,7 +2083,7 @@ automatically called by the game manager <a href="me.game.html">me.game</a>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 501
+    renderable.js, line 512
 	</dd>
 	
 
@@ -2144,7 +2223,7 @@ automatically called by the game manager <a href="me.game.html">me.game</a>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 326
+    renderable.js, line 337
 	</dd>
 	
 
@@ -2314,7 +2393,7 @@ automatically called by the game manager <a href="me.game.html">me.game</a>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 340
+    renderable.js, line 351
 	</dd>
 	
 
@@ -2415,7 +2494,7 @@ automatically called by the game manager <a href="me.game.html">me.game</a>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 287
+    renderable.js, line 298
 	</dd>
 	
 
@@ -2509,7 +2588,7 @@ automatically called by the game manager <a href="me.game.html">me.game</a>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 298
+    renderable.js, line 309
 	</dd>
 	
 
@@ -2604,7 +2683,7 @@ Called by engine before deleting the object
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 545
+    renderable.js, line 571
 	</dd>
 	
 
@@ -2728,7 +2807,7 @@ automatically called by the game manager <a href="me.game.html">me.game</a>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 514
+    renderable.js, line 525
 	</dd>
 	
 
@@ -2853,7 +2932,7 @@ automatically called by the game manager <a href="me.game.html">me.game</a>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 459
+    renderable.js, line 470
 	</dd>
 	
 
@@ -3028,7 +3107,7 @@ automatically called by the game manager <a href="me.game.html">me.game</a>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 371
+    renderable.js, line 382
 	</dd>
 	
 
@@ -3171,7 +3250,7 @@ automatically called by the game manager <a href="me.game.html">me.game</a>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 391
+    renderable.js, line 402
 	</dd>
 	
 
@@ -3314,7 +3393,7 @@ automatically called by the game manager <a href="me.game.html">me.game</a>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 309
+    renderable.js, line 320
 	</dd>
 	
 
@@ -3434,7 +3513,7 @@ automatically called by the game manager <a href="me.game.html">me.game</a>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 354
+    renderable.js, line 365
 	</dd>
 	
 
@@ -3585,7 +3664,7 @@ automatically called by the game manager <a href="me.game.html">me.game</a>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 404
+    renderable.js, line 415
 	</dd>
 	
 
@@ -3647,7 +3726,7 @@ automatically called by the game manager <a href="me.game.html">me.game</a>
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-09-11T09:38:57+08:00 using the <a
+		on 2018-11-29T14:47:53+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

@@ -338,11 +338,11 @@
 						</li>
 						
 						<li>
-							<a href="me.ScreenObject.html">me.ScreenObject</a>
+							<a href="me.Sprite.html">me.Sprite</a>
 						</li>
 						
 						<li>
-							<a href="me.Sprite.html">me.Sprite</a>
+							<a href="me.Stage.html">me.Stage</a>
 						</li>
 						
 						<li>
@@ -807,7 +807,7 @@ Set to zero if you do not wish an object to be drawn
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 209
+    renderable.js, line 214
 	</dd>
 	
 
@@ -902,7 +902,7 @@ or undefined if it has not been added to one.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 221
+    renderable.js, line 226
 	</dd>
 	
 
@@ -975,7 +975,7 @@ or undefined if it has not been added to one.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    font.js, line 39
+    font.js, line 38
 	</dd>
 	
 
@@ -1049,7 +1049,7 @@ Current font height will be multiplied with this value to set the line height.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    font.js, line 86
+    font.js, line 85
 	</dd>
 	
 
@@ -1122,7 +1122,7 @@ Current font height will be multiplied with this value to set the line height.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    font.js, line 57
+    font.js, line 56
 	</dd>
 	
 
@@ -1195,7 +1195,7 @@ Current font height will be multiplied with this value to set the line height.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    font.js, line 48
+    font.js, line 47
 	</dd>
 	
 
@@ -1269,7 +1269,7 @@ possible values are "left", "right", and "center".<br>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    font.js, line 66
+    font.js, line 65
 	</dd>
 	
 
@@ -1343,7 +1343,7 @@ possible values are "top", "hanging, "middle, "alphabetic, "ideographic, "bottom
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    font.js, line 76
+    font.js, line 75
 	</dd>
 	
 
@@ -1410,7 +1410,7 @@ possible values are "top", "hanging, "middle, "alphabetic, "ideographic, "bottom
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    font.js, line 107
+    font.js, line 108
 	</dd>
 	
 
@@ -1431,6 +1431,17 @@ possible values are "top", "hanging, "middle, "alphabetic, "ideographic, "bottom
     
 
     
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    this object for chaining
+</div>
+
+
+
+
+        
 
     
 </dd>
@@ -1438,7 +1449,7 @@ possible values are "top", "hanging, "middle, "alphabetic, "ideographic, "bottom
         
             
 <dt>
-    <h4 class="name toc-target" id="draw"><span class="type-signature">&lt;static> </span>draw<span class="signature">(renderer, text, x, y)</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="draw"><span class="type-signature">&lt;static> </span>draw<span class="signature">(renderer, <span class="optional">text</span>, <span class="optional">x</span>, <span class="optional">y</span>)</span><span class="type-signature"></span></h4>
 
     
 </dt>
@@ -1468,6 +1479,8 @@ possible values are "top", "hanging, "middle, "alphabetic, "ideographic, "bottom
 		<th>Type</th>
 
 		
+		<th>Argument</th>
+		
 
 		
 
@@ -1496,6 +1509,14 @@ possible values are "top", "hanging, "middle, "alphabetic, "ideographic, "bottom
             </td>
 
             
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
 
             
 
@@ -1518,6 +1539,16 @@ possible values are "top", "hanging, "middle, "alphabetic, "ideographic, "bottom
             
             </td>
 
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
             
 
             
@@ -1542,6 +1573,16 @@ possible values are "top", "hanging, "middle, "alphabetic, "ideographic, "bottom
             </td>
 
             
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
 
             
 
@@ -1564,6 +1605,16 @@ possible values are "top", "hanging, "middle, "alphabetic, "ideographic, "bottom
             
             </td>
 
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
             
 
             
@@ -1602,7 +1653,7 @@ possible values are "top", "hanging, "middle, "alphabetic, "ideographic, "bottom
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    font.js, line 205
+    font.js, line 265
 	</dd>
 	
 
@@ -1796,7 +1847,7 @@ Note : using drawStroke is not recommended for performance reasons
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    font.js, line 234
+    font.js, line 327
 	</dd>
 	
 
@@ -1867,7 +1918,7 @@ Note : using drawStroke is not recommended for performance reasons
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    font.js, line 117
+    font.js, line 121
 	</dd>
 	
 
@@ -1888,6 +1939,17 @@ Note : using drawStroke is not recommended for performance reasons
     
 
     
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    this object for chaining
+</div>
+
+
+
+
+        
 
     
 </dd>
@@ -1895,7 +1957,7 @@ Note : using drawStroke is not recommended for performance reasons
         
             
 <dt>
-    <h4 class="name toc-target" id="measureText"><span class="type-signature">&lt;static> </span>measureText<span class="signature">(renderer, text)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+    <h4 class="name toc-target" id="measureText"><span class="type-signature">&lt;static> </span>measureText<span class="signature">(renderer, text, <span class="optional">ret</span>)</span><span class="type-signature"> &rarr; {TextMetrics}</span></h4>
 
     
 </dt>
@@ -1925,6 +1987,8 @@ Note : using drawStroke is not recommended for performance reasons
 		<th>Type</th>
 
 		
+		<th>Argument</th>
+		
 
 		
 
@@ -1953,6 +2017,14 @@ Note : using drawStroke is not recommended for performance reasons
             </td>
 
             
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
 
             
 
@@ -1976,10 +2048,51 @@ Note : using drawStroke is not recommended for performance reasons
             </td>
 
             
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
 
             
 
             <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>ret</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="me.Rect.html">me.Rect</a></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">a object in which to store the text metrics</td>
         </tr>
 
 	
@@ -2013,7 +2126,7 @@ Note : using drawStroke is not recommended for performance reasons
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    font.js, line 174
+    font.js, line 208
 	</dd>
 	
 
@@ -2038,7 +2151,7 @@ Note : using drawStroke is not recommended for performance reasons
     
             
 <div class="param-desc">
-    returns an object, with two attributes: width (the width of the text) and height (the height of the text).
+    a TextMetrics object with two properties: `width` and `height`, defining the output dimensions
 </div>
 
 
@@ -2049,7 +2162,7 @@ Note : using drawStroke is not recommended for performance reasons
 	</dt>
 	<dd>
 		
-<span class="param-type">Object</span>
+<span class="param-type">TextMetrics</span>
 
 
 	</dd>
@@ -2289,7 +2402,7 @@ Note : using drawStroke is not recommended for performance reasons
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    font.js, line 127
+    font.js, line 134
 	</dd>
 	
 
@@ -2310,6 +2423,17 @@ Note : using drawStroke is not recommended for performance reasons
     
 
     
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    this object for chaining
+</div>
+
+
+
+
+        
 
     
         <h5>Example</h5>
@@ -2317,6 +2441,140 @@ Note : using drawStroke is not recommended for performance reasons
     <pre class="sunlight-highlight-javascript">font.setFont(&quot;Arial&quot;, 20, &quot;white&quot;);
 font.setFont(&quot;Arial&quot;, &quot;1.5em&quot;, &quot;white&quot;);</pre>
 
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="setText"><span class="type-signature">&lt;static> </span>setText<span class="signature">(value)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        change the text to be displayed
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>value</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+|
+
+<span class="param-type">Array.&lt;string></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">a string, or an array of strings</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    font.js, line 184
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    this object for chaining
+</div>
+
+
+
+
+        
 
     
 </dd>
@@ -2347,7 +2605,7 @@ font.setFont(&quot;Arial&quot;, &quot;1.5em&quot;, &quot;white&quot;);</pre>
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-09-11T09:38:57+08:00 using the <a
+		on 2018-11-01T10:08:52+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

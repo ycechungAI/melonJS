@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 	<meta charset="utf-8">
-	<title>melonJS Class: Base</title>
+	<title>melonJS Class: BitmapTextData</title>
 
 	<!--[if lt IE 9]>
 	<script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
@@ -446,15 +446,17 @@
 					
 
 
-	<h1 class="page-title">Class: Base</h1>
+	<h1 class="page-title">Class: BitmapTextData</h1>
 <section>
 
 <header>
     <h2>
-        <span class="ancestors"><a href="me.html">me</a><a href="me.plugin.html">.plugin</a>.</span>
+        <span class="ancestors"><a href="me.html">me</a>.</span>
     
-    Base
+    BitmapTextData
     </h2>
+    
+        <div class="class-description">me.BitmapTextData</div>
     
 </header>
 
@@ -465,7 +467,7 @@
     
         
 <dt>
-    <h4 class="name toc-target" id="Base"><span class="type-signature"></span>new Base<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="BitmapTextData"><span class="type-signature"></span>new BitmapTextData<span class="signature">(data)</span><span class="type-signature"></span></h4>
 
     
 </dt>
@@ -473,14 +475,62 @@
 
     
     <div class="description">
-        a base Object for plugin <br>
-plugin must be installed using the register function
+        Class for storing relevant data from the font file.
     </div>
     
 
     
 
     
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>data</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The bitmap font data pulled from the resource loader using me.loader.getBinary()</td>
+        </tr>
+
+	
+	</tbody>
+</table>
 
     
 
@@ -509,19 +559,12 @@ plugin must be installed using the register function
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    plugin.js, line 30
+    bitmaptextdata.js, line 74
 	</dd>
 	
 
 	
 
-	
-	<dt class="tag-see">See:</dt>
-	<dd class="tag-see">
-		<ul>
-			<li><a href="me.plugin.html">me.plugin</a></li>
-			</ul>
-	</dd>
 	
 
 	
@@ -545,12 +588,6 @@ plugin must be installed using the register function
     </div>
 
     
-        <h3 class="subsection-title">Extends</h3>
-
-        <ul>
-            <li>Object</li>
-        </ul>
-    
 
     
 
@@ -566,15 +603,14 @@ plugin must be installed using the register function
         <dl>
             
 <dt>
-    <h4 class="name toc-target" id="version"><span class="type-signature"></span>version<span class="type-signature"> :String</span></h4>
+    <h4 class="name toc-target" id="glyphs"><span class="type-signature">&lt;static> </span>glyphs<span class="type-signature"> :Object</span></h4>
 
     
 </dt>
 <dd>
     
     <div class="description">
-        define the minimum required version of melonJS<br>
-this can be overridden by the plugin
+        The map of glyphs, each key is a char code.
     </div>
     
 
@@ -583,7 +619,7 @@ this can be overridden by the plugin
         <ul>
             <li>
                 
-<span class="param-type">String</span>
+<span class="param-type">Object</span>
 
 
             </li>
@@ -609,20 +645,13 @@ this can be overridden by the plugin
 	
 
 	
-	<dt class="tag-default">Default Value:</dt>
-	<dd class="tag-default">
-		<ul class="dummy">
-			<li>"6.2.0"</li>
-		</ul>
-	</dd>
-	
 
 
 
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    plugin.js, line 45
+    bitmaptextdata.js, line 90
 	</dd>
 	
 
@@ -640,6 +669,130 @@ this can be overridden by the plugin
         </dl>
     
 
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        <dl>
+            
+<dt>
+    <h4 class="name toc-target" id="parse"><span class="type-signature">&lt;static> </span>parse<span class="signature">(fontData)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        This parses the font data text and builds a map of glyphs containing the data for each character
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>fontData</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    bitmaptextdata.js, line 156
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        </dl>
     
 
     
@@ -665,7 +818,7 @@ this can be overridden by the plugin
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-11-29T14:47:53+08:00 using the <a
+		on 2018-11-29T14:47:52+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

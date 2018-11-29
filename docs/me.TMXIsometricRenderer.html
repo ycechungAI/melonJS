@@ -150,11 +150,11 @@
 						</li>
 						
 						<li>
-							<a href="me.BitmapFont.html">me.BitmapFont</a>
+							<a href="me.BitmapText.html">me.BitmapText</a>
 						</li>
 						
 						<li>
-							<a href="me.BitmapFontData.html">me.BitmapFontData</a>
+							<a href="me.BitmapTextData.html">me.BitmapTextData</a>
 						</li>
 						
 						<li>
@@ -227,14 +227,6 @@
 						
 						<li>
 							<a href="me.Error.html">me.Error</a>
-						</li>
-						
-						<li>
-							<a href="me.Font.html">me.Font</a>
-						</li>
-						
-						<li>
-							<a href="me.Glyph.html">me.Glyph</a>
 						</li>
 						
 						<li>
@@ -338,11 +330,15 @@
 						</li>
 						
 						<li>
-							<a href="me.ScreenObject.html">me.ScreenObject</a>
+							<a href="me.Sprite.html">me.Sprite</a>
 						</li>
 						
 						<li>
-							<a href="me.Sprite.html">me.Sprite</a>
+							<a href="me.Stage.html">me.Stage</a>
+						</li>
+						
+						<li>
+							<a href="me.Text.html">me.Text</a>
 						</li>
 						
 						<li>
@@ -630,7 +626,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    TMXRenderer.js, line 281
+    TMXRenderer.js, line 269
 	</dd>
 	
 
@@ -1006,7 +1002,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    TMXRenderer.js, line 113
+    TMXRenderer.js, line 91
 	</dd>
 	
 
@@ -1184,7 +1180,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    TMXRenderer.js, line 126
+    TMXRenderer.js, line 104
 	</dd>
 	
 
@@ -1420,310 +1416,6 @@
 	<dd>
 		
 <span class="param-type"><a href="me.Vector2d.html">me.Vector2d</a></span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="pixelToTileX"><span class="type-signature"></span>pixelToTileX<span class="signature">(x)</span><span class="type-signature"> &rarr; {Number}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        return the tile position corresponding for the given X coordinate
-    </div>
-    
-
-    
-
-    
-
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>x</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">X coordinate</td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-	<dt class="inherited-from">Inherited From:</dt>
-	<dd class="inherited-from">
-		<ul class="dummy">
-			<li>
-				<a href="me.TMXRenderer.html#pixelToTileX">me.TMXRenderer#pixelToTileX</a>
-			</li>
-		</ul>
-	</dd>
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    TMXRenderer.js, line 91
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    tile vertical position
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type">Number</span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="pixelToTileY"><span class="type-signature"></span>pixelToTileY<span class="signature">(y)</span><span class="type-signature"> &rarr; {Number}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        return the tile position corresponding for the given Y coordinates
-    </div>
-    
-
-    
-
-    
-
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>y</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">Y coordinate</td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-	<dt class="inherited-from">Inherited From:</dt>
-	<dd class="inherited-from">
-		<ul class="dummy">
-			<li>
-				<a href="me.TMXRenderer.html#pixelToTileY">me.TMXRenderer#pixelToTileY</a>
-			</li>
-		</ul>
-	</dd>
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    TMXRenderer.js, line 102
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    tile horizontal position
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type">Number</span>
 
 
 	</dd>
@@ -1983,7 +1675,7 @@
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-09-11T09:38:57+08:00 using the <a
+		on 2018-11-29T14:47:53+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

@@ -1,5 +1,5 @@
 /**
- * melonJS Game Engine v6.1.0
+ * melonJS Game Engine v6.2.0
  * http://www.melonjs.org
  * @license {@link http://www.opensource.org/licenses/mit-license.php|MIT}
  * @copyright (C) 2011 - 2018 Olivier Biot
@@ -580,6 +580,10 @@ me.Error = me.Object.extend.bind(Error)({
                 }
                 if (me.sys.resumeOnFocus) {
                     me.state.resume(true);
+                }
+                // force focus if autofocus is on
+                if (me.sys.autoFocus) {
+                    me.device.focus();
                 }
             }, false);
 
@@ -1211,6 +1215,23 @@ me.Error = me.Object.extend.bind(Error)({
         };
 
         /**
+         * Makes a request to bring this device window to the front.
+         * @name focus
+         * @memberOf me.device
+         * @function
+         * @example
+         *  if (clicked) {
+         *    me.device.focus();
+         *  }
+         */
+        api.focus = function () {
+            if (typeof (window.focus) === "function") {
+                window.focus();
+            }
+        };
+
+
+        /**
          * event management (Accelerometer)
          * http://www.mobilexweb.com/samples/ball.html
          * http://www.mobilexweb.com/blog/safari-ios-accelerometer-websockets-html5
@@ -1525,13 +1546,13 @@ me.Error = me.Object.extend.bind(Error)({
          */
 
         /**
-         * a reference to the game main viewport.
+         * a reference to the current active stage "default" camera
          * @public
          * @type {me.Camera2d}
          * @name viewport
          * @memberOf me.game
          */
-        api.viewport = null;
+        api.viewport = undefined;
 
         /**
          * a reference to the game world, <br>
@@ -1615,13 +1636,9 @@ me.Error = me.Object.extend.bind(Error)({
                 width  = width  || me.video.renderer.getWidth();
                 height = height || me.video.renderer.getHeight();
 
-                // create a defaut viewport of the same size
-                api.viewport = new me.Camera2d(0, 0, width, height);
-
                 // the root object of our world is an entity container
-                api.world = new me.Container(0, 0, width, height);
+                api.world = new me.Container(0, 0, width, height, true);
                 api.world.name = "rootContainer";
-                api.world._root = true;
 
                 // to mimic the previous behavior
                 api.world.anchorPoint.set(0, 0);
@@ -1633,9 +1650,6 @@ me.Error = me.Object.extend.bind(Error)({
 
                 // publish init notification
                 me.event.publish(me.event.GAME_INIT);
-
-                // translate global pointer events
-                me.input._translatePointerEvents();
 
                 // make display dirty by default
                 isDirty = true;
@@ -1658,10 +1672,13 @@ me.Error = me.Object.extend.bind(Error)({
             me.collision.quadTree.clear();
 
             // remove all objects
-            api.world.destroy();
+            api.world.reset();
 
             // reset the anchorPoint
             api.world.anchorPoint.set(0, 0);
+
+            // point to the current active stage "default" camera
+            api.viewport = me.state.current().cameras.get("default");
 
             // publish reset notification
             me.event.publish(me.event.GAME_RESET);
@@ -1727,8 +1744,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          * @function
          * @param {Number} time current timestamp as provided by the RAF callback
+         * @param {me.Stage} stage the current stage
          */
-        api.update = function (time) {
+        api.update = function (time, stage) {
             // handle frame skipping if required
             if ((++frameCounter % frameRate) === 0) {
                 // reset the frame counter
@@ -1759,7 +1777,10 @@ me.Error = me.Object.extend.bind(Error)({
                     isDirty = api.world.update(updateDelta) || isDirty;
 
                     // update the camera/viewport
-                    isDirty = api.viewport.update(updateDelta) || isDirty;
+                    // iterate through all cameras
+                    stage.cameras.forEach(function(camera) {
+                        isDirty |= camera.update(updateDelta);
+                    });
 
                     me.timer.lastUpdate = window.performance.now();
                     updateAverageDelta = me.timer.lastUpdate - lastUpdateStart;
@@ -1780,46 +1801,25 @@ me.Error = me.Object.extend.bind(Error)({
          * @private
          * @ignore
          * @function
-         * @param {me.Camera2d} viewport viewport object
+         * @param {me.Stage} stage the current stage
          */
-        api.draw = function (viewport) {
+        api.draw = function (stage) {
             if (isDirty || isAlwaysDirty) {
-                viewport = viewport || api.viewport;
-                // cache the viewport rendering position, so that other object
-                // can access it later (e,g. entityContainer when drawing floating objects)
-                var translateX = viewport.pos.x + viewport.offset.x;
-                var translateY = viewport.pos.y + viewport.offset.y;
-
-                // translate the world coordinates by default to screen coordinates
-                api.world.currentTransform.translate(-translateX, -translateY);
 
                 // prepare renderer to draw a new frame
                 renderer.clear();
 
-                viewport.preDraw(renderer);
+                // iterate through all cameras
+                stage.cameras.forEach(function(camera) {
+                    // render the root container
+                    camera.draw(renderer, me.game.world);
+                });
 
-                api.world.preDraw(renderer);
+                isDirty = false;
 
-                // draw all objects,
-                // specifying the viewport as the rectangle area to redraw
-                api.world.draw(renderer, viewport);
-
-                // draw the viewport/camera effects
-                viewport.draw(renderer);
-
-                api.world.postDraw(renderer);
-
-                viewport.postDraw(renderer);
-
-                // translate the world coordinates by default to screen coordinates
-                api.world.currentTransform.translate(translateX, translateY);
-
+                // flush/render our frame
+                renderer.flush();
             }
-
-            isDirty = false;
-
-            // flush/render our frame
-            renderer.flush();
         };
 
         // return our object
@@ -1840,7 +1840,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @ignore
      */
     me.mod = "melonJS";
-    me.version = "6.1.0";
+    me.version = "6.2.0";
     /**
      * global system settings and browser capabilities
      * @namespace
@@ -1964,14 +1964,14 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @function
          * @param {String} first First version string to compare
-         * @param {String} [second="6.1.0"] Second version string to compare
+         * @param {String} [second="6.2.0"] Second version string to compare
          * @return {Number} comparison result <br>&lt; 0 : first &lt; second<br>
          * 0 : first == second<br>
          * &gt; 0 : first &gt; second
          * @example
-         * if (me.sys.checkVersion("6.1.0") > 0) {
+         * if (me.sys.checkVersion("6.2.0") > 0) {
          *     console.error(
-         *         "melonJS is too old. Expected: 6.1.0, Got: " + me.version
+         *         "melonJS is too old. Expected: 6.2.0, Got: " + me.version
          *     );
          * }
          */
@@ -1996,7 +1996,8 @@ me.Error = me.Object.extend.bind(Error)({
     function parseHash() {
         var hash = {};
 
-        if (document.location.hash) {
+        // No "document.location" exist for Wechat mini game platform.
+        if (document.location && document.location.hash) {
             document.location.hash.substr(1).split("&").filter(function (value) {
                 return (value !== "");
             }).forEach(function (value) {
@@ -2044,6 +2045,9 @@ me.Error = me.Object.extend.bind(Error)({
         // check the device capabilites
         me.device._check();
 
+        // init the object Pool
+        me.pool.init();
+
         // initialize me.save
         me.save._init();
 
@@ -2060,9 +2064,6 @@ me.Error = me.Object.extend.bind(Error)({
 
         // init the App Manager
         me.state.init();
-
-        // init the Entity Pool
-        me.pool.init();
 
         // automatically enable keyboard events if on desktop
         if (me.device.isMobile === false) {
@@ -2374,11 +2375,9 @@ me.Error = me.Object.extend.bind(Error)({
  */
 (function () {
     /**
-     * A pool of Object entity <br>
-     * This object is used for object pooling - a technique that might speed up your game
-     * if used properly. <br>
+     * This object is used for object pooling - a technique that might speed up your game if used properly.<br>
      * If some of your classes will be instantiated and removed a lot at a time, it is a
-     * good idea to add the class to this entity pool. A separate pool for that class
+     * good idea to add the class to this object pool. A separate pool for that class
      * will be created, which will reuse objects of the class. That way they won't be instantiated
      * each time you need a new one (slowing your game), but stored into that pool and taking one
      * already instantiated when you need it.<br><br>
@@ -2393,7 +2392,9 @@ me.Error = me.Object.extend.bind(Error)({
         // hold public stuff in our singleton
         var api = {};
 
-        var entityClass = {};
+        var objectClass = {};
+
+        var instance_counter = 0;
 
         /*
          * PUBLIC STUFF
@@ -2404,7 +2405,6 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          */
         api.init = function () {
-            // add default entity object
             api.register("me.Entity", me.Entity);
             api.register("me.CollectableEntity", me.CollectableEntity);
             api.register("me.LevelEntity", me.LevelEntity);
@@ -2412,9 +2412,20 @@ me.Error = me.Object.extend.bind(Error)({
             api.register("me.Color", me.Color, true);
             api.register("me.Particle", me.Particle, true);
             api.register("me.Sprite", me.Sprite);
+            api.register("me.Text", me.Text, true);
+            api.register("me.BitmapText", me.BitmapText, true);
+            api.register("me.BitmapTextData", me.BitmapTextData, true);
+            api.register("me.ImageLayer", me.ImageLayer, true);
+            api.register("me.ColorLayer", me.ColorLayer, true);
             api.register("me.Vector2d", me.Vector2d, true);
-            api.register("me.Glyph", me.Glyph, true);
+            api.register("me.Vector3d", me.Vector3d, true);
+            api.register("me.ObservableVector2d", me.ObservableVector2d, true);
+            api.register("me.ObservableVector3d", me.ObservableVector3d, true);
             api.register("me.Matrix2d", me.Matrix2d, true);
+            api.register("me.Rect", me.Rect, true);
+            api.register("me.Polygon", me.Polygon, true);
+            api.register("me.Line", me.Line, true);
+            api.register("me.Ellipse", me.Ellipse, true);
         };
 
         /**
@@ -2431,7 +2442,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @param {Boolean} [objectPooling=false] enables object pooling for the specified class
          * - speeds up the game by reusing existing objects
          * @example
-         * // add our users defined entities in the entity pool
+         * // add our users defined entities in the object pool
          * me.pool.register("playerspawnpoint", PlayerEntity);
          * me.pool.register("cherryentity", CherryEntity, true);
          * me.pool.register("heartentity", HeartEntity, true);
@@ -2439,7 +2450,7 @@ me.Error = me.Object.extend.bind(Error)({
          */
          api.register = function (className, classObj, pooling) {
              if (typeof (classObj) !== "undefined") {
-                 entityClass[className] = {
+                 objectClass[className] = {
                      "class" : classObj,
                      "pool" : (pooling ? [] : undefined)
                  };
@@ -2481,7 +2492,7 @@ me.Error = me.Object.extend.bind(Error)({
             for (var i = 0; i < arguments.length; i++) {
                 args[i] = arguments[i];
             }
-            var entity = entityClass[name];
+            var entity = objectClass[name];
             if (entity) {
                 var proto = entity["class"],
                     pool = entity.pool,
@@ -2496,6 +2507,7 @@ me.Error = me.Object.extend.bind(Error)({
                     else {
                         obj.init.apply(obj, args);
                     }
+                    instance_counter--;
                 }
                 else {
                     args[0] = proto;
@@ -2507,11 +2519,11 @@ me.Error = me.Object.extend.bind(Error)({
                 return obj;
             }
 
-            throw new me.Error("Cannot instantiate entity of type '" + name + "'");
+            throw new me.Error("Cannot instantiate object of type '" + name + "'");
         };
 
         /**
-         * purge the entity pool from any inactive object <br>
+         * purge the object pool from any inactive object <br>
          * Object pooling must be enabled for this function to work<br>
          * note: this will trigger the garbage collector
          * @name purge
@@ -2520,15 +2532,16 @@ me.Error = me.Object.extend.bind(Error)({
          * @function
          */
         api.purge = function () {
-            for (var className in entityClass) {
-                if (entityClass[className]) {
-                    entityClass[className].pool = [];
+            for (var className in objectClass) {
+                if (objectClass[className]) {
+                    objectClass[className].pool = [];
                 }
             }
+            instance_counter = 0;
         };
 
         /**
-         * Push back an object instance into the entity pool <br>
+         * Push back an object instance into the object pool <br>
          * Object pooling for the object class must be enabled,
          * and object must have been instantiated using {@link me.pool#pull},
          * otherwise this function won't work
@@ -2540,12 +2553,13 @@ me.Error = me.Object.extend.bind(Error)({
          */
         api.push = function (obj) {
             var name = obj.className;
-            if (typeof(name) === "undefined" || !entityClass[name]) {
+            if (typeof(name) === "undefined" || !objectClass[name]) {
                 // object is not registered, don't do anything
                 return;
             }
             // store back the object instance for later recycling
-            entityClass[name].pool.push(obj);
+            objectClass[name].pool.push(obj);
+            instance_counter++;
         };
 
         /**
@@ -2558,7 +2572,19 @@ me.Error = me.Object.extend.bind(Error)({
          * @return {Boolean} true if the classname is registered
          */
         api.exists = function (name) {
-            return name in entityClass;
+            return name in objectClass;
+        };
+
+        /**
+         * returns the amount of object instance currently in the pool
+         * @name exists
+         * @memberOf me.pool
+         * @public
+         * @function
+         * @return {Number} amount of object instance
+         */
+        api.getInstanceCount = function (name) {
+            return instance_counter;
         };
 
         // return our object
@@ -2741,6 +2767,29 @@ me.Error = me.Object.extend.bind(Error)({
             // if only one argument use the object value
             var powres = Math.pow(10, dec || 0);
             return (~~(0.5 + num * powres) / powres);
+        };
+
+        /**
+         * check if the given value is close to the expected one
+         * @public
+         * @function
+         * @memberOf me.Math
+         * @name toBeCloseTo
+         * @param {number} expected value to be compared with.
+         * @param {number} actual actual value to compare
+         * @param {number} [precision=2] float precision for the comparison
+         * @return {boolean} if close to
+         * @example
+         * // test if the given value is close to 10
+         * if (me.Math.toBeCloseTo(10, value)) {
+         *     // do something
+         * }
+         */
+        api.toBeCloseTo = function (expected, actual, precision) {
+            if (typeof precision !== "number") {
+                precision = 2;
+            }
+            return Math.abs(expected - actual) < (Math.pow(10, -precision) / 2)
         };
 
         // return our object
@@ -3828,7 +3877,8 @@ me.Error = me.Object.extend.bind(Error)({
                     } else {
                         this._x = value
                     }
-                }
+                },
+                configurable : true
             });
 
             /**
@@ -3855,7 +3905,8 @@ me.Error = me.Object.extend.bind(Error)({
                     } else {
                         this._y = value
                     }
-                }
+                },
+                configurable : true
             });
 
             if (typeof(settings) === "undefined") {
@@ -4309,7 +4360,8 @@ me.Error = me.Object.extend.bind(Error)({
                     } else {
                         this._x = value
                     }
-                }
+                },
+                configurable : true
             });
 
             /**
@@ -4336,7 +4388,8 @@ me.Error = me.Object.extend.bind(Error)({
                     } else {
                         this._y = value
                     }
-                }
+                },
+                configurable : true
             });
 
             /**
@@ -4363,8 +4416,8 @@ me.Error = me.Object.extend.bind(Error)({
                     } else {
                         this._z = value
                     }
-
-                }
+                },
+                configurable : true
             });
 
             if (typeof(settings) === "undefined") {
@@ -5357,6 +5410,11 @@ me.Error = me.Object.extend.bind(Error)({
             this.setShape(x, y, w, h);
         },
 
+        /** @ignore */
+        onResetEvent : function (x, y, w, h) {
+            this.setShape(x, y, w, h);
+        },
+
         /**
          * set new value to the Ellipse shape
          * @name setShape
@@ -5624,6 +5682,11 @@ me.Error = me.Object.extend.bind(Error)({
 
             // the shape type
             this.shapeType = "Polygon";
+            this.setShape(x, y, points);
+        },
+
+        /** @ignore */
+        onResetEvent : function (x, y, points) {
             this.setShape(x, y, points);
         },
 
@@ -5959,6 +6022,11 @@ me.Error = me.Object.extend.bind(Error)({
                 new me.Vector2d(0, h)  // 0, 1
             ]]);
             this.shapeType = "Rectangle";
+        },
+
+        /** @ignore */
+        onResetEvent : function (x, y, w, h) {
+            this.setShape(x, y, w, h);
         },
 
         /**
@@ -7870,8 +7938,8 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          */
         api.init = function () {
-            // default bounds to the game viewport
-            api.bounds = me.game.viewport.clone();
+            // default bounds to the game world size
+            api.bounds = me.game.world.getBounds().clone();
             // initializa the quadtree
             api.quadTree = new me.QuadTree(api.bounds, api.maxChildren, api.maxDepth);
 
@@ -7886,8 +7954,8 @@ me.Error = me.Object.extend.bind(Error)({
 
         /**
          * An object representing the result of an intersection.
-         * @property {me.Entity} a The first object participating in the intersection
-         * @property {me.Entity} b The second object participating in the intersection
+         * @property {me.Renderable} a The first object participating in the intersection
+         * @property {me.Renderable} b The second object participating in the intersection
          * @property {Number} overlap Magnitude of the overlap on the shortest colliding axis
          * @property {me.Vector2d} overlapV The overlap vector (i.e. `overlapN.scale(overlap, overlap)`). If this vector is subtracted from the position of a, a and b will no longer be colliding
          * @property {me.Vector2d} overlapN The shortest colliding axis (unit-vector)
@@ -7949,8 +8017,8 @@ me.Error = me.Object.extend.bind(Error)({
          * @memberOf me.collision
          * @public
          * @function
-         * @param {me.Entity} a a reference to the object A.
-         * @param {me.Entity} b a reference to the object B.
+         * @param {me.Renderable} a a reference to the object A.
+         * @param {me.Renderable} b a reference to the object B.
          * @return {Boolean} true if they should collide, false otherwise
          */
         api.shouldCollide = function (a, b) {
@@ -7968,7 +8036,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @memberOf me.collision
          * @public
          * @function
-         * @param {me.Entity} obj entity to be tested for collision
+         * @param {me.Renderable} obj entity to be tested for collision
          * @param {me.collision.ResponseObject} [respObj=me.collision.response] a user defined response object that will be populated if they intersect.
          * @return {Boolean} in case of collision, false otherwise
          * @example
@@ -8139,9 +8207,9 @@ me.Error = me.Object.extend.bind(Error)({
         /**
          * Checks whether polygons collide.
          * @ignore
-         * @param {me.Entity} a a reference to the object A.
+         * @param {me.Renderable} a a reference to the object A.
          * @param {me.Polygon} polyA a reference to the object A Polygon to be tested
-         * @param {me.Entity} b a reference to the object B.
+         * @param {me.Renderable} b a reference to the object B.
          * @param {me.Polygon} polyB a reference to the object B Polygon to be tested
          * @param {Response=} response Response object (optional) that will be populated if they intersect.
          * @return {boolean} true if they intersect, false if they don't.
@@ -8193,9 +8261,9 @@ me.Error = me.Object.extend.bind(Error)({
         /**
          * Check if two Ellipse collide.
          * @ignore
-         * @param {me.Entity} a a reference to the object A.
+         * @param {me.Renderable} a a reference to the object A.
          * @param {me.Ellipse} ellipseA a reference to the object A Ellipse to be tested
-         * @param {me.Entity} b a reference to the object B.
+         * @param {me.Renderable} b a reference to the object B.
          * @param {me.Ellipse} ellipseB a reference to the object B Ellipse to be tested
          * @param {Response=} response Response object (optional) that will be populated if
          *   the circles intersect.
@@ -8234,9 +8302,9 @@ me.Error = me.Object.extend.bind(Error)({
         /**
          * Check if a polygon and an ellipse collide.
          * @ignore
-         * @param {me.Entity} a a reference to the object A.
+         * @param {me.Renderable} a a reference to the object A.
          * @param {me.Polygon} polyA a reference to the object A Polygon to be tested
-         * @param {me.Entity} b a reference to the object B.
+         * @param {me.Renderable} b a reference to the object B.
          * @param {me.Ellipse} ellipseB a reference to the object B Ellipse to be tested
          * @param {Response=} response Response object (optional) that will be populated if they intersect.
          * @return {boolean} true if they intersect, false if they don't.
@@ -8400,9 +8468,9 @@ me.Error = me.Object.extend.bind(Error)({
          * **NOTE:** This is slightly less efficient than testPolygonEllipse as it just
          * runs testPolygonEllipse and reverses the response at the end.
          * @ignore
-         * @param {me.Entity} a a reference to the object A.
+         * @param {me.Renderable} a a reference to the object A.
          * @param {me.Ellipse} ellipseA a reference to the object A Ellipse to be tested
-         * @param {me.Entity} a a reference to the object B.
+         * @param {me.Renderable} a a reference to the object B.
          * @param {me.Polygon} polyB a reference to the object B Polygon to be tested
          * @param {Response=} response Response object (optional) that will be populated if
          *   they intersect.
@@ -8523,11 +8591,10 @@ me.Error = me.Object.extend.bind(Error)({
              * @name currentTransform
              * @memberOf me.Renderable
              */
-            if (typeof this.currentTransform !== "undefined") {
-                this.currentTransform.identity();
-            } else {
+            if (typeof this.currentTransform === "undefined") {
                 this.currentTransform = me.pool.pull("me.Matrix2d");
             }
+            this.currentTransform.identity();
 
            /**
             * (G)ame (U)nique (Id)entifier" <br>
@@ -8541,15 +8608,20 @@ me.Error = me.Object.extend.bind(Error)({
             this.GUID = undefined;
 
             /**
-             * Whether the renderable object is visible and within the viewport<br>
+             * an event handler that is called when the renderable leave or enter a camera viewport
              * @public
-             * @readonly
-             * @type Boolean
-             * @default false
-             * @name inViewport
+             * @type function
+             * @default undefined
+             * @name onVisibilityChange
              * @memberOf me.Renderable
+             * @example
+             * this.onVisibilityChange = function(inViewport) {
+             *     if (inViewport === true) {
+             *         console.log("object has entered the in a camera viewport!");
+             *     }
+             * };
              */
-            this.inViewport = false;
+            this.onVisibilityChange = undefined;
 
             /**
              * Whether the renderable object will always update, even when outside of the viewport<br>
@@ -8582,8 +8654,8 @@ me.Error = me.Object.extend.bind(Error)({
             this.isPersistent = false;
 
             /**
-             * Define if a renderable follows screen coordinates (floating)<br>
-             * or the world coordinates (not floating)<br>
+             * If true, this renderable will be rendered using screen coordinates,
+             * as opposed to world coordinates. Use this, for example, to define UI elements.
              * @public
              * @type Boolean
              * @default false
@@ -8606,7 +8678,7 @@ me.Error = me.Object.extend.bind(Error)({
             if (this.anchorPoint instanceof me.ObservableVector2d) {
                 this.anchorPoint.setMuted(0.5, 0.5).setCallback(this.onAnchorUpdate.bind(this));
             } else {
-                this.anchorPoint = new me.ObservableVector2d(0.5, 0.5, { onUpdate: this.onAnchorUpdate.bind(this) });
+                this.anchorPoint = me.pool.pull("me.ObservableVector2d", 0.5, 0.5, { onUpdate: this.onAnchorUpdate.bind(this) });
             }
 
             /**
@@ -8667,11 +8739,10 @@ me.Error = me.Object.extend.bind(Error)({
              * @name _bounds
              * @memberOf me.Renderable
              */
-            if (this._bounds) {
+            if (this._bounds instanceof me.Rect) {
                 this._bounds.setShape(x, y, width, height);
-            }
-            else {
-                this._bounds = new me.Rect(x, y, width, height);
+            } else {
+                this._bounds = me.pool.pull("me.Rect", x, y, width, height);
             }
 
             /**
@@ -8681,11 +8752,11 @@ me.Error = me.Object.extend.bind(Error)({
              * @name _absPos
              * @memberOf me.Renderable
              */
-            if (this._absPos) {
+            if (this._absPos instanceof me.Vector2d) {
                 this._absPos.set(x, y);
             }
             else {
-                this._absPos = new me.Vector2d(x, y);
+                this._absPos = me.pool.pull("me.Vector2d", x, y);
             }
 
             /**
@@ -8698,7 +8769,7 @@ me.Error = me.Object.extend.bind(Error)({
             if (this.pos instanceof me.ObservableVector3d) {
                 this.pos.setMuted(x, y, 0).setCallback(this.updateBoundsPos.bind(this));
             } else {
-                this.pos = new me.ObservableVector3d(x, y, 0, { onUpdate: this.updateBoundsPos.bind(this) });
+                this.pos = me.pool.pull("me.ObservableVector3d", x, y, 0, { onUpdate: this.updateBoundsPos.bind(this) });
             }
 
             this._width = width;
@@ -8710,10 +8781,18 @@ me.Error = me.Object.extend.bind(Error)({
                 y : false
             };
 
+            // viewport flag
+            this._inViewport = false;
+
             this.shapeType = "Rectangle";
 
             // ensure it's fully opaque by default
             this.setOpacity(1.0);
+        },
+
+        /** @ignore */
+        onResetEvent : function () {
+            this.init.apply(this, arguments);
         },
 
         /**
@@ -8962,8 +9041,23 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          */
         destroy : function () {
-            // reset currentTransform
-            this.currentTransform.identity();
+            // allow recycling object properties
+            me.pool.push(this.currentTransform);
+            this.currentTransform = undefined;
+
+            me.pool.push(this.anchorPoint);
+            this.anchorPoint = undefined;
+
+            me.pool.push(this.pos);
+            this.pos = undefined;
+
+            me.pool.push(this._absPos);
+            this._absPos = undefined;
+
+            me.pool.push(this._bounds);
+            this._bounds = undefined;
+
+            this.onVisibilityChange = undefined;
 
             // destroy the physic body if defined
             if (typeof this.body !== "undefined") {
@@ -8984,6 +9078,36 @@ me.Error = me.Object.extend.bind(Error)({
         onDestroyEvent : function () {
             // to be extended !
         }
+    });
+
+    /**
+     * Whether the renderable object is visible and within the viewport
+     * @public
+     * @readonly
+     * @type Boolean
+     * @default false
+     * @name inViewport
+     * @memberOf me.Renderable
+     */
+    Object.defineProperty(me.Renderable.prototype, "inViewport", {
+        /**
+         * @ignore
+         */
+        get : function () {
+            return this._inViewport;
+        },
+        /**
+         * @ignore
+         */
+        set : function (value) {
+            if (this._inViewport !== value) {
+                this._inViewport = value;
+                if (typeof this.onVisibilityChange === "function") {
+                    this.onVisibilityChange.call(this, value);
+                }
+            }
+        },
+        configurable : true
     });
 
     /**
@@ -9115,6 +9239,16 @@ me.Error = me.Object.extend.bind(Error)({
                 rect.width, rect.height
             );
             renderer.setColor(color);
+        },
+
+        /**
+         * Destroy function
+         * @ignore
+         */
+        destroy : function () {
+            me.pool.push(this.color);
+            this.color = undefined;
+            me.Renderable.prototype.destroy.apply(this);
         }
     });
 
@@ -9137,11 +9271,19 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} x x coordinate
      * @param {Number} y y coordinate
      * @param {Object} settings ImageLayer properties
-     * @param {HTMLImageElement|HTMLCanvasElement|String}} settings.image Image reference. See {@link me.loader.getImage}
-     * @param {String} [settings.name="me.ImageLayer"] Layer name
+     * @param {HTMLImageElement|HTMLCanvasElement|String} settings.image Image reference. See {@link me.loader.getImage}
+     * @param {String} [settings.name="me.ImageLayer"] layer name
      * @param {Number} [settings.z=0] z-index position
-     * @param {Number|me.Vector2d} [settings.ratio=1.0] Scrolling ratio to be applied
+     * @param {Number|me.Vector2d} [settings.ratio=1.0] Scrolling ratio to be applied. See {@link me.ImageLayer#ratio}
+     * @param {String} [settings.repeat='repeat'] define if and how an Image Layer should be repeated (accepted values are 'repeat',
+ 'repeat-x', 'repeat-y', 'no-repeat'). See {@link me.ImageLayer#repeat}
      * @param {Number|me.Vector2d} [settings.anchorPoint=0.0] Image origin. See {@link me.ImageLayer#anchorPoint}
+     * @example
+     * // create a repetitive background pattern on the X axis using the citycloud image asset
+     * me.game.world.addChild(new me.ImageLayer(0, 0, {
+     *     image:"citycloud",
+     *     repeat :"repeat-x"
+     * }), 1);
      */
     me.ImageLayer = me.Renderable.extend({
         /**
@@ -9176,7 +9318,7 @@ me.Error = me.Object.extend.bind(Error)({
             // displaying order
             this.pos.z = settings.z || 0;
 
-            this.offset = new me.Vector2d(x, y);
+            this.offset = me.pool.pull("me.Vector2d", x, y);
 
             /**
              * Define the image scrolling ratio<br>
@@ -9190,7 +9332,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @default <1.0,1.0>
              * @name me.ImageLayer#ratio
              */
-            this.ratio = new me.Vector2d(1.0, 1.0);
+            this.ratio = me.pool.pull("me.Vector2d", 1.0, 1.0);
 
             if (typeof(settings.ratio) !== "undefined") {
                 // little hack for backward compatiblity
@@ -9233,12 +9375,13 @@ me.Error = me.Object.extend.bind(Error)({
              * Define if and how an Image Layer should be repeated.<br>
              * By default, an Image Layer is repeated both vertically and horizontally.<br>
              * Acceptable values : <br>
-             * * 'repeat' - The background image will be repeated both vertically and horizontally. (default) <br>
+             * * 'repeat' - The background image will be repeated both vertically and horizontally <br>
              * * 'repeat-x' - The background image will be repeated only horizontally.<br>
              * * 'repeat-y' - The background image will be repeated only vertically.<br>
              * * 'no-repeat' - The background-image will not be repeated.<br>
              * @public
              * @type String
+             * @default 'repeat'
              * @name me.ImageLayer#repeat
              */
             Object.defineProperty(this, "repeat", {
@@ -9273,7 +9416,8 @@ me.Error = me.Object.extend.bind(Error)({
                     }
                     this.resize(me.game.viewport.width, me.game.viewport.height);
                     this.createPattern();
-                }
+                },
+                configurable: true
             });
 
             this.repeat = settings.repeat || "repeat";
@@ -9292,7 +9436,7 @@ me.Error = me.Object.extend.bind(Error)({
             // in case the level is not added to the root container,
             // the onActivateEvent call happens after the LEVEL_LOADED event
             // so we need to force a first update
-            if (this.ancestor._root !== true) {
+            if (this.ancestor.root !== true) {
                 this.updateLayer(me.game.viewport.pos);
             }
         },
@@ -9418,8 +9562,19 @@ me.Error = me.Object.extend.bind(Error)({
             me.event.unsubscribe(this.vpChangeHdlr);
             me.event.unsubscribe(this.vpResizeHdlr);
             me.event.unsubscribe(this.vpLoadedHdlr);
-        }
+        },
 
+        /**
+         * Destroy function<br>
+         * @ignore
+         */
+        destroy : function () {
+            me.pool.push(this.offset);
+            this.offset = undefined;
+            me.pool.push(this.ratio);
+            this.ratio = undefined;
+            me.Renderable.prototype.destroy.apply(this);
+        }
     });
 })();
 
@@ -9486,7 +9641,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @name offset
              * @memberOf me.Sprite
              */
-            this.offset = new me.Vector2d();
+            this.offset = me.pool.pull("me.Vector2d", 0, 0);
 
             // hold all defined animation
             this.anim = {};
@@ -9875,7 +10030,10 @@ me.Error = me.Object.extend.bind(Error)({
             this.height = frame.height;
             // set global anchortPoint if defined
             if (frame.anchorPoint) {
-                this.anchorPoint.setV(frame.anchorPoint);
+                this.anchorPoint.set(
+                    this._flip.x && frame.trimmed === true ? 1 - frame.anchorPoint.x : frame.anchorPoint.x,
+                    this._flip.y && frame.trimmed === true ? 1 - frame.anchorPoint.y : frame.anchorPoint.y
+                );
             }
             return this;
         },
@@ -9985,6 +10143,16 @@ me.Error = me.Object.extend.bind(Error)({
             this.anchorPoint.setMuted(newX, newY);
             // then call updateBouds
             this.updateBoundsPos(this.pos.x, this.pos.y);
+        },
+
+        /**
+         * Destroy function<br>
+         * @ignore
+         */
+        destroy : function () {
+            me.pool.push(this.offset);
+            this.offset = undefined;
+            me.Renderable.prototype.destroy.apply(this);
         },
 
         /**
@@ -10178,7 +10346,7 @@ me.Error = me.Object.extend.bind(Error)({
                     this.holdTimeout = me.timer.setTimeout(this.hold.bind(this), this.holdThreshold, false);
                     this.released = false;
                 }
-                return this.onClick(event);
+                return this.onClick.call(this, event);
             }
         },
 
@@ -10202,7 +10370,7 @@ me.Error = me.Object.extend.bind(Error)({
          */
         enter : function (event) {
             this.hover = true;
-            return this.onOver(event);
+            return this.onOver.call(this, event);
         },
 
         /**
@@ -10222,7 +10390,7 @@ me.Error = me.Object.extend.bind(Error)({
         leave : function (event) {
             this.hover = false;
             this.release.call(this, event);
-            return this.onOut(event);
+            return this.onOut.call(this, event);
         },
 
         /**
@@ -10243,7 +10411,7 @@ me.Error = me.Object.extend.bind(Error)({
             if (this.released === false) {
                 this.released = true;
                 me.timer.clearTimeout(this.holdTimeout);
-                return this.onRelease(event);
+                return this.onRelease.call(this, event);
             }
         },
 
@@ -10268,7 +10436,7 @@ me.Error = me.Object.extend.bind(Error)({
         hold : function () {
             me.timer.clearTimeout(this.holdTimeout);
             if (!this.released) {
-                this.onHold();
+                this.onHold.call(this);
             }
         },
 
@@ -10337,7 +10505,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} [x=0] position of the container
      * @param {Number} [y=0] position of the container
      * @param {Number} [w=me.game.viewport.width] width of the container
-     * @param {number} [h=me.game.viewport.height] height of the container
+     * @param {Number} [h=me.game.viewport.height] height of the container
      */
     me.Container = me.Renderable.extend(
     /** @scope me.Container.prototype */
@@ -10346,19 +10514,13 @@ me.Error = me.Object.extend.bind(Error)({
          * constructor
          * @ignore
          */
-        init : function (x, y, width, height) {
+        init : function (x, y, width, height, root) {
             /**
              * keep track of pending sort
              * @ignore
              */
             this.pendingSort = null;
 
-            /**
-             * whether the container is the root of the scene
-             * @private
-             * @ignore
-             */
-            this._root = false;
 
             // call the _super constructor
             me.Renderable.prototype.init.apply(this,
@@ -10366,6 +10528,16 @@ me.Error = me.Object.extend.bind(Error)({
                 width || Infinity,
                 height || Infinity]
             );
+
+            /**
+             * whether the container is the root of the scene
+             * @public
+             * @type Boolean
+             * @default false
+             * @name root
+             * @memberOf me.Container
+             */
+            this.root = root || false;
 
             /**
              * The array of children of this container.
@@ -10406,8 +10578,7 @@ me.Error = me.Object.extend.bind(Error)({
 
             /**
              * Specify if the container draw operation should clip his children to its own bounds
-             * XXX : HIDDEN PROPERTY FOR NOW, UNTIL IT PROPERLY WORKS!
-             * @private
+             * @public
              * @type Boolean
              * @default false
              * @name clipping
@@ -10446,6 +10617,39 @@ me.Error = me.Object.extend.bind(Error)({
 
             // enable collision and event detection
             this.isKinematic = false;
+
+            // subscribe on the canvas resize event
+            if (this.root === true) {
+                // XXX: Workaround for not updating container child-bounds automatically (it's expensive!)
+                me.event.subscribe(me.event.CANVAS_ONRESIZE, this.updateChildBounds.bind(this));
+            }
+        },
+
+        /**
+         * reset the container, removing all childrens, and reseting transforms.
+         * @name reset
+         * @memberOf me.Container
+         * @function
+         */
+        reset : function () {
+            // cancel any sort operation
+            if (this.pendingSort) {
+                clearTimeout(this.pendingSort);
+                this.pendingSort = null;
+            }
+
+            // delete all children
+            for (var i = this.children.length, obj; i >= 0; (obj = this.children[--i])) {
+                // don't remove it if a persistent object
+                if (obj && !obj.isPersistent) {
+                    this.removeChildNow(obj);
+                }
+            }
+
+            if (typeof this.currentTransform !== "undefined") {
+                // just reset some variables
+                this.currentTransform.identity();
+            }
         },
 
 
@@ -10627,6 +10831,21 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
+         * Returns the next child within the container or undefined if none
+         * @name getNextChild
+         * @memberOf me.Container
+         * @function
+         * @param {me.Renderable} child
+         */
+        getNextChild : function (child) {
+            var index = this.children.indexOf(child) - 1;
+            if (index >= 0 && index < this.children.length) {
+                return this.getChildAt(index);
+            }
+            return undefined;
+        },
+
+        /**
          * Returns true if contains the specified Child
          * @name hasChild
          * @memberOf me.Container
@@ -10775,7 +10994,7 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * Checks if this container is root or if ti's attached to the root container.
+         * Checks if this container is root or if it's attached to the root container.
          * @private
          * @name isAttachedToRoot
          * @memberOf me.Container
@@ -10783,12 +11002,12 @@ me.Error = me.Object.extend.bind(Error)({
          * @returns Boolean
          */
         isAttachedToRoot : function () {
-            if (this._root) {
+            if (this.root === true) {
                 return true;
             } else {
                 var ancestor = this.ancestor;
                 while (ancestor) {
-                    if (ancestor._root === true) {
+                    if (ancestor.root === true) {
                         return true;
                     }
                     ancestor = ancestor.ancestor;
@@ -11060,20 +11279,8 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          */
         destroy : function () {
-            // cancel any sort operation
-            if (this.pendingSort) {
-                clearTimeout(this.pendingSort);
-                this.pendingSort = null;
-            }
-
-            // delete all children
-            for (var i = this.children.length, obj; i >= 0; (obj = this.children[--i])) {
-                // don't remove it if a persistent object
-                if (obj && !obj.isPersistent) {
-                    this.removeChildNow(obj);
-                }
-            }
-
+            // empty the container
+            this.reset();
             // call the parent destroy method
             me.Renderable.prototype.destroy.apply(this, arguments);
         },
@@ -11086,7 +11293,6 @@ me.Error = me.Object.extend.bind(Error)({
             var isDirty = false;
             var isFloating = false;
             var isPaused = me.state.isPaused();
-            var viewport = me.game.viewport;
 
             // Update container's absolute position
             this._absPos.setV(this.pos);
@@ -11105,8 +11311,13 @@ me.Error = me.Object.extend.bind(Error)({
                     if (isFloating) {
                         globalFloatingCounter++;
                     }
-                    // check if object is visible
-                    obj.inViewport = isFloating || viewport.isVisible(obj.getBounds());
+
+                    // check if object is in any active cameras
+                    obj.inViewport = false;
+                    // iterate through all cameras
+                    me.state.current().cameras.forEach(function(camera) {
+                        obj.inViewport |= camera.isVisible(obj, isFloating);
+                    });
 
                     // update our object
                     isDirty = ((obj.inViewport || obj.alwaysUpdate) && obj.update(dt)) || isDirty;
@@ -11139,7 +11350,7 @@ me.Error = me.Object.extend.bind(Error)({
             renderer.translate(this.pos.x, this.pos.y);
 
             // clip the containter children to the container bounds
-            if (this._root === false && this.clipping === true && this.childBounds.isFinite() === true) {
+            if (this.root === false && this.clipping === true && this.childBounds.isFinite() === true) {
                 renderer.clipRect(
                     this.childBounds.pos.x,
                     this.childBounds.pos.y,
@@ -11281,6 +11492,16 @@ me.Error = me.Object.extend.bind(Error)({
              */
             this.damping = 1.0;
 
+            /**
+             * the name of this camera
+             * @public
+             * @type {String}
+             * @name name
+             * @default "default"
+             * @memberOf me.Camera2d
+             */
+            this.name = "default";
+
             // offset for shake effect
             this.offset = new me.Vector2d();
 
@@ -11318,11 +11539,10 @@ me.Error = me.Object.extend.bind(Error)({
             // enable event detection on the camera
             this.isKinematic = false;
 
-            var self = this;
             // subscribe to the game reset event
-            me.event.subscribe(me.event.GAME_RESET, function () {
-                self.reset.bind(self);
-            });
+            me.event.subscribe(me.event.GAME_RESET, this.reset.bind(this));
+            // subscribe to the canvas resize event
+            me.event.subscribe(me.event.CANVAS_ONRESIZE, this.resize.bind(this));
         },
 
         // -- some private function ---
@@ -11543,6 +11763,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @param {Number} y
          */
         moveTo : function (x, y) {
+            var _x = this.pos.x;
+            var _y = this.pos.y;
+
             this.pos.x = me.Math.clamp(
                 x,
                 this.bounds.pos.x,
@@ -11554,8 +11777,10 @@ me.Error = me.Object.extend.bind(Error)({
                 this.bounds.height - this.height
             );
 
-            //publish the corresponding message
-            me.event.publish(me.event.VIEWPORT_ONCHANGE, [this.pos]);
+            //publish the VIEWPORT_ONCHANGE event if necessary
+            if (_x !== this.pos.x || _y !== this.pos.y) {
+                me.event.publish(me.event.VIEWPORT_ONCHANGE, [this.pos]);
+            }
         },
 
         /** @ignore */
@@ -11589,14 +11814,20 @@ me.Error = me.Object.extend.bind(Error)({
                 if (!this.pos.equals(targetV)) {
                     // update the camera position
                     if (this.smoothFollow === true && this.damping < 1.0) {
-                        this.pos.lerp(targetV, this.damping);
+                        // account for floating precision and check if we are close "enough"
+                        if (me.Math.toBeCloseTo(targetV.x, this.pos.x, 2) &&
+                            me.Math.toBeCloseTo(targetV.y, this.pos.y, 2)) {
+                            this.pos.setV(targetV);
+                            return false;
+                        } else {
+                            this.pos.lerp(targetV, this.damping);
+                        }
                     } else {
                         this.pos.setV(targetV);
                     }
                     return true;
                 }
             }
-
             return false;
         },
 
@@ -11753,15 +11984,22 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * check if the specified rectangle is in the camera
+         * check if the specified renderable is in the camera
          * @name isVisible
          * @memberOf me.Camera2d
          * @function
-         * @param {me.Rect} rect
+         * @param {me.Renderable} object
+         * @param {Boolean} [floating===object.floating] if visibility check should be done against screen coordinates
          * @return {Boolean}
          */
-        isVisible : function (rect) {
-            return rect.overlaps(this);
+        isVisible : function (obj, floating) {
+            if (floating === true || obj.floating === true) {
+                // check against screen coordinates
+                return me.video.renderer.overlaps(obj.getBounds());
+            } else {
+                // check if within the current camera
+                return obj.getBounds().overlaps(this);
+            }
         },
 
         /**
@@ -11810,7 +12048,7 @@ me.Error = me.Object.extend.bind(Error)({
          * render the camera effects
          * @ignore
          */
-        draw : function (renderer) {
+        drawFX : function (renderer) {
             // fading effect
             if (this._fadeIn.tween) {
                 renderer.clearColor(this._fadeIn.color);
@@ -11832,6 +12070,44 @@ me.Error = me.Object.extend.bind(Error)({
                     this._fadeOut.color = null;
                 }
             }
+        },
+
+        /**
+         * draw all object visibile in this viewport
+         * @ignore
+         */
+        draw : function (renderer, container) {
+            var translateX = this.pos.x + this.offset.x;
+            var translateY = this.pos.y + this.offset.y;
+
+            // translate the world coordinates by default to screen coordinates
+            container.currentTransform.translate(-translateX, -translateY);
+
+            // clip to camera bounds
+            renderer.clipRect(
+                0,
+                0,
+                this.width,
+                this.height
+            );
+
+            this.preDraw(renderer);
+
+            container.preDraw(renderer);
+
+            // draw all objects,
+            // specifying the viewport as the rectangle area to redraw
+            container.draw(renderer, this);
+
+            // draw the viewport/camera effects
+            this.drawFX(renderer);
+
+            container.postDraw(renderer);
+
+            this.postDraw(renderer);
+
+            // translate the world coordinates by default to screen coordinates
+            container.currentTransform.translate(translateX, translateY);
         }
     });
 })();
@@ -11860,8 +12136,8 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {String} [settings.name] object entity name
      * @param {String} [settings.id] object unique IDs
      * @param {Image|String} [settings.image] resource name of a spritesheet to use for the entity renderable component
-     * @param {Number} [settings.framewidth] width of a single frame in the given spritesheet
-     * @param {Number} [settings.frameheight] height of a single frame in the given spritesheet
+     * @param {Number} [settings.framewidth=settings.width] width of a single frame in the given spritesheet
+     * @param {Number} [settings.frameheight=settings.width] height of a single frame in the given spritesheet
      * @param {String} [settings.type] object type
      * @param {Number} [settings.collisionMask] Mask collision detection for this object
      * @param {me.Rect[]|me.Polygon[]|me.Line[]|me.Ellipse[]} [settings.shapes] the initial list of collision shapes (usually populated through Tiled)
@@ -11884,11 +12160,12 @@ me.Error = me.Object.extend.bind(Error)({
             }
 
             // call the super constructor
-            me.Renderable.prototype.init.apply(this, [x, y,
-                        settings.width,
-                        settings.height]);
+            me.Renderable.prototype.init.apply(this, [x, y, settings.width, settings.height]);
 
             if (settings.image) {
+                // set the frame size to the given entity size, if not defined in settings
+                settings.framewidth = settings.framewidth || settings.width;
+                settings.frameheight = settings.frameheight || settings.height;
                 this.renderable = new me.Sprite(0, 0, settings);
             }
 
@@ -12240,34 +12517,84 @@ me.Error = me.Object.extend.bind(Error)({
  * Copyright (C) 2011 - 2018 Olivier Biot
  * http://www.melonjs.org
  *
- * Screens objects & State machine
+ * Stages & State machine
  *
  */
 
 (function () {
+
+    // a default camera instance to use across all stages
+    var default_camera;
+
+    // default stage settings
+    var default_settings = {
+        cameras : []
+    };
+
     /**
-     * A class skeleton for "Screen" Object <br>
-     * every "screen" object (title screen, credits, ingame, etc...) to be managed <br>
+     * A default "Stage" object <br>
+     * every "stage" object (title screen, credits, ingame, etc...) to be managed <br>
      * through the state manager must inherit from this base class.
      * @class
      * @extends me.Object
      * @memberOf me
      * @constructor
+     * @param {Object} [options] The stage` parameters
+     * @param {Boolean} [options.cameras=[new me.Camera2d()]] a list of cameras (experimental)
      * @see me.state
      */
-    me.ScreenObject = me.Object.extend(
-    /** @scope me.ScreenObject.prototype */
+    me.Stage = me.Object.extend(
+    /** @scope me.Stage.prototype */
     {
         /** @ignore */
-        init: function () {},
+        init: function (settings) {
+            /**
+             * The list of active cameras in this stage.
+             * Cameras will be renderered based on this order defined in this list.
+             * Only the "default" camera will be resized when the window or canvas is resized.
+             * @public
+             * @type {Map}
+             * @name cameras
+             * @memberOf me.Stage
+             */
+            this.cameras = new Map();
+
+            /**
+             * The given constructor options
+             * @public
+             * @name settings
+             * @memberOf me.Stage
+             * @enum {Object}
+             */
+            this.settings = Object.assign(default_settings, settings || {});
+        },
 
         /**
          * Object reset function
          * @ignore
          */
         reset : function () {
+            var self = this;
+
+            // add all defined cameras
+            this.settings.cameras.forEach(function(camera) {
+                self.cameras.set(camera.name, camera);
+            });
+
+            // empty or no default camera
+            if (this.cameras.has("default") === false) {
+                if (typeof default_camera === "undefined") {
+                    var width = me.video.renderer.getWidth();
+                    var height = me.video.renderer.getHeight();
+                    // new default camera instance
+                    default_camera = new me.Camera2d(0, 0, width, height);
+                }
+                this.cameras.set("default", default_camera);
+            }
+
             // reset the game manager
             me.game.reset();
+
             // call the onReset Function
             this.onResetEvent.apply(this, arguments);
         },
@@ -12277,17 +12604,18 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          */
         destroy : function () {
+            // clear all cameras
+            this.cameras.clear();
             // notify the object
             this.onDestroyEvent.apply(this, arguments);
         },
 
         /**
          * onResetEvent function<br>
-         * called by the state manager when reseting the object<br>
-         * this is typically where you will load a level, etc...
-         * to be extended
+         * called by the state manager when reseting the object
+         * this is typically where you will load a level, add renderables, etc...
          * @name onResetEvent
-         * @memberOf me.ScreenObject
+         * @memberOf me.Stage
          * @function
          * @param {} [arguments...] optional arguments passed when switching state
          * @see me.state#change
@@ -12298,15 +12626,28 @@ me.Error = me.Object.extend.bind(Error)({
 
         /**
          * onDestroyEvent function<br>
-         * called by the state manager before switching to another state<br>
+         * called by the state manager before switching to another state
          * @name onDestroyEvent
-         * @memberOf me.ScreenObject
+         * @memberOf me.Stage
          * @function
          */
         onDestroyEvent : function () {
             // to be extended
         }
     });
+
+})();
+
+/*
+ * MelonJS Game Engine
+ * Copyright (C) 2011 - 2018 Olivier Biot
+ * http://www.melonjs.org
+ *
+ * Screens objects & State machine
+ *
+ */
+
+(function () {
 
     /**
      * a State Manager (state machine)<p>
@@ -12331,8 +12672,8 @@ me.Error = me.Object.extend.bind(Error)({
         // whether the game state is "paused"
         var _isPaused = false;
 
-        // list of screenObject
-        var _screenObject = {};
+        // list of stages
+        var _stages = {};
 
         // fading transition parameters between screen
         var _fade = {
@@ -12393,10 +12734,11 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          */
         function _renderFrame(time) {
+            var stage = _stages[_state].stage;
             // update all game objects
-            me.game.update(time);
+            me.game.update(time, stage);
             // render all game objects
-            me.game.draw();
+            me.game.draw(stage);
             // schedule the next frame update
             if (_animFrameId !== -1) {
                 _animFrameId = window.requestAnimationFrame(_renderFrame);
@@ -12421,18 +12763,18 @@ me.Error = me.Object.extend.bind(Error)({
             // clear previous interval if any
             _stopRunLoop();
 
-            // call the screen object destroy method
-            if (_screenObject[_state]) {
+            // call the stage destroy method
+            if (_stages[_state]) {
                 // just notify the object
-                _screenObject[_state].screen.destroy();
+                _stages[_state].stage.destroy();
             }
 
-            if (_screenObject[state]) {
+            if (_stages[state]) {
                 // set the global variable
                 _state = state;
 
                 // call the reset function with _extraArgs as arguments
-                _screenObject[_state].screen.reset.apply(_screenObject[_state].screen, _extraArgs);
+                _stages[_state].stage.reset.apply(_stages[_state].stage, _extraArgs);
 
                 // and start the main loop of the
                 // new requested state
@@ -12723,13 +13065,13 @@ me.Error = me.Object.extend.bind(Error)({
         };
 
         /**
-         * associate the specified state with a screen object
+         * associate the specified state with a Stage
          * @name set
          * @memberOf me.state
          * @public
          * @function
          * @param {Number} state State ID (see constants)
-         * @param {me.ScreenObject} so Instantiated ScreenObject to associate
+         * @param {me.Stage} stage Instantiated Stage to associate
          * with state ID
          * @example
          * var MenuButton = me.GUI_Object.extend({
@@ -12740,7 +13082,7 @@ me.Error = me.Object.extend.bind(Error)({
          *     }
          * });
          *
-         * var MenuScreen = me.ScreenObject.extend({
+         * var MenuScreen = me.Stage.extend({
          *     onResetEvent: function() {
          *         // Load background image
          *         me.game.world.addChild(
@@ -12768,13 +13110,13 @@ me.Error = me.Object.extend.bind(Error)({
          *
          * me.state.set(me.state.MENU, new MenuScreen());
          */
-        api.set = function (state, so) {
-            if (!(so instanceof me.ScreenObject)) {
-                throw new me.Error(so + " is not an instance of me.ScreenObject");
+        api.set = function (state, stage) {
+            if (!(stage instanceof me.Stage)) {
+                throw new me.Error(stage + " is not an instance of me.Stage");
             }
-            _screenObject[state] = {};
-            _screenObject[state].screen = so;
-            _screenObject[state].transition = true;
+            _stages[state] = {};
+            _stages[state].stage = stage;
+            _stages[state].transition = true;
         };
 
         /**
@@ -12784,10 +13126,10 @@ me.Error = me.Object.extend.bind(Error)({
          * @memberOf me.state
          * @public
          * @function
-         * @return {me.ScreenObject}
+         * @return {me.Stage}
          */
         api.current = function () {
-            return _screenObject[_state].screen;
+            return _stages[_state].stage;
         };
 
         /**
@@ -12817,7 +13159,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @param {Boolean} enable
          */
         api.setTransition = function (state, enable) {
-            _screenObject[state].transition = enable;
+            _stages[state].transition = enable;
         };
 
         /**
@@ -12834,9 +13176,9 @@ me.Error = me.Object.extend.bind(Error)({
          * me.state.change(me.state.PLAY, "level_1", 3);
          */
         api.change = function (state) {
-            // Protect against undefined ScreenObject
-            if (typeof(_screenObject[state]) === "undefined") {
-                throw new me.Error("Undefined ScreenObject for state '" + state + "'");
+            // Protect against undefined Stage
+            if (typeof(_stages[state]) === "undefined") {
+                throw new me.Error("Undefined Stage for state '" + state + "'");
             }
 
             if (api.isCurrent(state)) {
@@ -12850,7 +13192,7 @@ me.Error = me.Object.extend.bind(Error)({
                 _extraArgs = Array.prototype.slice.call(arguments, 1);
             }
             // if fading effect
-            if (_fade.duration && _screenObject[state].transition) {
+            if (_fade.duration && _stages[state].transition) {
                 /** @ignore */
                 _onSwitchComplete = function () {
                     me.game.viewport.fadeOut(_fade.color, _fade.duration);
@@ -13018,28 +13360,39 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         drawFont : function (context) {
-            var logo1 = new me.Font("century gothic", 32, "white", "middle");
-            var logo2 = new me.Font("century gothic", 32, "#55aa00", "middle");
-            var logo1_width = 0;
+            var logo1 = me.pool.pull("me.Text", 0, 0, {
+                font: "century gothic",
+                size: 32,
+                fillStyle: "white",
+                textAlign: "middle",
+                textBaseline : "top",
+                text: "melon"
+            });
+            var logo2 = me.pool.pull("me.Text", 0, 0, {
+                font: "century gothic",
+                size: 32,
+                fillStyle: "#55aa00",
+                textAlign: "middle",
+                textBaseline : "top",
+                bold: true,
+                text: "JS"
+            });
 
-            // configure the font
-            logo2.bold();
-            logo1.textBaseline = logo2.textBaseline = "top";
-
-            // measure the logo size (using standard 2d context)
-            context.font = logo1.font;
-            context.fillStyle = logo1.fillStyle.toRGBA();
-            context.textAlign = logo1.textAlign;
-            context.textBaseline = logo1.textBaseline;
-            logo1_width = context.measureText("melon").width;
+            // compute both logo respective size
+            var logo1_width = logo1.measureText(context).width;
+            var logo2_width = logo2.measureText(context).width;
 
             // calculate the final rendering position
-            this.pos.x = Math.round((this.width - logo1_width - context.measureText("JS").width) / 2);
-            this.pos.y = this.height / 2 + 16;
+            this.pos.x = Math.round((this.width - logo1_width - logo2_width) / 2);
+            this.pos.y = Math.round(this.height / 2 + 16);
 
             // use the private _drawFont method to directly draw on the canvas context
             logo1._drawFont(context, "melon", 0, 0);
             logo2._drawFont(context, "JS", logo1_width, 0);
+
+            // put them back into the object pool
+            me.pool.push(logo1);
+            me.pool.push(logo2);
         },
 
         /**
@@ -13057,7 +13410,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @ignore
      * @constructor
      */
-    me.DefaultLoadingScreen = me.ScreenObject.extend({
+    me.DefaultLoadingScreen = me.Stage.extend({
         /**
          * call when the loader is resetted
          * @ignore
@@ -13194,6 +13547,29 @@ me.Error = me.Object.extend.bind(Error)({
         }
 
         /**
+         * load a font face
+         * @example
+         * preloadFontFace(
+         *     name: "'kenpixel'", type: "fontface",  src: "url('data/font/kenvector_future.woff2')"
+         * ]);
+         * @ignore
+         */
+        function preloadFontFace(data, onload, onerror) {
+            var font = new FontFace(data.name, data.src);
+            // loading promise
+            font.load().then(function() {
+                // apply the font after the font has finished downloading
+                document.fonts.add(font);
+                document.body.style.fontFamily = data.name;
+                // onloaded callback
+                onload();
+            }, function (e) {
+                // rejected
+                onerror(data.name);
+            });
+        }
+
+        /**
          * preload TMX files
          * @ignore
          */
@@ -13286,7 +13662,7 @@ me.Error = me.Object.extend.bind(Error)({
                         onload();
                     }
                     else {
-                        onerror();
+                        onerror(tmxData.name);
                     }
                 }
             };
@@ -13321,7 +13697,7 @@ me.Error = me.Object.extend.bind(Error)({
                         onload();
                     }
                     else {
-                        onerror();
+                        onerror(data.name);
                     }
                 }
             };
@@ -13378,7 +13754,7 @@ me.Error = me.Object.extend.bind(Error)({
 
             script.onerror = function() {
                 // callback
-                onerror();
+                onerror(data.name);
             };
 
             document.getElementsByTagName("body")[0].appendChild(script);
@@ -13536,6 +13912,8 @@ me.Error = me.Object.extend.bind(Error)({
                 baseURL["js"] = url;
                 baseURL["tmx"] = url;
                 baseURL["tsx"] = url;
+                // XXX ?
+                //baseURL["fontface"] = url;
             }
         };
 
@@ -13548,7 +13926,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @function
          * @param {Object[]} resources
          * @param {String} resources.name internal name of the resource
-         * @param {String} resources.type  "audio", binary", "image", "json", ,"js", "tmx", "tsx"
+         * @param {String} resources.type  "audio", binary", "image", "json","js", "tmx", "tsx", "fontface"
          * @param {String} resources.src  path and/or file name of the resource (for audio assets only the path is required)
          * @param {Boolean} [resources.stream] Set to true to force HTML5 Audio, which allows not to wait for large file to be downloaded before playing.
          * @param {function} [onload=me.loader.onload] function to be called when all resources are loaded
@@ -13574,7 +13952,9 @@ me.Error = me.Object.extend.bind(Error)({
          *   // JSON file (used for texturePacker)
          *   {name: "texture", type: "json", src: "data/gfx/texture.json"},
          *   // JavaScript file
-         *   {name: "plugin", type: "js", src: "data/js/plugin.js"}
+         *   {name: "plugin", type: "js", src: "data/js/plugin.js"},
+         *   // Font Face
+         *   { name: "'kenpixel'", type: "fontface",  src: "url('data/font/kenvector_future.woff2')" }
          * ];
          * ...
          * // set all resources to be loaded
@@ -13663,6 +14043,10 @@ me.Error = me.Object.extend.bind(Error)({
                     me.audio.load(res, !!res.stream, onload, onerror);
                     return 1;
 
+                case "fontface":
+                    preloadFontFace.call(this, res, onload, onerror);
+                    return 1;
+
                 default:
                     throw new api.Error("load : unknown or invalid resource type : " + res.type);
             }
@@ -13709,6 +14093,10 @@ me.Error = me.Object.extend.bind(Error)({
                     return true;
 
                 case "js":
+                    // ??
+                    return true;
+
+                case "fontface":
                     // ??
                     return true;
 
@@ -13894,24 +14282,47 @@ me.Error = me.Object.extend.bind(Error)({
     var toPX = [12, 24, 0.75, 1];
 
     /**
+     * apply the current font style to the given context
+     * @ignore
+     */
+    var setContextStyle = function(context, font, stroke) {
+        context.font = font.font;
+        context.fillStyle = font.fillStyle.toRGBA();
+        if (stroke === true) {
+            context.strokeStyle = font.strokeStyle.toRGBA();
+            context.lineWidth = font.lineWidth;
+        }
+        context.textAlign = font.textAlign;
+        context.textBaseline = font.textBaseline;
+    };
+
+    /**
      * a generic system font object.
      * @class
      * @extends me.Renderable
      * @memberOf me
      * @constructor
-     * @param {String} font a CSS font name
-     * @param {Number|String} size size, or size + suffix (px, em, pt)
-     * @param {me.Color|String} fillStyle a CSS color value
-     * @param {String} [textAlign="left"] horizontal alignment
+     * @param {Number} x position of the text object
+     * @param {Number} y position of the text object
+     * @param {Object} settings the text configuration
+     * @param {String} settings.font a CSS family font name
+     * @param {Number|String} settings.size size, or size + suffix (px, em, pt)
+     * @param {me.Color|String} [settings.fillStyle="#000000"] a CSS color value
+     * @param {me.Color|String} [settings.strokeStyle="#000000"] a CSS color value
+     * @param {Number} [settings.lineWidth=1] line width, in pixels, when drawing stroke
+     * @param {String} [settings.textAlign="left"] horizontal text alignment
+     * @param {String} [settings.textBaseline="top"] the text baseline
+     * @param {Number} [settings.lineHeight=1.0] line spacing height
+     * @param {me.Vector2d} [settings.anchorPoint={x:0.0, y:0.0}] anchor point to draw the text at
+     * @param {(String|String[])} [settings.text] a string, or an array of strings
      */
-    me.Font = me.Renderable.extend(
+    me.Text = me.Renderable.extend(
     /** @scope me.Font.prototype */ {
 
         /** @ignore */
-        init : function (font, size, fillStyle, textAlign) {
-            // private font properties
-            /** @ignore */
-            this.fontSize = new me.Vector2d();
+        init : function (x, y, settings) {
+            // call the parent constructor
+            me.Renderable.prototype.init.apply(this, [x, y, settings.width || 0, settings.height || 0]);
 
             /**
              * defines the color used to draw the font.<br>
@@ -13920,7 +14331,16 @@ me.Error = me.Object.extend.bind(Error)({
              * @default black
              * @name me.Font#fillStyle
              */
-            this.fillStyle = new me.Color().copy(fillStyle);
+            if (typeof settings.fillStyle !== "undefined") {
+                if (settings.fillStyle instanceof me.Color) {
+                    this.fillStyle = settings.fillStyle;
+                } else {
+                    // string (#RGB, #ARGB, #RRGGBB, #AARRGGBB)
+                    this.fillStyle = me.pool.pull("me.Color").parseCSS(settings.fillStyle);
+                }
+            } else {
+                this.fillStyle = me.pool.pull("me.Color", 0, 0, 0);
+            }
 
             /**
              * defines the color used to draw the font stroke.<br>
@@ -13929,7 +14349,16 @@ me.Error = me.Object.extend.bind(Error)({
              * @default black
              * @name me.Font#strokeStyle
              */
-            this.strokeStyle = new me.Color(0, 0, 0);
+             if (typeof settings.strokeStyle !== "undefined") {
+                 if (settings.strokeStyle instanceof me.Color) {
+                     this.strokeStyle = settings.strokeStyle;
+                 } else {
+                     // string (#RGB, #ARGB, #RRGGBB, #AARRGGBB)
+                     this.strokeStyle = me.pool.pull("me.Color").parseCSS(settings.strokeStyle);
+                 }
+             } else {
+                 this.strokeStyle = me.pool.pull("me.Color", 0, 0, 0);
+             }
 
             /**
              * sets the current line width, in pixels, when drawing stroke
@@ -13938,7 +14367,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @default 1
              * @name me.Font#lineWidth
              */
-            this.lineWidth = 1;
+            this.lineWidth = settings.lineWidth || 1;
 
             /**
              * Set the default text alignment (or justification),<br>
@@ -13948,7 +14377,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @default "left"
              * @name me.Font#textAlign
              */
-            this.textAlign = textAlign || "left";
+            this.textAlign = settings.textAlign || "left";
 
             /**
              * Set the text baseline (e.g. the Y-coordinate for the draw operation), <br>
@@ -13958,7 +14387,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @default "top"
              * @name me.Font#textBaseline
              */
-            this.textBaseline = "top";
+            this.textBaseline = settings.textBaseline || "top";
 
             /**
              * Set the line spacing height (when displaying multi-line strings). <br>
@@ -13968,53 +14397,80 @@ me.Error = me.Object.extend.bind(Error)({
              * @default 1.0
              * @name me.Font#lineHeight
              */
-            this.lineHeight = 1.0;
+            this.lineHeight = settings.lineHeight || 1.0;
 
-            // super constructor
-            me.Renderable.prototype.init.apply(this, [0, 0, 0, 0]);
+            // private font properties
+            this._fontSize = 0;
+
+            // the text displayed by this bitmapFont object
+            this._text = "";
+
+            // anchor point
+            if (typeof settings.anchorPoint !== "undefined") {
+                this.anchorPoint.setV(settings.anchorPoint);
+            } else {
+                this.anchorPoint.set(0, 0);
+            }
+
+            // if floating was specified through settings
+            if (typeof settings.floating !== "undefined") {
+                this.floating = !!settings.floating;
+            }
 
             // font name and type
-            this.setFont(font, size, fillStyle, textAlign);
+            this.setFont(settings.font, settings.size);
 
-            if (!this.gid) {
-                this.gid = me.utils.createGUID();
+            // aditional
+            if (settings.bold === true) {
+                this.bold();
             }
+            if (settings.italic  === true) {
+                this.italic();
+            }
+
+            // set the text
+            this.setText(settings.text);
         },
 
         /**
          * make the font bold
          * @name bold
-         * @memberOf me.Font
+         * @memberOf me.Text
          * @function
+         * @return this object for chaining
          */
         bold : function () {
             this.font = "bold " + this.font;
+            this.isDirty = true;
+            return this;
         },
 
         /**
          * make the font italic
          * @name italic
-         * @memberOf me.Font
+         * @memberOf me.Text
          * @function
+         * @return this object for chaining
          */
         italic : function () {
             this.font = "italic " + this.font;
+            this.isDirty = true;
+            return this;
         },
 
         /**
-         * Change the font settings
+         * set the font family and size
          * @name setFont
-         * @memberOf me.Font
+         * @memberOf me.Text
          * @function
          * @param {String} font a CSS font name
          * @param {Number|String} size size, or size + suffix (px, em, pt)
-         * @param {me.Color|String} [fillStyle] a CSS color value
-         * @param {String} [textAlign="left"] horizontal alignment
+         * @return this object for chaining
          * @example
-         * font.setFont("Arial", 20, "white");
-         * font.setFont("Arial", "1.5em", "white");
+         * font.setFont("Arial", 20);
+         * font.setFont("Arial", "1.5em");
          */
-        setFont : function (font, size, fillStyle, textAlign) {
+        setFont : function (font, size) {
             // font name and type
             var font_names = font.split(",").map(function (value) {
                 value = value.trim();
@@ -14023,89 +14479,173 @@ me.Error = me.Object.extend.bind(Error)({
                 ) ? "\"" + value + "\"" : value;
             });
 
+            // font size
             if (typeof size === "number") {
-                this.fontSize.y = size;
+                this._fontSize = size;
                 size += "px";
             } else /* string */ {
                 // extract the units and convert if necessary
                 var CSSval =  size.match(/([-+]?[\d.]*)(.*)/);
-                this.fontSize.y = parseFloat(CSSval[1]);
+                this._fontSize = parseFloat(CSSval[1]);
                 if (CSSval[2]) {
-                    this.fontSize.y *= toPX[runits.indexOf(CSSval[2])];
+                    this._fontSize *= toPX[runits.indexOf(CSSval[2])];
                 } else {
                     // no unit define, assume px
                     size += "px";
                 }
             }
-            this.height = this.fontSize.y;
-
+            this.height = this._fontSize;
             this.font = size + " " + font_names.join(",");
-            if (typeof(fillStyle) !== "undefined") {
-                this.fillStyle.copy(fillStyle);
+
+            this.isDirty = true;
+
+            return this;
+        },
+
+        /**
+         * change the text to be displayed
+         * @name setText
+         * @memberOf me.Text
+         * @function
+         * @param {(Number|String|String[])}} value a string, or an array of strings
+         * @return this object for chaining
+         */
+        setText : function (value) {
+            value = "" + value;
+            if (this._text !== value) {
+                if (Array.isArray(value)) {
+                    this._text = value.join("\n");
+                } else {
+                    this._text = value;
+                }
+                this.isDirty = true;
             }
-            if (textAlign) {
-                this.textAlign = textAlign;
-            }
+            return this;
         },
 
         /**
          * measure the given text size in pixels
          * @name measureText
-         * @memberOf me.Font
+         * @memberOf me.Text
          * @function
-         * @param {me.CanvasRenderer|me.WebGLRenderer} renderer Reference to the destination renderer instance
-         * @param {String} text
-         * @return {Object} returns an object, with two attributes: width (the width of the text) and height (the height of the text).
+         * @param {me.CanvasRenderer|me.WebGLRenderer} [renderer] reference a renderer instance
+         * @param {String} [text] the text to be measured
+         * @param {me.Rect} [ret] a object in which to store the text metrics
+         * @returns {TextMetrics} a TextMetrics object with two properties: `width` and `height`, defining the output dimensions
          */
-        measureText : function (renderer, text) {
-            var context = renderer.getFontContext();
+        measureText : function (renderer, text, ret) {
+            text = text || this._text;
 
-            // draw the text
-            context.font = this.font;
-            context.fillStyle = this.fillStyle.toRGBA();
-            context.textAlign = this.textAlign;
-            context.textBaseline = this.textBaseline;
+            var context;
 
+            if (typeof renderer === "undefined") {
+                context = me.video.renderer.getFontContext()
+            } else if (renderer instanceof me.Renderer) {
+                context = renderer.getFontContext();
+            } else {
+                // else it's a 2d rendering context object
+                context = renderer;
+            }
+
+            var textMetrics = ret || this.getBounds();
+            var lineHeight = this._fontSize * this.lineHeight;
+            var strings = ("" + (text)).split("\n");
+
+            // save the previous context
+            context.save();
+
+            // apply the style font
+            setContextStyle(context, this);
+
+            // compute the bounding box size
             this.height = this.width = 0;
-
-            var strings = ("" + text).split("\n");
             for (var i = 0; i < strings.length; i++) {
                 this.width = Math.max(context.measureText(me.utils.string.trimRight(strings[i])).width, this.width);
-                this.height += this.fontSize.y * this.lineHeight;
+                this.height += lineHeight;
             }
-            return {
-                width : this.width,
-                height : this.height
-            };
+            textMetrics.width = Math.ceil(this.width);
+            textMetrics.height = Math.ceil(this.height);
+
+            // compute the bounding box position
+            textMetrics.pos.x = Math.floor((this.textAlign === "right" ? this.pos.x - this.width : (
+                this.textAlign === "center" ? this.pos.x - (this.width / 2) : this.pos.x
+            )));
+            textMetrics.pos.y = Math.floor((this.textBaseline.search(/^(top|hanging)$/) === 0) ? this.pos.y : (
+                this.textBaseline === "middle" ? this.pos.y - (textMetrics.height / 2) : this.pos.y - textMetrics.height
+            ));
+
+            // restore the context
+            context.restore();
+
+            // returns the Font bounds me.Rect by default
+            return textMetrics;
+        },
+
+        /**
+         * @ignore
+         */
+        update : function (/* dt */) {
+            if (this.isDirty === true) {
+                this.measureText();
+            }
+            return this.isDirty;
         },
 
         /**
          * draw a text at the specified coord
          * @name draw
-         * @memberOf me.Font
+         * @memberOf me.Text
          * @function
          * @param {me.CanvasRenderer|me.WebGLRenderer} renderer Reference to the destination renderer instance
-         * @param {String} text
-         * @param {Number} x
-         * @param {Number} y
+         * @param {String} [text]
+         * @param {Number} [x]
+         * @param {Number} [y]
          */
-        draw : function (renderer, text, x, y) {
-            // save the previous global alpha value
-            var _alpha = renderer.globalAlpha();
+        draw : function (renderer, text, x, y, stroke) {
+            // "hacky patch" for backward compatibilty
+            if (typeof this.ancestor === "undefined") {
+                // update text cache
+                this.setText(text);
 
-            renderer.setGlobalAlpha(_alpha * this.getOpacity());
+                // update position if changed
+                if (this.pos.x !== x || this.pos.y !== y) {
+                    this.pos.x = x;
+                    this.pos.y = y;
+                    this.isDirty = true;
+                }
 
-            // save the previous context
-            renderer.save();
+                // force update bounds
+                this.update(0);
+
+                // save the previous context
+                renderer.save();
+
+                // apply the defined alpha value
+                renderer.setGlobalAlpha(renderer.globalAlpha() * this.getOpacity());
+
+            } else {
+                // added directly to an object container
+                x = this.pos.x;
+                y = this.pos.y;
+            }
+
+            if (renderer.settings.subPixel === false) {
+                // clamp to pixel grid if required
+                x = ~~x;
+                y = ~~y;
+            }
 
             // draw the text
-            renderer.drawFont(this._drawFont(renderer.getFontContext(), text, ~~x, ~~y, false));
+            renderer.drawFont(this._drawFont(renderer.getFontContext(), this._text, x, y, stroke || false));
 
-            // restore previous context
-            renderer.restore();
+            // for backward compatibilty
+            if (typeof this.ancestor === "undefined") {
+                // restore previous context
+                renderer.restore();
+            }
 
-            // restore the previous global alpha value
-            renderer.setGlobalAlpha(_alpha);
+            // clear the dirty flag
+            this.isDirty = false;
         },
 
         /**
@@ -14113,7 +14653,7 @@ me.Error = me.Object.extend.bind(Error)({
          * by the `lineWidth` and `fillStroke` properties. <br>
          * Note : using drawStroke is not recommended for performance reasons
          * @name drawStroke
-         * @memberOf me.Font
+         * @memberOf me.Text
          * @function
          * @param {me.CanvasRenderer|me.WebGLRenderer} renderer Reference to the destination renderer instance
          * @param {String} text
@@ -14121,61 +14661,36 @@ me.Error = me.Object.extend.bind(Error)({
          * @param {Number} y
          */
         drawStroke : function (renderer, text, x, y) {
-            // save the previous global alpha value
-            var _alpha = renderer.globalAlpha();
-
-            renderer.setGlobalAlpha(_alpha * this.getOpacity());
-
-            // draw the text
-            renderer.drawFont(this._drawFont(renderer.getFontContext(), text, ~~x, ~~y, true));
-
-            // restore the previous global alpha value
-            renderer.setGlobalAlpha(_alpha);
+            this.draw.call(this, renderer, text, x, y, true);
         },
 
         /**
          * @ignore
          */
         _drawFont : function (context, text, x, y, stroke) {
-            context.font = this.font;
-            context.fillStyle = this.fillStyle.toRGBA();
-            if (stroke) {
-                context.strokeStyle = this.strokeStyle.toRGBA();
-                context.lineWidth = this.lineWidth;
-            }
-            context.textAlign = this.textAlign;
-            context.textBaseline = this.textBaseline;
+            setContextStyle(context, this, stroke);
 
-            var strings = ("" + text).split("\n"), string = "";
-            var dw = 0;
-            var dy = y;
-            var lineHeight = this.fontSize.y * this.lineHeight;
+            var strings = ("" + text).split("\n");
+            var lineHeight = this._fontSize * this.lineHeight;
             for (var i = 0; i < strings.length; i++) {
-                string = me.utils.string.trimRight(strings[i]);
-                // measure the string
-                dw = Math.max(dw, context.measureText(string).width);
+                var string = me.utils.string.trimRight(strings[i]);
                 // draw the string
                 context[stroke ? "strokeText" : "fillText"](string, x, y);
                 // add leading space
                 y += lineHeight;
             }
+            return this.getBounds();
+        },
 
-            // compute bounds
-            // TODO : memoize me !
-            var dx = (this.textAlign === "right" ? x - dw : (
-                this.textAlign === "center" ? x - ~~(dw / 2) : x
-            ));
-            dy = (this.textBaseline.search(/^(top|hanging)$/) === 0) ? dy : (
-                this.textBaseline === "middle" ? dy - ~~(lineHeight / 2) : dy - lineHeight
-            );
-
-            // update the renderable bounds
-            return this.getBounds().setShape(
-                ~~dx,
-                ~~dy,
-                ~~(dw + 0.5),
-                ~~(strings.length * lineHeight + 0.5)
-            );
+        /**
+         * Destroy function
+         * @ignore
+         */
+        destroy : function () {
+            me.pool.push(this.fillStyle);
+            me.pool.push(this.strokeStyle);
+            this.fillStyle = this.strokeStyle = undefined;
+            me.Renderable.prototype.destroy.apply(this);
         }
     });
 })();
@@ -14192,7 +14707,7 @@ me.Error = me.Object.extend.bind(Error)({
 (function () {
 
     /**
-     * Measures a single line of text, does not account for \n
+     * Measures the width of a single line of text, does not account for \n
      * @ignore
      */
     var measureTextWidth = function(font, text) {
@@ -14201,7 +14716,7 @@ me.Error = me.Object.extend.bind(Error)({
         var lastGlyph = null;
         for (var i = 0; i < characters.length; i++) {
             var ch = characters[i].charCodeAt(0);
-            var glyph = font.bitmapFontData.glyphs[ch];
+            var glyph = font.fontData.glyphs[ch];
             var kerning = (lastGlyph && lastGlyph.kerning) ? lastGlyph.getKerning(ch) : 0;
             width += (glyph.xadvance + kerning) * font.fontScale.x;
             lastGlyph = glyph;
@@ -14211,16 +14726,30 @@ me.Error = me.Object.extend.bind(Error)({
     };
 
     /**
+     * Measures the height of a single line of text, does not account for \n
+     * @ignore
+     */
+    var measureTextHeight = function(font) {
+        return font.fontData.capHeight * font.lineHeight * font.fontScale.y;
+    };
+
+    /**
      * a bitmap font object
      * @class
      * @extends me.Renderable
      * @memberOf me
      * @constructor
-     * @param {Object} font the font object data. Should be retrieved from the loader
-     * @param {Image} image the font image itself Should be retrieved from the loader
      * @param {Number} [scale=1.0]
-     * @param {String} [textAlign="left"]
-     * @param {String} [textBaseline="top"]
+     * @param {Object} settings the text configuration
+     * @param {String|Image} settings.font a font name to identify the corresponing source image
+     * @param {String} [settings.fontData=settings.font] the bitmap font data corresponding name, or the bitmap font data itself
+     * @param {Number} [settings.size] size a scaling ratio
+     * @param {Number} [settings.lineWidth=1] line width, in pixels, when drawing stroke
+     * @param {String} [settings.textAlign="left"] horizontal text alignment
+     * @param {String} [settings.textBaseline="top"] the text baseline
+     * @param {Number} [settings.lineHeight=1.0] line spacing height
+     * @param {me.Vector2d} [settings.anchorPoint={x:0.0, y:0.0}] anchor point to draw the text at
+     * @param {(String|String[])} [settings.text] a string, or an array of strings
      * @example
      * // Use me.loader.preload or me.loader.load to load assets
      * me.loader.preload([
@@ -14228,49 +14757,99 @@ me.Error = me.Object.extend.bind(Error)({
      * { name: "arial", type: "image" src: "data/font/arial.png" },
      * ])
      * // Then create an instance of your bitmap font:
-     * var myFont = new me.BitmapFont(me.loader.getBinary("arial"), me.loader.getImage("arial"));
-     * // And draw it inside your Renderable, just like me.Font
+     * var myFont = new me.BitmapText(x, y, {font:"arial", text:"Hello"});
+     * // two possibilities for using "myFont"
+     * // either call the draw function from your Renderable draw function
      * myFont.draw(renderer, "Hello!", 0, 0);
+     * // or just add it to the word container
+     * me.game.world.addChild(myFont);
      */
-    me.BitmapFont = me.Renderable.extend(
-    /** @scope me.BitmapFont.prototype */ {
+    me.BitmapText = me.Renderable.extend(
+    /** @scope me.BitmapText.prototype */ {
         /** @ignore */
-        init : function (data, fontImage, scale, textAlign, textBaseline) {
-            /** @ignore */
-            // scaled font size;
-            this.sSize = me.pool.pull("me.Vector2d", 0, 0);
-
-            this.fontImage = fontImage;
+        init : function (x, y, settings) {
+            // call the parent constructor
+            me.Renderable.prototype.init.apply(this, [x, y, settings.width || 0, settings.height || 0]);
 
             /**
-             * The instance of me.BitmapFontData
-             * @type {me.BitmapFontData}
-             * @name bitmapFontData
-             * @memberOf me.BitmapFont
+             * Set the default text alignment (or justification),<br>
+             * possible values are "left", "right", and "center".
+             * @public
+             * @type String
+             * @default "left"
+             * @name textAlign
+             * @memberOf me.BitmapText
              */
-            this.bitmapFontData = new me.BitmapFontData(data);
+            this.textAlign = settings.textAlign || "left";
+
+            /**
+             * Set the text baseline (e.g. the Y-coordinate for the draw operation), <br>
+             * possible values are "top", "hanging, "middle, "alphabetic, "ideographic, "bottom"<br>
+             * @public
+             * @type String
+             * @default "top"
+             * @name textBaseline
+             * @memberOf me.BitmapText
+             */
+            this.textBaseline = settings.textBaseline || "top";
+
+            /**
+             * Set the line spacing height (when displaying multi-line strings). <br>
+             * Current font height will be multiplied with this value to set the line height.
+             * @public
+             * @type Number
+             * @default 1.0
+             * @name lineHeight
+             * @memberOf me.BitmapText
+             */
+            this.lineHeight = settings.lineHeight || 1;
+
+            /** @ignore */
+            // scaled font size;
             this.fontScale = me.pool.pull("me.Vector2d", 1, 1);
 
-            this.charCount = 0;
-            me.Renderable.prototype.init.apply(this, [0, 0, 0, 0, 0, 0]);
+            // get the corresponding image
+            this.fontImage = (typeof settings.font === "object") ? settings.font : me.loader.getImage(settings.font);
 
-            // set a default alignement
-            this.textAlign = textAlign || "left";
-            this.textBaseline = textBaseline || "top";
-            this.lineHeight = 1;
-            // resize if necessary
-            if (scale) {
-                this.resize(scale);
+            if (typeof settings.fontData !== "string") {
+                // use settings.font to retreive the data from the loader
+                this.fontData = me.pool.pull("me.BitmapTextData", me.loader.getBinary(settings.font));
+            } else {
+                this.fontData = me.pool.pull("me.BitmapTextData",
+                    // if starting/includes "info face" the whole data string was passed as parameter
+                    (settings.fontData.includes("info face")) ? settings.fontData : me.loader.getBinary(settings.fontData)
+                );
+            };
+
+            // if floating was specified through settings
+            if (typeof settings.floating !== "undefined") {
+                this.floating = !!settings.floating;
             }
+
+            // resize if necessary
+            if (typeof settings.size === "number" && settings.size !== 1.0) {
+                this.resize(settings.size);
+            }
+
+            // update anchorPoint if provided
+            if (typeof settings.anchorPoint !== "undefined") {
+                this.anchorPoint.set(settings.anchorPoint.x, settings.anchorPoint.y);
+            } else {
+                this.anchorPoint.set(0, 0);
+            }
+
+            // set the text
+            this.setText(settings.text);
         },
 
         /**
          * change the font settings
          * @name set
-         * @memberOf me.BitmapFont
+         * @memberOf me.BitmapText
          * @function
          * @param {String} textAlign ("left", "center", "right")
          * @param {Number} [scale]
+         * @return this object for chaining
          */
         set : function (textAlign, scale) {
             this.textAlign = textAlign;
@@ -14278,62 +14857,116 @@ me.Error = me.Object.extend.bind(Error)({
             if (scale) {
                 this.resize(scale);
             }
+            this.isDirty = true;
+
+            return this;
+        },
+
+        /**
+         * change the text to be displayed
+         * @name setText
+         * @memberOf me.BitmapText
+         * @function
+         * @param {(Number|String|String[])} value a string, or an array of strings
+         * @return this object for chaining
+         */
+        setText : function (value) {
+            value = "" + value;
+            if (this._text !== value) {
+                if (Array.isArray(value)) {
+                    this._text = value.join("\n");
+                } else {
+                    this._text = value;
+                }
+                this.isDirty = true;
+            }
+            return this;
         },
 
         /**
          * change the font display size
          * @name resize
-         * @memberOf me.BitmapFont
+         * @memberOf me.BitmapText
          * @function
          * @param {Number} scale ratio
+         * @return this object for chaining
          */
         resize : function (scale) {
             this.fontScale.set(scale, scale);
+            // clear the cache text to recalculate bounds
+            this.isDirty = true;
+
+            return this;
         },
 
 
         /**
          * measure the given text size in pixels
          * @name measureText
-         * @memberOf me.BitmapFont
+         * @memberOf me.BitmapText
          * @function
-         * @param {String} text
-         * @returns {Object} an object with two properties: `width` and `height`, defining the output dimensions
+         * @param {String} [text]
+         * @param {me.Rect} [ret] a object in which to store the text metrics
+         * @returns {TextMetrics} a TextMetrics object with two properties: `width` and `height`, defining the output dimensions
          */
-        measureText : function (text) {
-            var strings = ("" + text).split("\n");
-            var width = 0;
-            var height = 0;
-            var stringHeight = this.bitmapFontData.capHeight * this.lineHeight;
-            for (var i = 0; i < strings.length; i++) {
-                width = Math.max(measureTextWidth(this, strings[i]), width);
-                height += stringHeight;
-            }
+        measureText : function (text, ret) {
+            text = text || this._text;
 
-            return {width: width, height: height * this.fontScale.y};
+            var strings = ("" + text).split("\n");
+            var stringHeight = measureTextHeight(this);
+            var textMetrics  = ret || this.getBounds();
+
+            textMetrics.height = textMetrics.width = 0;
+
+            for (var i = 0; i < strings.length; i++) {
+                textMetrics.width = Math.max(measureTextWidth(this, strings[i]), textMetrics.width);
+                textMetrics.height += stringHeight;
+            }
+            return textMetrics;
         },
 
         /**
-         * draw a text at the specified coord
+         * @ignore
+         */
+        update : function (/* dt */) {
+            if (this.isDirty === true) {
+                this.measureText();
+            }
+            return this.isDirty;
+        },
+
+        /**
+         * draw the bitmap font
          * @name draw
-         * @memberOf me.BitmapFont
+         * @memberOf me.BitmapText
          * @function
          * @param {me.CanvasRenderer|me.WebGLRenderer} renderer Reference to the destination renderer instance
-         * @param {String} text
-         * @param {Number} x
-         * @param {Number} y
+         * @param {String} [text]
+         * @param {Number} [x]
+         * @param {Number} [y]
          */
         draw : function (renderer, text, x, y) {
-            var strings = ("" + text).split("\n");
+            // allows to provide backward compatibility when
+            // adding Bitmap Font to an object container
+            if (typeof this.ancestor === "undefined") {
+                // update cache
+                this.setText(text);
+                // force update bounds
+                this.update(0);
+                // save the previous global alpha value
+                var _alpha = renderer.globalAlpha();
+                renderer.setGlobalAlpha(_alpha * this.getOpacity());
+            } else {
+                // added directly to an object container
+                x = this.pos.x;
+                y = this.pos.y;
+            }
+
+            var strings = ("" + this._text).split("\n");
             var lX = x;
-            var stringHeight = this.bitmapFontData.capHeight * this.lineHeight * this.fontScale.y;
+            var stringHeight = measureTextHeight(this);
+            var maxWidth = 0;
 
-            // save the previous global alpha value
-            var _alpha = renderer.globalAlpha();
-            renderer.setGlobalAlpha(_alpha * this.getOpacity());
-
-            // update initial position
-            this.pos.set(x, y, this.pos.z); // TODO : z ?
             for (var i = 0; i < strings.length; i++) {
                 x = lX;
                 var string = me.utils.string.trimRight(strings[i]);
@@ -14368,26 +15001,36 @@ me.Error = me.Object.extend.bind(Error)({
                         break;
                 }
 
-                // x *= this.fontScale.x;
-                // y *= this.fontScale.y;
+                // update initial position if required
+                if (this.isDirty === true && typeof this.ancestor === "undefined") {
+                    if (i === 0) {
+                        this.pos.y = y;
+                    }
+                    if (maxWidth < stringWidth) {
+                        maxWidth = stringWidth;
+                        this.pos.x = x;
+                    }
+                }
 
                 // draw the string
                 var lastGlyph = null;
                 for (var c = 0, len = string.length; c < len; c++) {
                     // calculate the char index
                     var ch = string.charCodeAt(c);
-                    var glyph = this.bitmapFontData.glyphs[ch];
+                    var glyph = this.fontData.glyphs[ch];
+                    var glyphWidth = glyph.width;
+                    var glyphHeight = glyph.height;
                     var kerning = (lastGlyph && lastGlyph.kerning) ? lastGlyph.getKerning(ch) : 0;
 
                     // draw it
-                    if (glyph.width !== 0 && glyph.height !== 0) {
+                    if (glyphWidth !== 0 && glyphHeight !== 0) {
                         // some browser throw an exception when drawing a 0 width or height image
                         renderer.drawImage(this.fontImage,
-                            glyph.src.x, glyph.src.y,
-                            glyph.width, glyph.height,
-                            x + glyph.offset.x,
-                            y + glyph.offset.y * this.fontScale.y,
-                            glyph.width * this.fontScale.x, glyph.height * this.fontScale.y
+                            glyph.x, glyph.y,
+                            glyphWidth, glyphHeight,
+                            x + glyph.xoffset,
+                            y + glyph.yoffset * this.fontScale.y,
+                            glyphWidth * this.fontScale.x, glyphHeight * this.fontScale.y
                         );
                     }
 
@@ -14398,8 +15041,27 @@ me.Error = me.Object.extend.bind(Error)({
                 // increment line
                 y += stringHeight;
             }
-            // restore the previous global alpha value
-            renderer.setGlobalAlpha(_alpha);
+
+            if (typeof this.ancestor === "undefined") {
+                // restore the previous global alpha value
+                renderer.setGlobalAlpha(_alpha);
+            }
+
+            // clear the dirty flag
+            this.isDirty = false;
+        },
+
+
+        /**
+         * Destroy function
+         * @ignore
+         */
+        destroy : function () {
+            me.pool.push(this.fontScale);
+            this.fontScale = undefined;
+            me.pool.push(this.fontData);
+            this.fontData = undefined;
+            me.Renderable.prototype.destroy.apply(this);
         }
     });
 })();
@@ -14411,14 +15073,73 @@ me.Error = me.Object.extend.bind(Error)({
  *
  */
 (function() {
+
+    // bitmap constants
+    var LOG2_PAGE_SIZE = 9;
+    var PAGE_SIZE = 1 << LOG2_PAGE_SIZE;
+    var xChars = ["x", "e", "a", "o", "n", "s", "r", "c", "u", "m", "v", "w", "z"];
+    var capChars = ["M", "N", "B", "D", "C", "E", "F", "K", "A", "G", "H", "I", "J", "L", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
+
+    /**
+     * a glyph representing a single character in a font
+     */
+    var Glyph = me.Object.extend({
+        /**
+         * @ignore
+         */
+        init: function () {
+            this.id = 0;
+            this.x = 0;
+            this.y = 0;
+            this.width = 0;
+            this.height = 0;
+            this.u = 0;
+            this.v = 0;
+            this.u2 = 0;
+            this.v2 = 0;
+            this.xoffset = 0;
+            this.yoffset = 0;
+            this.xadvance = 0;
+            this.fixedWidth = false;
+        },
+
+        /**
+         * @ignore
+         */
+        getKerning: function (ch) {
+            if (this.kerning) {
+                var page = this.kerning[ch >>> LOG2_PAGE_SIZE];
+                if (page) {
+                    return page[ch & PAGE_SIZE - 1] || 0;
+                }
+            }
+            return 0;
+        },
+
+        /**
+         * @ignore
+         */
+        setKerning: function (ch, value) {
+            if (!this.kerning) {
+                this.kerning = {};
+            }
+            var page = this.kerning[ch >>> LOG2_PAGE_SIZE];
+            if (typeof page === "undefined") {
+                this.kerning[ch >>> LOG2_PAGE_SIZE] = {};
+                page = this.kerning[ch >>> LOG2_PAGE_SIZE];
+            }
+            page[ch & PAGE_SIZE - 1] = value;
+        }
+    });
+
     /**
      * Class for storing relevant data from the font file.
-     * @class me.BitmapFontData
+     * @class me.BitmapTextData
      * @memberOf me
      * @param data {String} - The bitmap font data pulled from the resource loader using me.loader.getBinary()
      * @constructor
      */
-    me.BitmapFontData = me.Object.extend({
+    me.BitmapTextData = me.Object.extend({
         /**
          * @ignore
          */
@@ -14438,14 +15159,9 @@ me.Error = me.Object.extend.bind(Error)({
              * The map of glyphs, each key is a char code.
              * @name glyphs
              * @type {Object}
-             * @memberOf me.BitmapFontData
+             * @memberOf me.BitmapTextData
              */
             this.glyphs = {};
-
-
-            this.xChars = ["x", "e", "a", "o", "n", "s", "r", "c", "u", "m", "v", "w", "z"];
-            this.capChars = ["M", "N", "B", "D", "C", "E", "F", "K", "A", "G", "H", "I", "J", "L", "O", "P", "Q", "R", "S",
-                "T", "U", "V", "W", "X", "Y", "Z"];
 
             // parse the data
             this.parse(data);
@@ -14455,14 +15171,14 @@ me.Error = me.Object.extend.bind(Error)({
          * Creates a glyph to use for the space character
          * @private
          * @name _createSpaceGlyph
-         * @memberOf me.BitmapFontData
+         * @memberOf me.BitmapTextData
          * @function
          */
         _createSpaceGlyph: function () {
             var spaceCharCode = " ".charCodeAt(0);
             var glyph = this.glyphs[spaceCharCode];
             if (!glyph) {
-                glyph = me.pool.pull("me.Glyph");
+                glyph = new Glyph();
                 glyph.id = spaceCharCode;
                 glyph.xadvance = this._getFirstGlyph().xadvance;
                 this.glyphs[spaceCharCode] = glyph;
@@ -14473,7 +15189,7 @@ me.Error = me.Object.extend.bind(Error)({
          * Gets the first glyph in the map that is not a space character
          * @private
          * @name _getFirstGlyph
-         * @memberOf me.BitmapFontData
+         * @memberOf me.BitmapTextData
          * @function
          * @returns {me.Glyph}
          */
@@ -14492,7 +15208,7 @@ me.Error = me.Object.extend.bind(Error)({
          * and returns the value of d
          * @private
          * @name _getValueFromPair
-         * @memberOf me.BitmapFontData
+         * @memberOf me.BitmapTextData
          * @function
          * @returns {String}
          */
@@ -14508,7 +15224,7 @@ me.Error = me.Object.extend.bind(Error)({
         /**
          * This parses the font data text and builds a map of glyphs containing the data for each character
          * @name parse
-         * @memberOf me.BitmapFontData
+         * @memberOf me.BitmapTextData
          * @function
          * @param {String} fontData
          */
@@ -14551,16 +15267,16 @@ me.Error = me.Object.extend.bind(Error)({
                         glyph.setKerning(second, amount);
                     }
                 } else {
-                    glyph = me.pool.pull("me.Glyph");
+                    glyph = new Glyph();
 
                     var ch = parseFloat(characterValues[2]);
                     glyph.id = ch;
-                    glyph.src.set(parseFloat(characterValues[4]), parseFloat(characterValues[6]));
+                    glyph.x = parseFloat(characterValues[4])
+                    glyph.y = parseFloat(characterValues[6]);
                     glyph.width = parseFloat(characterValues[8]);
                     glyph.height = parseFloat(characterValues[10]);
-                    var y = parseFloat(characterValues[14]);
-                    glyph.offset.set(parseFloat(characterValues[12]), y);
-
+                    glyph.xoffset = parseFloat(characterValues[12]);
+                    glyph.yoffset = parseFloat(characterValues[14]);
                     glyph.xadvance = parseFloat(characterValues[16]);
 
                     if (glyph.width > 0 && glyph.height > 0) {
@@ -14576,8 +15292,8 @@ me.Error = me.Object.extend.bind(Error)({
             this._createSpaceGlyph();
 
             var xGlyph = null;
-            for (i = 0; i < this.xChars.length; i++) {
-                var xChar = this.xChars[i];
+            for (i = 0; i < xChars.length; i++) {
+                var xChar = xChars[i];
                 xGlyph = this.glyphs[xChar.charCodeAt(0)];
                 if (xGlyph) {
                     break;
@@ -14588,8 +15304,8 @@ me.Error = me.Object.extend.bind(Error)({
             }
 
             var capGlyph = null;
-            for (i = 0; i < this.capChars.length; i++) {
-                var capChar = this.capChars[i];
+            for (i = 0; i < capChars.length; i++) {
+                var capChar = capChars[i];
                 capGlyph = this.glyphs[capChar.charCodeAt(0)];
                 if (capGlyph) {
                     break;
@@ -14609,80 +15325,6 @@ me.Error = me.Object.extend.bind(Error)({
                 this.capHeight = capGlyph.height;
             }
             this.capHeight -= padY;
-        }
-    });
-})();
-
-/*
- * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
- * http://www.melonjs.org
- *
- * Glyph
- */
-(function() {
-    var LOG2_PAGE_SIZE = 9;
-    var PAGE_SIZE = 1 << LOG2_PAGE_SIZE;
-    /**
-     * a glyph representing a single character in a font
-     * @class
-     * @extends me.Object
-     * @memberOf me
-     * @constructor
-     */
-    me.Glyph = me.Object.extend({
-        /**
-         * @ignore
-         */
-        init: function () {
-            this.src = me.pool.pull("me.Vector2d", 0, 0);
-            this.offset = me.pool.pull("me.Vector2d", 0, 0);
-            this.onResetEvent();
-        },
-
-        /**
-         * @ignore
-         */
-        onResetEvent: function () {
-            this.id = 0;
-            this.src.set(0, 0);
-            this.width = 0;
-            this.height = 0;
-            this.u = 0;
-            this.v = 0;
-            this.u2 = 0;
-            this.v2 = 0;
-            this.offset.set(0, 0);
-            this.xadvance = 0;
-            this.fixedWidth = false;
-        },
-
-        /**
-         * @ignore
-         */
-        getKerning: function (ch) {
-            if (this.kerning) {
-                var page = this.kerning[ch >>> LOG2_PAGE_SIZE];
-                if (page) {
-                    return page[ch & PAGE_SIZE - 1] || 0;
-                }
-            }
-            return 0;
-        },
-
-        /**
-         * @ignore
-         */
-        setKerning: function (ch, value) {
-            if (!this.kerning) {
-                this.kerning = {};
-            }
-            var page = this.kerning[ch >>> LOG2_PAGE_SIZE];
-            if (typeof page === "undefined") {
-                this.kerning[ch >>> LOG2_PAGE_SIZE] = {};
-                page = this.kerning[ch >>> LOG2_PAGE_SIZE];
-            }
-            page[ch & PAGE_SIZE - 1] = value;
         }
     });
 })();
@@ -14883,7 +15525,7 @@ me.Error = me.Object.extend.bind(Error)({
                     // arg[0] can take different types in howler 2.0
                     sound.loop(loop, id);
                 }
-                sound.volume(typeof(volume) === "number" ? volume.clamp(0.0, 1.0) : Howler.volume(), id);
+                sound.volume(typeof(volume) === "number" ? me.Math.clamp(volume, 0.0, 1.0) : Howler.volume(), id);
                 if (typeof(onend) === "function") {
                     if (loop === true) {
                         sound.on("end", onend, id);
@@ -15621,6 +16263,17 @@ me.Error = me.Object.extend.bind(Error)({
             // trigger an initial resize();
             me.video.onresize();
 
+            // add an observer to detect when the dom tree is modified
+            if ("MutationObserver" in window) {
+                // Create an observer instance linked to the callback function
+                var observer = new MutationObserver(me.video.onresize.bind(me.video));
+
+                // Start observing the target node for configured mutations
+                observer.observe(settings.wrapper, {
+                    attributes: false, childList: true, subtree: true
+                });
+            }
+
             if (options.consoleHeader !== false) {
                 var renderType = (me.video.renderer instanceof me.CanvasRenderer) ? "CANVAS" : "WebGL";
                 var audioType = me.device.hasWebAudio ? "Web Audio" : "HTML5 Audio";
@@ -15635,7 +16288,7 @@ me.Error = me.Object.extend.bind(Error)({
                     me.device.language
                 );
                 console.log( "resolution: " + "requested " + game_width + "x" + game_height +
-                    ", got " + me.game.viewport.width + "x" + me.game.viewport.height
+                    ", got " + me.video.renderer.getWidth() + "x" + me.video.renderer.getHeight()
                 );
             }
             return true;
@@ -15761,12 +16414,6 @@ me.Error = me.Object.extend.bind(Error)({
                     scaleX = scaleY = _max_width / sWidth;
                     sWidth = ~~(sWidth + 0.5);
                     this.renderer.resize(sWidth, designHeight);
-                    me.game.viewport.resize(sWidth, designHeight);
-                    /*
-                     * XXX: Workaround for not updating container child-bounds
-                     * automatically (it's expensive!)
-                     */
-                    me.game.world.updateChildBounds();
                 }
                 else if (
                     (settings.scaleMethod === "fill-min" && screenRatio < designRatio) ||
@@ -15778,22 +16425,10 @@ me.Error = me.Object.extend.bind(Error)({
                     scaleX = scaleY = _max_height / sHeight;
                     sHeight = ~~(sHeight + 0.5);
                     this.renderer.resize(designWidth, sHeight);
-                    me.game.viewport.resize(designWidth, sHeight);
-                    /*
-                     * XXX: Workaround for not updating container child-bounds
-                     * automatically (it's expensive!)
-                     */
-                    me.game.world.updateChildBounds();
                 }
                 else if (settings.scaleMethod === "flex") {
                     // resize the display canvas to fill the parent container
                     this.renderer.resize(_max_width, _max_height);
-                    me.game.viewport.resize(_max_width, _max_height);
-                    /*
-                     * XXX: Workaround for not updating container child-bounds
-                     * automatically (it's expensive!)
-                     */
-                    me.game.world.updateChildBounds();
                 }
                 else if (settings.scaleMethod === "stretch") {
                     // scale the display canvas to fit with the parent container
@@ -16088,6 +16723,22 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
+         * check if the given rectangle overlaps with the renderer screen coordinates
+         * @name overlaps
+         * @memberOf me.Renderer
+         * @function
+         * @param  {me.Rect} rect
+         * @return {boolean} true if overlaps
+         */
+        overlaps : function (rect) {
+            return (
+                rect.left < this.getWidth() && rect.right > 0 &&
+                rect.top < this.getHeight() && rect.bottom > 0
+            );
+        },
+
+
+        /**
          * resizes the system canvas
          * @name resize
          * @memberOf me.Renderer
@@ -16096,12 +16747,16 @@ me.Error = me.Object.extend.bind(Error)({
          * @param {Number} height new height of the canvas
          */
         resize : function (width, height) {
-            this.backBufferCanvas.width = width;
-            this.backBufferCanvas.height = height;
-            this.currentScissor[0] = 0;
-            this.currentScissor[1] = 0;
-            this.currentScissor[2] = width;
-            this.currentScissor[3] = height;
+            if (width !== this.backBufferCanvas.width || height !== this.backBufferCanvas.height) {
+                this.backBufferCanvas.width = width;
+                this.backBufferCanvas.height = height;
+                this.currentScissor[0] = 0;
+                this.currentScissor[1] = 0;
+                this.currentScissor[2] = width;
+                this.currentScissor[3] = height;
+                // publish the corresponding event
+                me.event.publish(me.event.CANVAS_ONRESIZE, [ width, height ]);
+            }
         },
 
         /**
@@ -16566,7 +17221,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          */
         getFontContext : function () {
-            // in canvas more we can directly use the 2d context
+            // in canvas mode we can directly use the 2d context
             return this.getContext();
         },
 
@@ -17120,6 +17775,7 @@ me.Error = me.Object.extend.bind(Error)({
                         name         : frame.filename, // frame name
                         offset       : new me.Vector2d(s.x, s.y),
                         anchorPoint  : (hasTextureAnchorPoint) ? new me.Vector2d(originX / s.w, originY / s.h) : null,
+                        trimmed      : frame.trimmed,
                         width        : s.w,
                         height       : s.h,
                         angle        : (frame.rotated === true) ? nhPI : 0
@@ -17653,6 +18309,10 @@ me.Error = me.Object.extend.bind(Error)({
             this.compositor.reset();
             this.gl.disable(this.gl.SCISSOR_TEST);
             this.createFillTexture(this.cache);
+            if (typeof this.fontContext2D !== "undefined" ) {
+                this.createFontTexture(this.cache);
+            }
+
         },
 
         /**
@@ -17702,29 +18362,37 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          */
         createFontTexture : function (cache) {
-            var image = me.video.createCanvas(
-                me.Math.nextPowerOfTwo(this.backBufferCanvas.width),
-                me.Math.nextPowerOfTwo(this.backBufferCanvas.height)
-            );
+            if (typeof this.fontTexture === "undefined") {
+                var image = me.video.createCanvas(
+                    me.Math.nextPowerOfTwo(this.backBufferCanvas.width),
+                    me.Math.nextPowerOfTwo(this.backBufferCanvas.height)
+                );
 
-            /**
-             * @ignore
-             */
-            this.fontContext2D = this.getContext2d(image);
+                /**
+                 * @ignore
+                 */
+                this.fontContext2D = this.getContext2d(image);
 
-            /**
-             * @ignore
-             */
-            this.fontTexture = new this.Texture(
-                this.Texture.prototype.createAtlas.apply(
-                    this.Texture.prototype,
-                    [ this.backBufferCanvas.width, this.backBufferCanvas.height, "fontTexture"]
-                ),
-                image,
-                cache
-            );
+                /**
+                 * @ignore
+                 */
+                this.fontTexture = new this.Texture(
+                    this.Texture.prototype.createAtlas.apply(
+                        this.Texture.prototype,
+                        [ this.backBufferCanvas.width, this.backBufferCanvas.height, "fontTexture"]
+                    ),
+                    image,
+                    cache
+                );
+            }
+            else {
+               // fillTexture was already created, just add it back into the cache
+               cache.put(this.fontContext2D.canvas, this.fontTexture);
+           }
+           this.compositor.uploadTexture(this.fontTexture, 0, 0, 0);
 
-            this.compositor.uploadTexture(this.fontTexture);
+
+
         },
 
         /**
@@ -17840,7 +18508,12 @@ me.Error = me.Object.extend.bind(Error)({
             );
 
             // Clear font context2D
-            fontContext.clearRect(0, 0, this.backBufferCanvas.width, this.backBufferCanvas.height);
+            fontContext.clearRect(
+                bounds.pos.x,
+                bounds.pos.y,
+                bounds.width,
+                bounds.height
+            );
         },
 
         /**
@@ -18019,9 +18692,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          */
         getFontContext : function () {
-            if (typeof (this.fontContext2D) === "undefined" ) {
+            if (typeof this.fontContext2D === "undefined" ) {
                 // warn the end user about performance impact
-                console.warn("[WebGL Renderer] WARNING : Using Standard me.Font with WebGL will severly impact performances !");
+                console.warn("[WebGL Renderer] WARNING : Using Standard me.Text with WebGL will severly impact performances !");
                 // create the font texture if not done yet
                 this.createFontTexture(this.cache);
             }
@@ -18361,9 +19034,9 @@ me.Error = me.Object.extend.bind(Error)({
          */
         clipRect : function (x, y, width, height) {
             var canvas = this.backBufferCanvas;
+            var gl = this.gl;
             // if requested box is different from the current canvas size
             if (x !== 0 || y !== 0 || width !== canvas.width || height !== canvas.height) {
-                var gl = this.gl;
                 var currentScissor = this.currentScissor;
                 if (gl.isEnabled(gl.SCISSOR_TEST)) {
                     // if same as the current scissor box do nothing
@@ -19662,6 +20335,26 @@ me.Error = me.Object.extend.bind(Error)({
             this.isPrimary = false;
 
            /**
+            * the horizontal coordinate at which the event occurred, relative to the left edge of the entire document.
+            * @public
+            * @type {Number}
+            * @name pageX
+            * @see https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/pageX
+            * @memberOf me.Pointer
+            */
+            this.pageX = 0;
+
+           /**
+            * the vertical coordinate at which the event occurred, relative to the left edge of the entire document.
+            * @public
+            * @type {Number}
+            * @name pageY
+            * @see https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/pageY
+            * @memberOf me.Pointer
+            */
+            this.pageY = 0;
+
+           /**
             * the horizontal coordinate within the application's client area at which the event occurred
             * @public
             * @type {Number}
@@ -19669,7 +20362,7 @@ me.Error = me.Object.extend.bind(Error)({
             * @see https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/clientX
             * @memberOf me.Pointer
             */
-            this.clientX = undefined;
+            this.clientX = 0;
 
            /**
             * the vertical coordinate within the application's client area at which the event occurred
@@ -19679,7 +20372,7 @@ me.Error = me.Object.extend.bind(Error)({
             * @see https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/clientY
             * @memberOf me.Pointer
             */
-            this.clientY = undefined;
+            this.clientY = 0;
 
           /**
             * Event normalized X coordinate within the game canvas itself<br>
@@ -19689,7 +20382,7 @@ me.Error = me.Object.extend.bind(Error)({
             * @name gameX
             * @memberOf me.Pointer
             */
-            this.gameX = undefined;
+            this.gameX = 0;
 
            /**
             * Event normalized Y coordinate within the game canvas itself<br>
@@ -19699,7 +20392,7 @@ me.Error = me.Object.extend.bind(Error)({
             * @name gameY
             * @memberOf me.Pointer
             */
-            this.gameY = undefined;
+            this.gameY = 0;
 
            /**
             * Event X coordinate relative to the viewport
@@ -19708,7 +20401,7 @@ me.Error = me.Object.extend.bind(Error)({
             * @name gameScreenX
             * @memberOf me.Pointer
             */
-            this.gameScreenX = undefined;
+            this.gameScreenX = 0;
 
            /**
             * Event Y coordinate relative to the viewport
@@ -19717,7 +20410,7 @@ me.Error = me.Object.extend.bind(Error)({
             * @name gameScreenY
             * @memberOf me.Pointer
             */
-            this.gameScreenY = undefined;
+            this.gameScreenY = 0;
 
            /**
             * Event X coordinate relative to the map
@@ -19726,7 +20419,7 @@ me.Error = me.Object.extend.bind(Error)({
             * @name gameWorldX
             * @memberOf me.Pointer
             */
-            this.gameWorldX = undefined;
+            this.gameWorldX = 0;
 
            /**
             * Event Y coordinate relative to the map
@@ -19735,7 +20428,7 @@ me.Error = me.Object.extend.bind(Error)({
             * @name gameWorldY
             * @memberOf me.Pointer
             */
-            this.gameWorldY = undefined;
+            this.gameWorldY = 0;
 
            /**
             * Event X coordinate relative to the holding container
@@ -19744,7 +20437,7 @@ me.Error = me.Object.extend.bind(Error)({
             * @name gameLocalX
             * @memberOf me.Pointer
             */
-            this.gameLocalX = undefined;
+            this.gameLocalX = 0;
 
            /**
             * Event Y coordinate relative to the holding container
@@ -19753,7 +20446,7 @@ me.Error = me.Object.extend.bind(Error)({
             * @name gameLocalY
             * @memberOf me.Pointer
             */
-            this.gameLocalY = undefined;
+            this.gameLocalY = 0;
 
            /**
             * The unique identifier of the contact for a touch, mouse or pen
@@ -19775,22 +20468,26 @@ me.Error = me.Object.extend.bind(Error)({
          * @private
          * @function
          * @param {Event} event the original Event object
+         * @param {Number} pageX the horizontal coordinate at which the event occurred, relative to the left edge of the entire document
+         * @param {Number} pageY the vertical coordinate at which the event occurred, relative to the left edge of the entire document
          * @param {Number} clientX the horizontal coordinate within the application's client area at which the event occurred
          * @param {Number} clientX the vertical coordinate within the application's client area at which the event occurred
          * @param {Number} pointedId the Pointer, Touch or Mouse event Id
          */
-        setEvent : function (event, clientX, clientY, pointerId) {
+        setEvent : function (event, pageX, pageY, clientX, clientY, pointerId) {
             var width = 1;
             var height = 1;
 
             // the original event object
             this.event = event;
 
+            this.pageX = pageX || 0;
+            this.pageY = pageY || 0;
             this.clientX = clientX || 0;
             this.clientY = clientY || 0;
 
             // translate to local coordinates
-            me.input.globalToLocal(clientX, clientY, this.pos);
+            me.input.globalToLocal(this.clientX, this.clientY, this.pos);
 
             // true if not originally a pointer event
             this.isNormalized = !me.device.PointerEvent || (me.device.PointerEvent && !(event instanceof window.PointerEvent));
@@ -19816,7 +20513,9 @@ me.Error = me.Object.extend.bind(Error)({
             this.gameScreenY = this.pos.y;
 
             // get the current screen to world offset
-            me.game.viewport.localToWorld(this.gameScreenX, this.gameScreenY, viewportOffset);
+            if (typeof me.game.viewport !== "undefined") {
+                me.game.viewport.localToWorld(this.gameScreenX, this.gameScreenY, viewportOffset);
+            }
 
             /* Initialize the two coordinate space properties. */
             this.gameWorldX = viewportOffset.x;
@@ -19977,14 +20676,13 @@ me.Error = me.Object.extend.bind(Error)({
                 api.throttlingInterval = ~~(1000 / me.sys.fps);
             }
 
-            if (me.sys.autoFocus && typeof (window.focus) === "function") {
-                window.focus();
+            if (me.sys.autoFocus === true) {
+                me.device.focus();
                 me.video.renderer.getScreenCanvas().addEventListener(
                     activeEventList[2], // MOUSE/POINTER DOWN
                     function () {
-                        window.focus();
-                        return true;
-                    }
+                        me.device.focus();
+                    }, { passive: true }
                 );
             }
 
@@ -20098,9 +20796,16 @@ me.Error = me.Object.extend.bind(Error)({
                 pointer.height
             );
 
+            // trigger a global event for pointer move
+            if (POINTER_MOVE.includes(pointer.type)) {
+                pointer.gameX = pointer.gameLocalX = pointer.gameScreenX;
+                pointer.gameY = pointer.gameLocalY = pointer.gameScreenY;
+                me.event.publish(me.event.POINTERMOVE, [pointer]);
+            }
+
             var candidates = me.collision.quadTree.retrieve(currentPointer, me.Container.prototype._sortReverseZ);
 
-            // add the viewport to the list of candidates
+            // add the main viewport to the list of candidates
             candidates = candidates.concat([ me.game.viewport ]);
 
             for (var c = candidates.length, candidate; c--, (candidate = candidates[c]);) {
@@ -20145,7 +20850,6 @@ me.Error = me.Object.extend.bind(Error)({
                             // if the given target is another shape than me.Rect
                             region.containsPoint(pointer.gameLocalX, pointer.gameLocalY));
                     }
-
 
                     switch (pointer.type) {
                         case POINTER_MOVE[0]:
@@ -20242,6 +20946,8 @@ me.Error = me.Object.extend.bind(Error)({
                 pointer = T_POINTERS.pop();
                 pointer.setEvent(
                     event,
+                    touchEvent.pageX,
+                    touchEvent.pageY,
                     touchEvent.clientX,
                     touchEvent.clientY,
                     touchEvent.identifier
@@ -20253,6 +20959,8 @@ me.Error = me.Object.extend.bind(Error)({
             pointer = T_POINTERS.pop();
             pointer.setEvent(
                 event,
+                event.pageX,
+                event.pageY,
                 event.clientX,
                 event.clientY,
                 event.pointerId
@@ -20326,7 +21034,7 @@ me.Error = me.Object.extend.bind(Error)({
 
         // check if mapped to a key
         if (keycode) {
-            if (POINTER_DOWN.indexOf(e.type) !== -1) {
+            if (POINTER_DOWN.includes(e.type)) {
                 return api._keydown(e, keycode, button + 1);
             }
             else { // 'mouseup' or 'touchend'
@@ -20520,6 +21228,10 @@ me.Error = me.Object.extend.bind(Error)({
             throw new me.Error("invalid event type : " + eventType);
         }
 
+        if (typeof region === "undefined") {
+            throw new me.Error("registerPointerEvent: region for " + region + " event is undefined ");
+        }
+
         var eventTypes = findAllActiveEvents(activeEventList, pointerEventMap[eventType]);
 
         // register the event
@@ -20589,21 +21301,6 @@ me.Error = me.Object.extend.bind(Error)({
         }
     };
 
-    /**
-     * Will translate global (frequently used) pointer events
-     * which should be catched at root level, into minipubsub system events
-     * @name _translatePointerEvents
-     * @memberOf me.input
-     * @ignore
-     * @function
-     */
-    api._translatePointerEvents = function () {
-        // listen to mouse move (and touch move) events on the viewport
-        // and convert them to a system event by default
-        api.registerPointerEvent("pointermove", me.game.viewport, function (e) {
-            me.event.publish(me.event.POINTERMOVE, [e]);
-        });
-    };
 })(me.input);
 
 /*
@@ -22486,6 +23183,9 @@ me.Error = me.Object.extend.bind(Error)({
             switch (nodeName) {
                 case "data":
                     var data = api.parse(item);
+                    // #956 Support for Infinite map
+                    // workaround to prevent the parsing code from crashing
+                    data.text = data.text || data.chunk.text;
                     // When no encoding is given, the tiles are stored as individual XML tile elements.
                     data.encoding = data.encoding || "xml";
                     obj.data = api.decode(data.text, data.encoding, data.compression);
@@ -22813,7 +23513,7 @@ me.Error = me.Object.extend.bind(Error)({
         /**
          * @ignore
          */
-        init :  function (map, tmxObj, z) {
+        init :  function (map, settings, z) {
 
             /**
              * point list in JSON format
@@ -22831,7 +23531,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @name name
              * @memberOf me.TMXObject
              */
-            this.name = tmxObj.name;
+            this.name = settings.name;
 
             /**
              * object x position
@@ -22840,7 +23540,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @name x
              * @memberOf me.TMXObject
              */
-            this.x = +tmxObj.x;
+            this.x = +settings.x;
 
             /**
              * object y position
@@ -22849,7 +23549,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @name y
              * @memberOf me.TMXObject
              */
-            this.y = +tmxObj.y;
+            this.y = +settings.y;
 
             /**
              * object z order
@@ -22867,7 +23567,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @name width
              * @memberOf me.TMXObject
              */
-            this.width = +tmxObj.width || 0;
+            this.width = +settings.width || 0;
 
             /**
              * object height
@@ -22876,7 +23576,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @name height
              * @memberOf me.TMXObject
              */
-            this.height = +tmxObj.height || 0;
+            this.height = +settings.height || 0;
 
             /**
              * object gid value
@@ -22886,7 +23586,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @name gid
              * @memberOf me.TMXObject
              */
-            this.gid = +tmxObj.gid || null;
+            this.gid = +settings.gid || null;
 
             /**
              * object type
@@ -22895,7 +23595,17 @@ me.Error = me.Object.extend.bind(Error)({
              * @name type
              * @memberOf me.TMXObject
              */
-            this.type = tmxObj.type;
+            this.type = settings.type;
+
+            /**
+             * object text
+             * @public
+             * @type Object
+             * @see http://docs.mapeditor.org/en/stable/reference/tmx-map-format/#text
+             * @name type
+             * @memberOf me.TMXObject
+             */
+            this.type = settings.type;
 
             /**
              * The rotation of the object in radians clockwise (defaults to 0)
@@ -22904,7 +23614,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @name rotation
              * @memberOf me.TMXObject
              */
-            this.rotation = me.Math.degToRad(+tmxObj.rotation || 0);
+            this.rotation = me.Math.degToRad(+settings.rotation || 0);
 
             /**
              * object unique identifier per level (Tiled 0.11.x+)
@@ -22913,7 +23623,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @name id
              * @memberOf me.TMXObject
              */
-            this.id = +tmxObj.id || undefined;
+            this.id = +settings.id || undefined;
 
             /**
              * object orientation (orthogonal or isometric)
@@ -22965,14 +23675,40 @@ me.Error = me.Object.extend.bind(Error)({
                 this.setTile(map.tilesets);
             }
             else {
-                if (typeof(tmxObj.ellipse) !== "undefined") {
+                if (typeof(settings.ellipse) !== "undefined") {
                     this.isEllipse = true;
-                } else if (typeof(tmxObj.polygon) !== "undefined") {
-                    this.points = tmxObj.polygon;
+                } else if (typeof(settings.polygon) !== "undefined") {
+                    this.points = settings.polygon;
                     this.isPolygon = true;
-                } else if (typeof(tmxObj.polyline) !== "undefined") {
-                    this.points = tmxObj.polyline;
+                } else if (typeof(settings.polyline) !== "undefined") {
+                    this.points = settings.polyline;
                     this.isPolyLine = true;
+                }
+            }
+
+
+
+            // check for text information
+            if (typeof settings.text !== "undefined") {
+                // a text object
+                this.text = settings.text;
+                // normalize field name and default value the melonjs way
+                this.text.font = settings.text.fontfamily || "sans-serif";
+                this.text.size = settings.text.pixelsize || 16;
+                this.text.fillStyle = settings.text.color || "#000000";
+                this.text.textAlign = settings.text.halign || "left";
+                this.text.textBaseline = settings.text.valign || "top";
+                this.text.width = this.width;
+                this.text.height = this.height;
+                // set the object properties
+                me.TMXUtils.applyTMXProperties(this.text, settings);
+            } else {
+                // set the object properties
+                me.TMXUtils.applyTMXProperties(this, settings);
+                // a standard object
+                if (!this.shapes) {
+                    // else define the object shapes if required
+                    this.shapes = this.parseTMXShapes();
                 }
             }
 
@@ -22981,13 +23717,7 @@ me.Error = me.Object.extend.bind(Error)({
                 map.getRenderer().adjustPosition(this);
             }
 
-            // set the object properties
-            me.TMXUtils.applyTMXProperties(this, tmxObj);
 
-            // define the object shapes if required
-            if (!this.shapes) {
-                this.shapes = this.parseTMXShapes();
-            }
         },
 
         /**
@@ -23788,28 +24518,6 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * return the tile position corresponding for the given X coordinate
-         * @name me.TMXRenderer#pixelToTileX
-         * @public
-         * @function
-         * @param {Number} x X coordinate
-         * @return {Number} tile vertical position
-         */
-        pixelToTileX : function (x) {
-        },
-
-        /**
-         * return the tile position corresponding for the given Y coordinates
-         * @name me.TMXRenderer#pixelToTileY
-         * @public
-         * @function
-         * @param {Number} y Y coordinate
-         * @return {Number} tile horizontal position
-         */
-        pixelToTileY : function (y) {
-        },
-
-        /**
          * draw the given tile at the specified layer
          * @name me.TMXRenderer#drawTile
          * @public
@@ -23866,26 +24574,11 @@ me.Error = me.Object.extend.bind(Error)({
         pixelToTileCoords : function (x, y, v) {
             var ret = v || new me.Vector2d();
             return ret.set(
-                this.pixelToTileX(x),
-                this.pixelToTileY(y)
+                x / this.tilewidth,
+                y / this.tileheight
             );
         },
 
-        /**
-         * return the tile position corresponding for the given X coordinate
-         * @ignore
-         */
-        pixelToTileX : function (x) {
-            return x / this.tilewidth;
-        },
-
-        /**
-         * return the tile position corresponding for the given Y coordinates
-         * @ignore
-         */
-        pixelToTileY : function (y) {
-            return y / this.tileheight;
-        },
 
         /**
          * return the pixel position corresponding of the specified tile
@@ -23933,6 +24626,8 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          */
         drawTileLayer : function (renderer, layer, rect) {
+            var incX = 1, incY = 1;
+
             // get top-left and bottom-right tile position
             var start = this.pixelToTileCoords(
                 Math.max(rect.pos.x - (layer.maxTileSize.width - layer.tilewidth), 0),
@@ -23950,9 +24645,32 @@ me.Error = me.Object.extend.bind(Error)({
             end.x = end.x > this.cols ? this.cols : end.x;
             end.y = end.y > this.rows ? this.rows : end.y;
 
+            switch (layer.renderorder) {
+                case "right-up" :
+                    // swapping start.y and end.y
+                    end.y = start.y + (start.y = end.y) - end.y;
+                    incY = -1;
+                    break;
+                case "left-down" :
+                    // swapping start.x and end.x
+                    end.x = start.x + (start.x = end.x) - end.x;
+                    incX = -1;
+                    break;
+                case "left-up" :
+                    // swapping start.x and end.x
+                    end.x = start.x + (start.x = end.x) - end.x;
+                    // swapping start.y and end.y
+                    end.y = start.y + (start.y = end.y) - end.y;
+                    incX = -1;
+                    incY = -1;
+                    break;
+                default: // right-down
+                    break;
+            }
+
             // main drawing loop
-            for (var y = start.y; y < end.y; y++) {
-                for (var x = start.x; x < end.x; x++) {
+            for (var y = start.y; y !== end.y; y+= incY) {
+                for (var x = start.x; x !== end.x; x+= incX) {
                     var tmxTile = layer.layerData[x][y];
                     if (tmxTile) {
                         this.drawTile(renderer, x, y, tmxTile);
@@ -24010,25 +24728,9 @@ me.Error = me.Object.extend.bind(Error)({
         pixelToTileCoords : function (x, y, v) {
             var ret = v || new me.Vector2d();
             return ret.set(
-                this.pixelToTileX(x, y),
-                this.pixelToTileY(y, x)
+                (y / this.tileheight) + ((x - this.originX) / this.tilewidth),
+                (y / this.tileheight) - ((x - this.originX) / this.tilewidth)
             );
-        },
-
-        /**
-         * return the tile position corresponding for the given X coordinate
-         * @ignore
-         */
-        pixelToTileX : function (x, y) {
-            return (y / this.tileheight) + ((x - this.originX) / this.tilewidth);
-        },
-
-        /**
-         * return the tile position corresponding for the given Y coordinates
-         * @ignore
-         */
-        pixelToTileY : function (y, x) {
-            return (y / this.tileheight) - ((x - this.originX) / this.tilewidth);
         },
 
         /**
@@ -24091,13 +24793,13 @@ me.Error = me.Object.extend.bind(Error)({
                 rect.pos.y - tileset.tileheight,
                 me.pool.pull("me.Vector2d")
             ).floorSelf();
-            var TileEnd = this.pixelToTileCoords(
+            var tileEnd = this.pixelToTileCoords(
                 rect.pos.x + rect.width + tileset.tilewidth,
                 rect.pos.y + rect.height + tileset.tileheight,
                 me.pool.pull("me.Vector2d")
             ).ceilSelf();
 
-            var rectEnd = this.tileToPixelCoords(TileEnd.x, TileEnd.y, me.pool.pull("me.Vector2d"));
+            var rectEnd = this.tileToPixelCoords(tileEnd.x, tileEnd.y, me.pool.pull("me.Vector2d"));
 
             // Determine the tile and pixel coordinates to start at
             var startPos = this.tileToPixelCoords(rowItr.x, rowItr.y, me.pool.pull("me.Vector2d"));
@@ -24174,7 +24876,7 @@ me.Error = me.Object.extend.bind(Error)({
             }
 
             me.pool.push(rowItr);
-            me.pool.push(TileEnd);
+            me.pool.push(tileEnd);
             me.pool.push(rectEnd);
             me.pool.push(startPos);
         }
@@ -24325,28 +25027,6 @@ me.Error = me.Object.extend.bind(Error)({
             me.pool.push(rel);
 
             return ret.set(q, r);
-        },
-
-        /**
-         * return the tile position corresponding for the given X coordinate
-         * @ignore
-         */
-        pixelToTileX : function (x, y) {
-            var ret = me.pool.pull("me.Vector2d");
-            this.pixelToTileCoords(x, y, ret);
-            me.pool.push(ret);
-            return ret.x;
-        },
-
-        /**
-         * return the tile position corresponding for the given Y coordinates
-         * @ignore
-         */
-        pixelToTileY : function (y, x) {
-            var ret = me.pool.pull("me.Vector2d");
-            this.pixelToTileCoords(x, y, ret);
-            me.pool.push(ret);
-            return ret.y;
         },
 
         /**
@@ -24565,6 +25245,16 @@ me.Error = me.Object.extend.bind(Error)({
              */
             this.isAnimated = false;
 
+            /**
+             * the order in which tiles on orthogonal tile layers are rendered.
+             * (valid values are "left-down", "left-up", "right-down", "right-up")
+             * @public
+             * @type {String}
+             * @default "right-down"
+             * @name me.TMXLayer#renderorder
+             */
+            this.renderorder = data.renderorder || "right-down";
+
             // for displaying order
             this.pos.z = z;
 
@@ -24714,14 +25404,14 @@ me.Error = me.Object.extend.bind(Error)({
         getTile : function (x, y) {
             if (this.containsPoint(x, y)) {
                 var renderer = this.renderer;
-                var col = ~~renderer.pixelToTileX(x, y);
-                var row = ~~renderer.pixelToTileY(y, x);
-                if ((col >= 0 && col < renderer.cols) && (row >= 0 && row < renderer.rows)) {
-                    return this.layerData[col][row];
+                var tile = null;
+                var coord = renderer.pixelToTileCoords(x, y, me.pool.pull("me.Vector2d"));
+                if ((coord.x >= 0 && coord.x < renderer.cols) && ( coord.y >= 0 && coord.y < renderer.rows)) {
+                    tile = this.layerData[~~coord.x][~~coord.y];
                 }
+                me.pool.push(coord);
             }
-            // return null if no corresponding tile
-            return null;
+            return tile;
         },
 
         /**
@@ -24889,7 +25579,7 @@ me.Error = me.Object.extend.bind(Error)({
         me.TMXUtils.applyTMXProperties(data.properties, data);
 
         // create the layer
-        var imageLayer = new me.ImageLayer(
+        var imageLayer = me.pool.pull("me.ImageLayer",
             +data.x || 0,
             +data.y || 0,
             Object.assign({
@@ -24942,30 +25632,30 @@ me.Error = me.Object.extend.bind(Error)({
         init: function (levelId, data) {
 
             /**
-             * name of the tilemap
-             * @public
-             * @type String
-             * @name me.TMXTileMap#name
-             */
-            this.name = levelId;
-
-            /**
              * the level data (JSON)
              * @ignore
              */
             this.data = data;
 
             /**
+             * name of the tilemap
+             * @public
+             * @type {String}
+             * @name me.TMXTileMap#name
+             */
+            this.name = levelId;
+
+            /**
              * width of the tilemap in tiles
              * @public
-             * @type Int
+             * @type {Number}
              * @name me.TMXTileMap#cols
              */
             this.cols = +data.width;
             /**
              * height of the tilemap in tiles
              * @public
-             * @type Int
+             * @type {Number}
              * @name me.TMXTileMap#rows
              */
             this.rows = +data.height;
@@ -24973,7 +25663,7 @@ me.Error = me.Object.extend.bind(Error)({
             /**
              * Tile width
              * @public
-             * @type Int
+             * @type {Number}
              * @name me.TMXTileMap#tilewidth
              */
             this.tilewidth = +data.tilewidth;
@@ -24981,13 +25671,58 @@ me.Error = me.Object.extend.bind(Error)({
             /**
              * Tile height
              * @public
-             * @type Int
+             * @type {Number}
              * @name me.TMXTileMap#tileheight
              */
             this.tileheight = +data.tileheight;
 
+            /**
+             * is the map an infinite map
+             * @public
+             * @type {Number}
+             * @default 0
+             * @name me.TMXTileMap#infinite
+             */
+            this.infinite = +data.infinite;
+
+            /**
+             * the map orientation type. melonJS supports “orthogonal”, “isometric”, “staggered” and “hexagonal”.
+             * @public
+             * @type {String}
+             * @default "orthogonal"
+             * @name me.TMXTileMap#orientation
+             */
+            this.orientation = data.orientation;
+
+            /**
+            * the order in which tiles on orthogonal tile layers are rendered.
+            * (valid values are "left-down", "left-up", "right-down", "right-up")
+             * @public
+             * @type {String}
+             * @default "right-down"
+             * @name me.TMXTileMap#renderorder
+             */
+            this.renderorder = data.renderorder || "right-down";
+
+            /**
+             * the TMX format version
+             * @public
+             * @type {String}
+             * @name me.TMXTileMap#version
+             */
+            this.version = data.version;
+
+            /**
+             * The Tiled version used to save the file (since Tiled 1.0.1).
+             * @public
+             * @type {String}
+             * @name me.TMXTileMap#tiledversion
+             */
+            this.tiledversion = data.tiledversion;
+
             // tilesets for this map
             this.tilesets = null;
+
             // layers
             if (typeof this.layers === "undefined") {
                 this.layers = [];
@@ -24997,14 +25732,9 @@ me.Error = me.Object.extend.bind(Error)({
                 this.objectGroups = [];
             }
 
-            // tilemap version
-            this.version = data.version;
-
             // Check if map is from melon editor
             this.isEditor = data.editor === "melon-editor";
 
-            // map type (orthogonal or isometric)
-            this.orientation = data.orientation;
             if (this.orientation === "isometric") {
                 this.width = (this.cols + this.rows) * (this.tilewidth / 2);
                 this.height = (this.cols + this.rows) * (this.tileheight / 2);
@@ -25013,13 +25743,8 @@ me.Error = me.Object.extend.bind(Error)({
                 this.height = this.rows * this.tileheight;
             }
 
-
-            // objects minimum z order
-            this.z = 0;
-
             // object id
             this.nextobjectid = +data.nextobjectid || undefined;
-
 
             // hex/iso properties
             this.hexsidelength = +data.hexsidelength || undefined;
@@ -25035,6 +25760,11 @@ me.Error = me.Object.extend.bind(Error)({
             // internal flag
             this.initialized = false;
 
+            if (this.infinite === 1) {
+                // #956 Support for Infinite map
+                // see as well in me.TMXUtils
+                throw new me.Error("Tiled Infinite Map not supported!");
+            }
         },
 
         /**
@@ -25072,7 +25802,7 @@ me.Error = me.Object.extend.bind(Error)({
             }
 
             // to automatically increment z index
-            var zOrder = this.z;
+            var zOrder = 0;
             var self = this;
 
             // Tileset information
@@ -25093,7 +25823,7 @@ me.Error = me.Object.extend.bind(Error)({
             // check if a user-defined background color is defined
             if (this.backgroundcolor) {
                 this.layers.push(
-                    new me.ColorLayer(
+                    me.pool.pull("me.ColorLayer",
                         "background_color",
                         this.backgroundcolor,
                         zOrder++
@@ -25104,12 +25834,13 @@ me.Error = me.Object.extend.bind(Error)({
             // check if a background image is defined
             if (this.background_image) {
                 // add a new image layer
-                this.layers.push(new me.ImageLayer(
-                    0, 0, {
-                        name : "background_image",
-                        image : this.background_image,
-                        z : zOrder++
-                    }
+                this.layers.push(
+                    me.pool.pull("me.ImageLayer",
+                        0, 0, {
+                            name : "background_image",
+                            image : this.background_image,
+                            z : zOrder++
+                        }
                 ));
             }
 
@@ -25234,11 +25965,23 @@ me.Error = me.Object.extend.bind(Error)({
                         settings.anchorPoint = {x : 0, y : 0};
                     }
 
-                    // groups can contains either objects or layers
+                    // groups can contains either text, objects or layers
                     if (settings instanceof me.TMXLayer) {
-                        // layers are alerady instantiated & initialized
+                        // layers are already instantiated & initialized
                         obj = settings;
                         // z value set already
+                    } else if (typeof settings.text === "object") {
+                        // Tiled uses 0,0 by default
+                        if (typeof (settings.text.anchorPoint) === "undefined") {
+                            settings.text.anchorPoint = settings.anchorPoint;
+                        }
+                        if (settings.text.bitmap === true) {
+                            obj = me.pool.pull("me.BitmapText", settings.x, settings.y, settings.text);
+                        } else {
+                            obj = me.pool.pull("me.Text", settings.x, settings.y, settings.text);
+                        }
+                        // set the obj z order
+                        obj.pos.z = settings.z;
                     } else {
                         // pull the corresponding entity from the object pool
                         obj = me.pool.pull(
@@ -25370,7 +26113,7 @@ me.Error = me.Object.extend.bind(Error)({
 
         function safeLoadLevel(levelId, options, restart) {
             // clean the destination container
-            options.container.destroy();
+            options.container.reset();
 
             // reset the renderer
             me.game.reset();
@@ -26785,7 +27528,7 @@ me.Error = me.Object.extend.bind(Error)({
         api.GAMEPAD_UPDATE = "gamepad.update";
 
         /**
-         * Channel Constant for pointermove events on the viewport area <br>
+         * Channel Constant for pointermove events on the screen area <br>
          * Data passed : {me.Pointer} a Pointer object
          * @public
          * @constant
@@ -26827,6 +27570,18 @@ me.Error = me.Object.extend.bind(Error)({
          * @name me.event#WINDOW_ONRESIZE
          */
         api.WINDOW_ONRESIZE = "window.onresize";
+
+        /**
+         * Channel Constant for when the canvas is resized <br>
+         * (this usually follows a WINDOW_ONRESIZE event).<br>
+         * Data passed : {Number} canvas width <br>
+         * Data passed : {Number} canvas height <br>
+         * @public
+         * @constant
+         * @type String
+         * @name me.event#CANVAS_ONRESIZE
+         */
+        api.CANVAS_ONRESIZE = "canvas.onresize";
 
         /**
          * Channel Constant for when the viewport is resized <br>
@@ -29352,10 +30107,10 @@ me.Error = me.Object.extend.bind(Error)({
                  * this can be overridden by the plugin
                  * @public
                  * @type String
-                 * @default "6.1.0"
+                 * @default "6.2.0"
                  * @name me.plugin.Base#version
                  */
-                this.version = "6.1.0";
+                this.version = "6.2.0";
             }
         });
 
@@ -29524,6 +30279,7 @@ me.DraggableEntity = (function (Entity, Input, Event, Vector) {
             };
             this.onPointerEvent("pointerdown", this, this.mouseDown.bind(this));
             this.onPointerEvent("pointerup", this, this.mouseUp.bind(this));
+            this.onPointerEvent("pointercancel", this, this.mouseUp.bind(this));
             Event.subscribe(Event.POINTERMOVE, this.dragMove.bind(this));
             Event.subscribe(Event.DRAGSTART, function (e, draggable) {
                 if (draggable === self) {
@@ -30342,7 +31098,7 @@ me.DroptargetEntity = (function (Entity, Event) {
             Object.assign(this, defaults, settings);
 
             // reset particle container values
-            this.container.destroy();
+            this.container.reset();
         },
 
         // Add count particles in the game world
@@ -30513,7 +31269,7 @@ me.DroptargetEntity = (function (Entity, Event) {
             var viewport = me.game.viewport;
             for (var i = this.children.length - 1; i >= 0; --i) {
                 var particle = this.children[i];
-                particle.inViewport = this.floating || viewport.isVisible(particle.getBounds());
+                particle.inViewport = viewport.isVisible(particle, this.floating);
                 if (!particle.update(dt)) {
                     this.removeChildNow(particle);
                 }
@@ -30712,8 +31468,84 @@ me.DroptargetEntity = (function (Entity, Event) {
         }
     });
 
-
-    /*---------------------------------------------------------*/
-    // END END END
-    /*---------------------------------------------------------*/
 })(window);
+
+/**
+ * MelonJS Game Engine
+ * Copyright (C) 2011 - 2018 Olivier Biot
+ * http://www.melonjs.org
+ */
+
+// placeholder for all deprecated classes,
+// and corresponding alias for backward compatibility
+
+/**
+ * @ignore
+ */
+me.ScreenObject = me.Stage.extend({
+    /** @ignore */
+    init: function (settings) {
+        // super constructor
+        me.Stage.prototype.init.apply(this, settings);
+        // deprecation warning
+        console.log("me.ScreenObject is deprecated, please use me.Stage");
+    }
+});
+
+/**
+ * @ignore
+ */
+me.Font = me.Text.extend({
+    /** @ignore */
+    init: function (font, size, fillStyle, textAlign) {
+        var settings = {
+            font:font,
+            size:size,
+            fillStyle:fillStyle,
+            textAlign:textAlign
+        }
+        // super constructor
+        me.Text.prototype.init.apply(this, [0, 0, settings]);
+        // deprecation warning
+        console.log("me.Font is deprecated, please use me.Text");
+    },
+
+    /** @ignore */
+    setFont : function (font, size, fillStyle, textAlign) {
+        // apply fillstyle if defined
+        if (typeof(fillStyle) !== "undefined") {
+            this.fillStyle.copy(fillStyle);
+        }
+        // h alignement if defined
+        if (typeof(textAlign) !== "undefined") {
+            this.textAlign = textAlign;
+        }
+        // super constructor
+        return me.Text.prototype.setFont.apply(this, [font, size]);
+    }
+});
+
+/**
+ * @ignore
+ */
+me.BitmapFontData = me.BitmapTextData;
+/**
+ * @ignore
+ */
+
+me.BitmapFont = me.BitmapText.extend({
+    /** @ignore */
+    init: function (data, fontImage, scale, textAlign, textBaseline) {
+        var settings = {
+            font: fontImage,
+            fontData: data,
+            size: scale,
+            textAlign: textAlign,
+            textBaseline: textBaseline
+        }
+        // super constructor
+        me.BitmapText.prototype.init.apply(this, [0, 0, settings]);
+        // deprecation warning
+        console.log("me.BitmapFont is deprecated, please use me.BitmapText");
+    }
+});

@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 	<meta charset="utf-8">
-	<title>melonJS Class: Polygon</title>
+	<title>melonJS Class: BitmapText</title>
 
 	<!--[if lt IE 9]>
 	<script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
@@ -446,14 +446,14 @@
 					
 
 
-	<h1 class="page-title">Class: Polygon</h1>
+	<h1 class="page-title">Class: BitmapText</h1>
 <section>
 
 <header>
     <h2>
         <span class="ancestors"><a href="me.html">me</a>.</span>
     
-    Polygon
+    BitmapText
     </h2>
     
 </header>
@@ -465,7 +465,7 @@
     
         
 <dt>
-    <h4 class="name toc-target" id="Polygon"><span class="type-signature"></span>new Polygon<span class="signature">(x, y, points)</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="BitmapText"><span class="type-signature"></span>new BitmapText<span class="signature">(<span class="optional">scale</span>, settings)</span><span class="type-signature"></span></h4>
 
     
 </dt>
@@ -473,1083 +473,7 @@
 
     
     <div class="description">
-        a polygon Object.<br>
-Please do note that melonJS implements a simple Axis-Aligned Boxes collision algorithm, which requires all polygons used for collision to be convex with all vertices defined with clockwise winding.
-A polygon is convex when all line segments connecting two points in the interior do not cross any edge of the polygon
-(which means that all angles are less than 180 degrees), as described here below : <br>
-<center><img src="images/convex_polygon.png"/></center><br>
-A polygon's `winding` is clockwise iff its vertices (points) are declared turning to the right. The image above shows COUNTERCLOCKWISE winding.
-    </div>
-    
-
-    
-
-    
-
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>x</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">origin point of the Polygon</td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>y</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">origin point of the Polygon</td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>points</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Array.&lt;<a href="me.Vector2d.html">me.Vector2d</a>></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">array of vector defining the Polygon</td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 23
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dd>
-
-    
-    </div>
-
-    
-        <h3 class="subsection-title">Extends</h3>
-
-        <ul>
-            <li><a href="me.Object.html">me.Object</a></li>
-        </ul>
-    
-
-    
-
-    
-
-    
-        <h3 class="subsection-title">Classes</h3>
-
-        <dl>
-            <dt><a href="me.Polygon.Error.html">Error</a></dt>
-            <dd></dd>
-        </dl>
-    
-
-    
-
-    
-        <h3 class="subsection-title">Members</h3>
-
-        <dl>
-            
-<dt>
-    <h4 class="name toc-target" id="points"><span class="type-signature">&lt;static> </span>points<span class="type-signature"> :Array.&lt;<a href="me.Vector2d.html">me.Vector2d</a>></span></h4>
-
-    
-</dt>
-<dd>
-    
-    <div class="description">
-        Array of points defining the Polygon <br>
-Note: If you manually change `points`, you **must** call `recalc`afterwards so that the changes get applied correctly.
-    </div>
-    
-
-    
-        <h5>Type:</h5>
-        <ul>
-            <li>
-                
-<span class="param-type">Array.&lt;<a href="me.Vector2d.html">me.Vector2d</a>></span>
-
-
-            </li>
-        </ul>
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 46
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="pos"><span class="type-signature">&lt;static> </span>pos<span class="type-signature"> :<a href="me.Vector2d.html">me.Vector2d</a></span></h4>
-
-    
-</dt>
-<dd>
-    
-    <div class="description">
-        origin point of the Polygon
-    </div>
-    
-
-    
-        <h5>Type:</h5>
-        <ul>
-            <li>
-                
-<span class="param-type"><a href="me.Vector2d.html">me.Vector2d</a></span>
-
-
-            </li>
-        </ul>
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 28
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-</dd>
-
-        </dl>
-    
-
-    
-        <h3 class="subsection-title">Methods</h3>
-
-        <dl>
-            
-<dt>
-    <h4 class="name toc-target" id="clone"><span class="type-signature">&lt;static> </span>clone<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="me.Polygon.html">me.Polygon</a>}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        clone this Polygon
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 349
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    new Polygon
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="containsPoint"><span class="type-signature">&lt;static> </span>containsPoint<span class="signature">(x, y)</span><span class="type-signature"> &rarr; {boolean}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        check if this Polygon contains the specified point <br>
-(Note: it is highly recommended to first do a hit test on the corresponding <br>
- bounding rect, as the function can be highly consuming with complex shapes)
-    </div>
-    
-
-    
-
-    
-
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>x</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">x coordinate</td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>y</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">y coordinate</td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 293
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    true if contains
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type">boolean</span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="containsPointV"><span class="type-signature">&lt;static> </span>containsPointV<span class="signature">(point)</span><span class="type-signature"> &rarr; {boolean}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        check if this Polygon contains the specified point
-    </div>
-    
-
-    
-
-    
-
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>point</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="me.Vector2d.html">me.Vector2d</a></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 281
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    true if contains
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type">boolean</span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="getBounds"><span class="type-signature">&lt;static> </span>getBounds<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="me.Rect.html">me.Rect</a>}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        returns the bounding box for this shape, the smallest Rectangle object completely containing this shape.
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 321
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    this shape bounding box Rectangle object
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type"><a href="me.Rect.html">me.Rect</a></span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="recalc"><span class="type-signature">&lt;static> </span>recalc<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="me.Polygon.html">me.Polygon</a>}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        Computes the calculated collision polygon.
-This **must** be called if the `points` array, `angle`, or `offset` is modified manually.
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 211
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    Reference to this object for method chaining
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="rotate"><span class="type-signature">&lt;static> </span>rotate<span class="signature">(angle)</span><span class="type-signature"> &rarr; {<a href="me.Polygon.html">me.Polygon</a>}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        Rotate this Polygon (counter-clockwise) by the specified angle (in radians).
-    </div>
-    
-
-    
-
-    
-
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>angle</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The angle to rotate (in radians)</td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 156
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    Reference to this object for method chaining
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="scale"><span class="type-signature">&lt;static> </span>scale<span class="signature">(x, <span class="optional">y</span>)</span><span class="type-signature"> &rarr; {<a href="me.Polygon.html">me.Polygon</a>}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        Scale this Polygon by the given scalar.
+        a bitmap font object
     </div>
     
 
@@ -1587,13 +511,52 @@ This **must** be called if the `points` array, `angle`, or `offset` is modified 
 
         <tr>
             
-                <td class="name"><code>x</code></td>
+                <td class="name"><code>scale</code></td>
             
 
             <td class="type">
             
                 
 <span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    1.0
+                
+                </td>
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>settings</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
 
 
             
@@ -1613,6 +576,1029 @@ This **must** be called if the `points` array, `angle`, or `offset` is modified 
                 <td class="default">
                 
                 </td>
+            
+
+            <td class="description last">the text configuration
+                <h6>Properties</h6>
+                
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+		<th>Argument</th>
+		
+
+		
+		<th>Default</th>
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>font</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+|
+
+<span class="param-type">Image</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last">a font name to identify the corresponing source image</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>fontData</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    settings.font
+                
+                </td>
+            
+
+            <td class="description last">the bitmap font data corresponding name, or the bitmap font data itself</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>size</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last">size a scaling ratio</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>lineWidth</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    1
+                
+                </td>
+            
+
+            <td class="description last">line width, in pixels, when drawing stroke</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>textAlign</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    "left"
+                
+                </td>
+            
+
+            <td class="description last">horizontal text alignment</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>textBaseline</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    "top"
+                
+                </td>
+            
+
+            <td class="description last">the text baseline</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>lineHeight</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    1.0
+                
+                </td>
+            
+
+            <td class="description last">line spacing height</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>anchorPoint</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="me.Vector2d.html">me.Vector2d</a></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    {x:0.0, y:0.0}
+                
+                </td>
+            
+
+            <td class="description last">anchor point to draw the text at</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>text</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+|
+
+<span class="param-type">Array.&lt;String></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last">a string, or an array of strings</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+            </td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    bitmaptext.js, line 70
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+        <h5>Example</h5>
+        
+    <pre class="sunlight-highlight-javascript">// Use me.loader.preload or me.loader.load to load assets
+me.loader.preload([
+{ name: &quot;arial&quot;, type: &quot;binary&quot; src: &quot;data/font/arial.fnt&quot; },
+{ name: &quot;arial&quot;, type: &quot;image&quot; src: &quot;data/font/arial.png&quot; },
+])
+// Then create an instance of your bitmap font:
+var myFont = new me.BitmapText(x, y, {font:&quot;arial&quot;, text:&quot;Hello&quot;});
+// two possibilities for using &quot;myFont&quot;
+// either call the draw function from your Renderable draw function
+myFont.draw(renderer, &quot;Hello!&quot;, 0, 0);
+// or just add it to the word container
+me.game.world.addChild(myFont);</pre>
+
+
+    
+</dd>
+
+    
+    </div>
+
+    
+        <h3 class="subsection-title">Extends</h3>
+
+        <ul>
+            <li><a href="me.Renderable.html">me.Renderable</a></li>
+        </ul>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+        <h3 class="subsection-title">Members</h3>
+
+        <dl>
+            
+<dt>
+    <h4 class="name toc-target" id="lineHeight"><span class="type-signature">&lt;static> </span>lineHeight<span class="type-signature"> :Number</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        Set the line spacing height (when displaying multi-line strings). <br>
+Current font height will be multiplied with this value to set the line height.
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">Number</span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+	<dt class="tag-default">Default Value:</dt>
+	<dd class="tag-default">
+		<ul class="dummy">
+			<li>1.0</li>
+		</ul>
+	</dd>
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    bitmaptext.js, line 99
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="textAlign"><span class="type-signature">&lt;static> </span>textAlign<span class="type-signature"> :String</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        Set the default text alignment (or justification),<br>
+possible values are "left", "right", and "center".
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">String</span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+	<dt class="tag-default">Default Value:</dt>
+	<dd class="tag-default">
+		<ul class="dummy">
+			<li>"left"</li>
+		</ul>
+	</dd>
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    bitmaptext.js, line 77
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="textBaseline"><span class="type-signature">&lt;static> </span>textBaseline<span class="type-signature"> :String</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        Set the text baseline (e.g. the Y-coordinate for the draw operation), <br>
+possible values are "top", "hanging, "middle, "alphabetic, "ideographic, "bottom"<br>
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">String</span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+	<dt class="tag-default">Default Value:</dt>
+	<dd class="tag-default">
+		<ul class="dummy">
+			<li>"top"</li>
+		</ul>
+	</dd>
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    bitmaptext.js, line 88
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="alpha"><span class="type-signature"></span>alpha<span class="type-signature"> :Number</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        Define the renderable opacity<br>
+Set to zero if you do not wish an object to be drawn
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">Number</span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+	<dt class="inherited-from">Inherited From:</dt>
+	<dd class="inherited-from">
+		<ul class="dummy">
+			<li>
+				<a href="me.Renderable.html#alpha">me.Renderable#alpha</a>
+			</li>
+		</ul>
+	</dd>
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+	<dt class="tag-default">Default Value:</dt>
+	<dd class="tag-default">
+		<ul class="dummy">
+			<li>1.0</li>
+		</ul>
+	</dd>
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    renderable.js, line 213
+	</dd>
+	
+
+	
+
+	
+	<dt class="tag-see">See:</dt>
+	<dd class="tag-see">
+		<ul>
+			<li>me.Renderable#setOpacity</li>
+			
+			<li>me.Renderable#getOpacity</li>
+			</ul>
+	</dd>
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="ancestor"><span class="type-signature"></span>ancestor<span class="type-signature"> :<a href="me.Container.html">me.Container</a>|<a href="me.Entity.html">me.Entity</a></span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        a reference to the parent object that contains this renderable,
+or undefined if it has not been added to one.
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type"><a href="me.Container.html">me.Container</a></span>
+|
+
+<span class="param-type"><a href="me.Entity.html">me.Entity</a></span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+	<dt class="inherited-from">Inherited From:</dt>
+	<dd class="inherited-from">
+		<ul class="dummy">
+			<li>
+				<a href="me.Renderable.html#ancestor">me.Renderable#ancestor</a>
+			</li>
+		</ul>
+	</dd>
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+	<dt class="tag-default">Default Value:</dt>
+	<dd class="tag-default">
+		<ul class="dummy">
+			<li>undefined</li>
+		</ul>
+	</dd>
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    renderable.js, line 225
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        </dl>
+    
+
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        <dl>
+            
+<dt>
+    <h4 class="name toc-target" id="draw"><span class="type-signature">&lt;static> </span>draw<span class="signature">(renderer, <span class="optional">text</span>, <span class="optional">x</span>, <span class="optional">y</span>)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        draw the bitmap font
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+		<th>Argument</th>
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>renderer</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="me.CanvasRenderer.html">me.CanvasRenderer</a></span>
+|
+
+<span class="param-type"><a href="me.WebGLRenderer.html">me.WebGLRenderer</a></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Reference to the destination renderer instance</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>text</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>x</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
             
 
             <td class="description last"></td>
@@ -1647,1131 +1633,689 @@ This **must** be called if the `points` array, `angle`, or `offset` is modified 
             
 
             
-                <td class="default">
+
+            <td class="description last"></td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    bitmaptext.js, line 241
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="measureText"><span class="type-signature">&lt;static> </span>measureText<span class="signature">(<span class="optional">text</span>, <span class="optional">ret</span>)</span><span class="type-signature"> &rarr; {TextMetrics}</span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        measure the given text size in pixels
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+		<th>Argument</th>
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>text</code></td>
+            
+
+            <td class="type">
+            
                 
-                    x
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
                 
                 </td>
             
 
-            <td class="description last"></td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 177
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    Reference to this object for method chaining
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="scaleV"><span class="type-signature">&lt;static> </span>scaleV<span class="signature">(v)</span><span class="type-signature"> &rarr; {<a href="me.Polygon.html">me.Polygon</a>}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        Scale this Polygon by the given vector
-    </div>
-    
-
-    
-
-    
-
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>v</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="me.Vector2d.html">me.Vector2d</a></span>
-
-
-            
-            </td>
-
-            
-
             
 
             <td class="description last"></td>
         </tr>
 
 	
-	</tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 199
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    Reference to this object for method chaining
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="setShape"><span class="type-signature">&lt;static> </span>setShape<span class="signature">(x, y, points)</span><span class="type-signature"></span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        set new value to the Polygon
-    </div>
-    
-
-    
-
-    
-
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
 
         <tr>
             
-                <td class="name"><code>x</code></td>
+                <td class="name"><code>ret</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">position of the Polygon</td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>y</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">position of the Polygon</td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>points</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Array.&lt;<a href="me.Vector2d.html">me.Vector2d</a>></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">array of vector defining the Polygon</td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 82
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="to2d"><span class="type-signature">&lt;static> </span>to2d<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="me.Polygon.html">me.Polygon</a>}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        apply a 2d projection to this shape
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 145
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    Reference to this object for method chaining
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="toIso"><span class="type-signature">&lt;static> </span>toIso<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="me.Polygon.html">me.Polygon</a>}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        apply an isometric projection to this shape
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 134
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    Reference to this object for method chaining
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="transform"><span class="type-signature">&lt;static> </span>transform<span class="signature">(matrix)</span><span class="type-signature"> &rarr; {<a href="me.Polygon.html">me.Polygon</a>}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        apply the given transformation matrix to this Polygon
-    </div>
-    
-
-    
-
-    
-
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>matrix</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="me.Matrix2d.html">me.Matrix2d</a></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">the transformation matrix</td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 115
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    Reference to this object for method chaining
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="translate"><span class="type-signature">&lt;static> </span>translate<span class="signature">(x, y)</span><span class="type-signature"> &rarr; {<a href="me.Polygon.html">me.Polygon</a>}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        translate the Polygon by the specified offset
-    </div>
-    
-
-    
-
-    
-
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>x</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">x offset</td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>y</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">y offset</td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 251
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    this Polygon
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="translateV"><span class="type-signature">&lt;static> </span>translateV<span class="signature">(v)</span><span class="type-signature"> &rarr; {<a href="me.Polygon.html">me.Polygon</a>}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        translate the Polygon by the specified vector
-    </div>
-    
-
-    
-
-    
-
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>v</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="me.Vector2d.html">me.Vector2d</a></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">vector offset</td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 267
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    Reference to this object for method chaining
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
-<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
-
-
-	</dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="updateBounds"><span class="type-signature">&lt;static> </span>updateBounds<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="me.Rect.html">me.Rect</a>}</span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        update the bounding box for this shape.
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    poly.js, line 332
-	</dd>
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    this shape bounding box Rectangle object
-</div>
-
-
-
-<dl>
-	<dt>
-		Type
-	</dt>
-	<dd>
-		
 <span class="param-type"><a href="me.Rect.html">me.Rect</a></span>
 
 
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">a object in which to store the text metrics</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    bitmaptext.js, line 206
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    a TextMetrics object with two properties: `width` and `height`, defining the output dimensions
+</div>
+
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type">TextMetrics</span>
+
+
 	</dd>
 </dl>
+
+
+        
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="resize"><span class="type-signature">&lt;static> </span>resize<span class="signature">(scale)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        change the font display size
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>scale</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">ratio</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    bitmaptext.js, line 189
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    this object for chaining
+</div>
+
+
+
+
+        
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="set"><span class="type-signature">&lt;static> </span>set<span class="signature">(textAlign, <span class="optional">scale</span>)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        change the font settings
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+		<th>Argument</th>
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>textAlign</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">("left", "center", "right")</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>scale</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    bitmaptext.js, line 148
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    this object for chaining
+</div>
+
+
+
+
+        
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="setText"><span class="type-signature">&lt;static> </span>setText<span class="signature">(value)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        change the text to be displayed
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>value</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+|
+
+<span class="param-type">String</span>
+|
+
+<span class="param-type">Array.&lt;String></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">a string, or an array of strings</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    bitmaptext.js, line 168
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    this object for chaining
+</div>
+
+
 
 
         
@@ -2805,7 +2349,7 @@ This **must** be called if the `points` array, `angle`, or `offset` is modified 
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-11-29T14:47:53+08:00 using the <a
+		on 2018-11-29T14:47:52+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

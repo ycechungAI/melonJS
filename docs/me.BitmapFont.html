@@ -338,11 +338,11 @@
 						</li>
 						
 						<li>
-							<a href="me.ScreenObject.html">me.ScreenObject</a>
+							<a href="me.Sprite.html">me.Sprite</a>
 						</li>
 						
 						<li>
-							<a href="me.Sprite.html">me.Sprite</a>
+							<a href="me.Stage.html">me.Stage</a>
 						</li>
 						
 						<li>
@@ -729,7 +729,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    bitmapfont.js, line 53
+    bitmapfont.js, line 66
 	</dd>
 	
 
@@ -761,8 +761,13 @@ me.loader.preload([
 ])
 // Then create an instance of your bitmap font:
 var myFont = new me.BitmapFont(me.loader.getBinary(&quot;arial&quot;), me.loader.getImage(&quot;arial&quot;));
-// And draw it inside your Renderable, just like me.Font
-myFont.draw(renderer, &quot;Hello!&quot;, 0, 0);</pre>
+// two possibilities for using &quot;myFont&quot;
+// either call the draw function from your Renderable draw function
+myFont.draw(renderer, &quot;Hello!&quot;, 0, 0);
+// or add it to the word container
+myFont.pos.set(0, 0);
+myFont.setText(&quot;Hello&quot;);
+me.game.world.addChild(myFont);</pre>
 
 
     
@@ -841,7 +846,229 @@ myFont.draw(renderer, &quot;Hello!&quot;, 0, 0);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    bitmapfont.js, line 63
+    bitmapfont.js, line 73
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="lineHeight"><span class="type-signature">&lt;static> </span>lineHeight<span class="type-signature"> :Number</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        Set the line spacing height (when displaying multi-line strings). <br>
+Current font height will be multiplied with this value to set the line height.
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">Number</span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+	<dt class="tag-default">Default Value:</dt>
+	<dd class="tag-default">
+		<ul class="dummy">
+			<li>1.0</li>
+		</ul>
+	</dd>
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    bitmapfont.js, line 103
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="textAlign"><span class="type-signature">&lt;static> </span>textAlign<span class="type-signature"> :String</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        Set the default text alignment (or justification),<br>
+possible values are "left", "right", and "center".
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">String</span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+	<dt class="tag-default">Default Value:</dt>
+	<dd class="tag-default">
+		<ul class="dummy">
+			<li>"left"</li>
+		</ul>
+	</dd>
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    bitmapfont.js, line 81
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="textBaseline"><span class="type-signature">&lt;static> </span>textBaseline<span class="type-signature"> :String</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        Set the text baseline (e.g. the Y-coordinate for the draw operation), <br>
+possible values are "top", "hanging, "middle, "alphabetic, "ideographic, "bottom"<br>
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">String</span>
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+	<dt class="tag-default">Default Value:</dt>
+	<dd class="tag-default">
+		<ul class="dummy">
+			<li>"top"</li>
+		</ul>
+	</dd>
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    bitmapfont.js, line 92
 	</dd>
 	
 
@@ -924,7 +1151,7 @@ Set to zero if you do not wish an object to be drawn
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 209
+    renderable.js, line 214
 	</dd>
 	
 
@@ -1019,7 +1246,7 @@ or undefined if it has not been added to one.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 221
+    renderable.js, line 226
 	</dd>
 	
 
@@ -1043,7 +1270,7 @@ or undefined if it has not been added to one.
         <dl>
             
 <dt>
-    <h4 class="name toc-target" id="draw"><span class="type-signature">&lt;static> </span>draw<span class="signature">(renderer, text, x, y)</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="draw"><span class="type-signature">&lt;static> </span>draw<span class="signature">(renderer, <span class="optional">text</span>, <span class="optional">x</span>, <span class="optional">y</span>)</span><span class="type-signature"></span></h4>
 
     
 </dt>
@@ -1051,7 +1278,7 @@ or undefined if it has not been added to one.
 
     
     <div class="description">
-        draw a text at the specified coord
+        draw the bitmap font
     </div>
     
 
@@ -1072,6 +1299,8 @@ or undefined if it has not been added to one.
 
 		<th>Type</th>
 
+		
+		<th>Argument</th>
 		
 
 		
@@ -1101,6 +1330,14 @@ or undefined if it has not been added to one.
             </td>
 
             
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
 
             
 
@@ -1123,6 +1360,16 @@ or undefined if it has not been added to one.
             
             </td>
 
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
             
 
             
@@ -1147,6 +1394,16 @@ or undefined if it has not been added to one.
             </td>
 
             
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
 
             
 
@@ -1169,6 +1426,16 @@ or undefined if it has not been added to one.
             
             </td>
 
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
             
 
             
@@ -1207,7 +1474,7 @@ or undefined if it has not been added to one.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    bitmapfont.js, line 134
+    bitmapfont.js, line 228
 	</dd>
 	
 
@@ -1235,7 +1502,7 @@ or undefined if it has not been added to one.
         
             
 <dt>
-    <h4 class="name toc-target" id="measureText"><span class="type-signature">&lt;static> </span>measureText<span class="signature">(text)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+    <h4 class="name toc-target" id="measureText"><span class="type-signature">&lt;static> </span>measureText<span class="signature">(text, <span class="optional">ret</span>)</span><span class="type-signature"> &rarr; {TextMetrics}</span></h4>
 
     
 </dt>
@@ -1265,6 +1532,8 @@ or undefined if it has not been added to one.
 		<th>Type</th>
 
 		
+		<th>Argument</th>
+		
 
 		
 
@@ -1290,10 +1559,51 @@ or undefined if it has not been added to one.
             </td>
 
             
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
 
             
 
             <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>ret</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="me.Rect.html">me.Rect</a></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">a object in which to store the text metrics</td>
         </tr>
 
 	
@@ -1327,7 +1637,7 @@ or undefined if it has not been added to one.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    bitmapfont.js, line 113
+    bitmapfont.js, line 195
 	</dd>
 	
 
@@ -1352,7 +1662,7 @@ or undefined if it has not been added to one.
     
             
 <div class="param-desc">
-    an object with two properties: `width` and `height`, defining the output dimensions
+    a TextMetrics object with two properties: `width` and `height`, defining the output dimensions
 </div>
 
 
@@ -1363,7 +1673,7 @@ or undefined if it has not been added to one.
 	</dt>
 	<dd>
 		
-<span class="param-type">Object</span>
+<span class="param-type">TextMetrics</span>
 
 
 	</dd>
@@ -1470,7 +1780,7 @@ or undefined if it has not been added to one.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    bitmapfont.js, line 101
+    bitmapfont.js, line 178
 	</dd>
 	
 
@@ -1491,6 +1801,17 @@ or undefined if it has not been added to one.
     
 
     
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    this object for chaining
+</div>
+
+
+
+
+        
 
     
 </dd>
@@ -1633,7 +1954,7 @@ or undefined if it has not been added to one.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    bitmapfont.js, line 85
+    bitmapfont.js, line 134
 	</dd>
 	
 
@@ -1654,6 +1975,151 @@ or undefined if it has not been added to one.
     
 
     
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    this object for chaining
+</div>
+
+
+
+
+        
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="setText"><span class="type-signature">&lt;static> </span>setText<span class="signature">(value)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        change the text to be displayed
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>value</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+|
+
+<span class="param-type">Array.&lt;string></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">a string, or an array of strings</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    bitmapfont.js, line 154
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    this object for chaining
+</div>
+
+
+
+
+        
 
     
 </dd>
@@ -1684,7 +2150,7 @@ or undefined if it has not been added to one.
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-09-11T09:38:57+08:00 using the <a
+		on 2018-11-01T10:08:52+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

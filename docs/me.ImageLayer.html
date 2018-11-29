@@ -150,11 +150,11 @@
 						</li>
 						
 						<li>
-							<a href="me.BitmapFont.html">me.BitmapFont</a>
+							<a href="me.BitmapText.html">me.BitmapText</a>
 						</li>
 						
 						<li>
-							<a href="me.BitmapFontData.html">me.BitmapFontData</a>
+							<a href="me.BitmapTextData.html">me.BitmapTextData</a>
 						</li>
 						
 						<li>
@@ -227,14 +227,6 @@
 						
 						<li>
 							<a href="me.Error.html">me.Error</a>
-						</li>
-						
-						<li>
-							<a href="me.Font.html">me.Font</a>
-						</li>
-						
-						<li>
-							<a href="me.Glyph.html">me.Glyph</a>
 						</li>
 						
 						<li>
@@ -338,11 +330,15 @@
 						</li>
 						
 						<li>
-							<a href="me.ScreenObject.html">me.ScreenObject</a>
+							<a href="me.Sprite.html">me.Sprite</a>
 						</li>
 						
 						<li>
-							<a href="me.Sprite.html">me.Sprite</a>
+							<a href="me.Stage.html">me.Stage</a>
+						</li>
+						
+						<li>
+							<a href="me.Text.html">me.Text</a>
 						</li>
 						
 						<li>
@@ -469,7 +465,7 @@
     
         
 <dt>
-    <h4 class="name toc-target" id="ImageLayer"><span class="type-signature"></span>new ImageLayer<span class="signature">(x, y, settings, })</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="ImageLayer"><span class="type-signature"></span>new ImageLayer<span class="signature">(x, y, settings)</span><span class="type-signature"></span></h4>
 
     
 </dt>
@@ -499,11 +495,7 @@
 		<th>Type</th>
 
 		
-		<th>Argument</th>
-		
 
-		
-		<th>Default</th>
 		
 
 		<th class="last">Description</th>
@@ -528,19 +520,7 @@
             </td>
 
             
-                <td class="attributes">
-                
 
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
             
 
             <td class="description last">x coordinate</td>
@@ -563,19 +543,7 @@
             </td>
 
             
-                <td class="attributes">
-                
 
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
             
 
             <td class="description last">y coordinate</td>
@@ -598,29 +566,40 @@
             </td>
 
             
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
 
             
-                <td class="default">
+
+            <td class="description last">ImageLayer properties
+                <h6>Properties</h6>
                 
-                </td>
-            
 
-            <td class="description last">ImageLayer properties</td>
-        </tr>
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
 
+		<th>Type</th>
+
+		
+		<th>Argument</th>
+		
+
+		
+		<th>Default</th>
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
 	
 
         <tr>
             
-                <td class="name"><code>}</code></td>
+                <td class="name"><code>image</code></td>
             
 
             <td class="type">
@@ -654,14 +633,14 @@
                 </td>
             
 
-            <td class="description last">settings.image Image reference. See <a href="me.loader.html#getImage">me.loader.getImage</a></td>
+            <td class="description last">Image reference. See <a href="me.loader.html#getImage">me.loader.getImage</a></td>
         </tr>
 
 	
 
         <tr>
             
-                <td class="name"><code>settings.name</code></td>
+                <td class="name"><code>name</code></td>
             
 
             <td class="type">
@@ -693,14 +672,14 @@
                 </td>
             
 
-            <td class="description last">Layer name</td>
+            <td class="description last">layer name</td>
         </tr>
 
 	
 
         <tr>
             
-                <td class="name"><code>settings.z</code></td>
+                <td class="name"><code>z</code></td>
             
 
             <td class="type">
@@ -739,7 +718,7 @@
 
         <tr>
             
-                <td class="name"><code>settings.ratio</code></td>
+                <td class="name"><code>ratio</code></td>
             
 
             <td class="type">
@@ -774,14 +753,54 @@
                 </td>
             
 
-            <td class="description last">Scrolling ratio to be applied</td>
+            <td class="description last">Scrolling ratio to be applied. See <a href="me.ImageLayer.html#ratio">me.ImageLayer#ratio</a></td>
         </tr>
 
 	
 
         <tr>
             
-                <td class="name"><code>settings.anchorPoint</code></td>
+                <td class="name"><code>repeat</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    'repeat'
+                
+                </td>
+            
+
+            <td class="description last">define if and how an Image Layer should be repeated (accepted values are 'repeat',
+ 'repeat-x', 'repeat-y', 'no-repeat'). See <a href="me.ImageLayer.html#repeat">me.ImageLayer#repeat</a></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>anchorPoint</code></td>
             
 
             <td class="type">
@@ -823,6 +842,13 @@
 	</tbody>
 </table>
 
+            </td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
     
 
     
@@ -850,7 +876,7 @@
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    imagelayer.js, line 24
+    imagelayer.js, line 32
 	</dd>
 	
 
@@ -871,6 +897,16 @@
     
 
     
+
+    
+        <h5>Example</h5>
+        
+    <pre class="sunlight-highlight-javascript">// create a repetitive background pattern on the X axis using the citycloud image asset
+me.game.world.addChild(new me.ImageLayer(0, 0, {
+    image:&quot;citycloud&quot;,
+    repeat :&quot;repeat-x&quot;
+}), 1);</pre>
+
 
     
 </dd>
@@ -965,7 +1001,7 @@ Set to zero if you do not wish an object to be drawn
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 209
+    renderable.js, line 213
 	</dd>
 	
 
@@ -1060,7 +1096,7 @@ or undefined if it has not been added to one.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    renderable.js, line 221
+    renderable.js, line 225
 	</dd>
 	
 
@@ -1142,7 +1178,7 @@ To specify a value through Tiled, use one of the following format : <br>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    imagelayer.js, line 83
+    imagelayer.js, line 91
 	</dd>
 	
 
@@ -1220,7 +1256,7 @@ To specify a value through Tiled, use one of the following format : <br>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    imagelayer.js, line 59
+    imagelayer.js, line 67
 	</dd>
 	
 
@@ -1248,7 +1284,7 @@ To specify a value through Tiled, use one of the following format : <br>
         Define if and how an Image Layer should be repeated.<br>
 By default, an Image Layer is repeated both vertically and horizontally.<br>
 Acceptable values : <br>
-* 'repeat' - The background image will be repeated both vertically and horizontally. (default) <br>
+* 'repeat' - The background image will be repeated both vertically and horizontally <br>
 * 'repeat-x' - The background image will be repeated only horizontally.<br>
 * 'repeat-y' - The background image will be repeated only vertically.<br>
 * 'no-repeat' - The background-image will not be repeated.<br>
@@ -1286,13 +1322,20 @@ Acceptable values : <br>
 	
 
 	
+	<dt class="tag-default">Default Value:</dt>
+	<dd class="tag-default">
+		<ul class="dummy">
+			<li>'repeat'</li>
+		</ul>
+	</dd>
+	
 
 
 
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    imagelayer.js, line 110
+    imagelayer.js, line 118
 	</dd>
 	
 
@@ -1431,7 +1474,7 @@ Acceptable values : <br>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    imagelayer.js, line 178
+    imagelayer.js, line 188
 	</dd>
 	
 
@@ -1482,7 +1525,7 @@ Acceptable values : <br>
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-09-11T09:38:57+08:00 using the <a
+		on 2018-11-29T14:47:52+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

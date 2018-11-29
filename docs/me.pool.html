@@ -150,11 +150,11 @@
 						</li>
 						
 						<li>
-							<a href="me.BitmapFont.html">me.BitmapFont</a>
+							<a href="me.BitmapText.html">me.BitmapText</a>
 						</li>
 						
 						<li>
-							<a href="me.BitmapFontData.html">me.BitmapFontData</a>
+							<a href="me.BitmapTextData.html">me.BitmapTextData</a>
 						</li>
 						
 						<li>
@@ -227,14 +227,6 @@
 						
 						<li>
 							<a href="me.Error.html">me.Error</a>
-						</li>
-						
-						<li>
-							<a href="me.Font.html">me.Font</a>
-						</li>
-						
-						<li>
-							<a href="me.Glyph.html">me.Glyph</a>
 						</li>
 						
 						<li>
@@ -338,11 +330,15 @@
 						</li>
 						
 						<li>
-							<a href="me.ScreenObject.html">me.ScreenObject</a>
+							<a href="me.Sprite.html">me.Sprite</a>
 						</li>
 						
 						<li>
-							<a href="me.Sprite.html">me.Sprite</a>
+							<a href="me.Stage.html">me.Stage</a>
+						</li>
+						
+						<li>
+							<a href="me.Text.html">me.Text</a>
 						</li>
 						
 						<li>
@@ -468,11 +464,9 @@
 
     
         
-            <div class="description">A pool of Object entity <br>
-This object is used for object pooling - a technique that might speed up your game
-if used properly. <br>
+            <div class="description">This object is used for object pooling - a technique that might speed up your game if used properly.<br>
 If some of your classes will be instantiated and removed a lot at a time, it is a
-good idea to add the class to this entity pool. A separate pool for that class
+good idea to add the class to this object pool. A separate pool for that class
 will be created, which will reuse objects of the class. That way they won't be instantiated
 each time you need a new one (slowing your game), but stored into that pool and taking one
 already instantiated when you need it.<br><br>
@@ -633,7 +627,7 @@ found in the map, based on the user defined name in each Object Properties<br>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    pooling.js, line 183
+    pooling.js, line 196
 	</dd>
 	
 
@@ -670,6 +664,100 @@ found in the map, based on the user defined name in each Object Properties<br>
 	<dd>
 		
 <span class="param-type">Boolean</span>
+
+
+	</dd>
+</dl>
+
+
+        
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="exists"><span class="type-signature">&lt;static> </span>exists<span class="signature">()</span><span class="type-signature"> &rarr; {Number}</span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        returns the amount of object instance currently in the pool
+    </div>
+    
+
+    
+
+    
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    pooling.js, line 209
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    amount of object instance
+</div>
+
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type">Number</span>
 
 
 	</dd>
@@ -814,7 +902,7 @@ found in the map, based on the user defined name in each Object Properties<br>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    pooling.js, line 83
+    pooling.js, line 93
 	</dd>
 	
 
@@ -895,7 +983,7 @@ me.game.world.removeChild(bullet);</pre>
 
     
     <div class="description">
-        purge the entity pool from any inactive object <br>
+        purge the object pool from any inactive object <br>
 Object pooling must be enabled for this function to work<br>
 note: this will trigger the garbage collector
     </div>
@@ -932,7 +1020,7 @@ note: this will trigger the garbage collector
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    pooling.js, line 145
+    pooling.js, line 156
 	</dd>
 	
 
@@ -968,7 +1056,7 @@ note: this will trigger the garbage collector
 
     
     <div class="description">
-        Push back an object instance into the entity pool <br>
+        Push back an object instance into the object pool <br>
 Object pooling for the object class must be enabled,
 and object must have been instantiated using me.pool#pull,
 otherwise this function won't work
@@ -1055,7 +1143,7 @@ otherwise this function won't work
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    pooling.js, line 162
+    pooling.js, line 174
 	</dd>
 	
 
@@ -1269,7 +1357,7 @@ See examples in me.pool#pull
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    pooling.js, line 52
+    pooling.js, line 62
 	</dd>
 	
 
@@ -1294,7 +1382,7 @@ See examples in me.pool#pull
     
         <h5>Example</h5>
         
-    <pre class="sunlight-highlight-javascript">// add our users defined entities in the entity pool
+    <pre class="sunlight-highlight-javascript">// add our users defined entities in the object pool
 me.pool.register(&quot;playerspawnpoint&quot;, PlayerEntity);
 me.pool.register(&quot;cherryentity&quot;, CherryEntity, true);
 me.pool.register(&quot;heartentity&quot;, HeartEntity, true);
@@ -1330,7 +1418,7 @@ me.pool.register(&quot;starentity&quot;, StarEntity, true);</pre>
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-09-11T09:38:57+08:00 using the <a
+		on 2018-11-29T14:47:53+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>
