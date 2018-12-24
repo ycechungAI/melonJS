@@ -887,7 +887,7 @@ Pushes texture regions into WebGL buffers, automatically flushes to GPU
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    compositor.js, line 306
+    compositor.js, line 310
 	</dd>
 	
 
@@ -959,7 +959,7 @@ gl.clear()
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    compositor.js, line 527
+    compositor.js, line 622
 	</dd>
 	
 
@@ -987,7 +987,7 @@ gl.clear()
         
             
 <dt>
-    <h4 class="name toc-target" id="drawLine"><span class="type-signature">&lt;static> </span>drawLine<span class="signature">(points, <span class="optional">open</span>)</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="drawLine"><span class="type-signature">&lt;static> </span>drawLine<span class="signature">(points, <span class="optional">len</span>, <span class="optional">open</span>)</span><span class="type-signature"></span></h4>
 
     
 </dt>
@@ -1068,6 +1068,45 @@ gl.clear()
 
         <tr>
             
+                <td class="name"><code>len</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    points.length
+                
+                </td>
+            
+
+            <td class="description last">amount of points defined in the points array</td>
+        </tr>
+
+	
+
+        <tr>
+            
                 <td class="name"><code>open</code></td>
             
 
@@ -1134,7 +1173,221 @@ gl.clear()
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    compositor.js, line 443
+    compositor.js, line 536
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="drawTriangle"><span class="type-signature">&lt;static> </span>drawTriangle<span class="signature">(points, <span class="optional">len</span>, <span class="optional">strip</span>)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Draw triangle(s)
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+		<th>Argument</th>
+		
+
+		
+		<th>Default</th>
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>points</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;<a href="me.Vector2d.html">me.Vector2d</a>></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last">vertices</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>len</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    points.length
+                
+                </td>
+            
+
+            <td class="description last">amount of points defined in the points array</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>strip</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    false
+                
+                </td>
+            
+
+            <td class="description last">Whether the array defines a serie of connected triangles, sharing vertices</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    compositor.js, line 448
 	</dd>
 	
 
@@ -1205,7 +1458,7 @@ gl.clear()
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    compositor.js, line 412
+    compositor.js, line 417
 	</dd>
 	
 
@@ -1348,7 +1601,7 @@ gl.clear()
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    compositor.js, line 199
+    compositor.js, line 202
 	</dd>
 	
 
@@ -1376,7 +1629,7 @@ gl.clear()
         
             
 <dt>
-    <h4 class="name toc-target" id="useShader"><span class="type-signature">&lt;static> </span>useShader<span class="signature">(shader)</span><span class="type-signature"></span></h4>
+    <h4 class="name toc-target" id="useShader"><span class="type-signature">&lt;static> </span>useShader<span class="signature">(a)</span><span class="type-signature"></span></h4>
 
     
 </dt>
@@ -1418,13 +1671,13 @@ gl.clear()
 
         <tr>
             
-                <td class="name"><code>shader</code></td>
+                <td class="name"><code>a</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">WebGLProgram</span>
+<span class="param-type">Object</span>
 
 
             
@@ -1434,7 +1687,7 @@ gl.clear()
 
             
 
-            <td class="description last">The shader program to use</td>
+            <td class="description last">reference to a WebGL Shader Program</td>
         </tr>
 
 	
@@ -1468,12 +1721,19 @@ gl.clear()
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    compositor.js, line 291
+    compositor.js, line 293
 	</dd>
 	
 
 	
 
+	
+	<dt class="tag-see">See:</dt>
+	<dd class="tag-see">
+		<ul>
+			<li><a href="me.video.shader.html#createShader">me.video.shader.createShader</a></li>
+			</ul>
+	</dd>
 	
 
 	
@@ -1519,7 +1779,7 @@ gl.clear()
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-11-29T14:47:53+08:00 using the <a
+		on 2018-12-24T08:55:59+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

@@ -1165,6 +1165,213 @@
         <dl>
             
 <dt>
+    <h4 class="name toc-target" id="clearMask"><span class="type-signature">&lt;static> </span>clearMask<span class="signature">()</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        disable (remove) the rendering mask set through setMask.
+    </div>
+    
+
+    
+
+    
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    renderer.js, line 344
+	</dd>
+	
+
+	
+
+	
+	<dt class="tag-see">See:</dt>
+	<dd class="tag-see">
+		<ul>
+			<li>setMask</li>
+			</ul>
+	</dd>
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="fill"><span class="type-signature">&lt;static> </span>fill<span class="signature">(shape)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        fill the given shape
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>shape</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="me.Rect.html">me.Rect</a></span>
+|
+
+<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
+|
+
+<span class="param-type"><a href="me.Line.html">me.Line</a></span>
+|
+
+<span class="param-type"><a href="me.Ellipse.html">me.Ellipse</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">a shape object to fill</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    renderer.js, line 322
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<dt>
     <h4 class="name toc-target" id="getBlendMode"><span class="type-signature">&lt;static> </span>getBlendMode<span class="signature">()</span><span class="type-signature"> &rarr; {String}</span></h4>
 
     
@@ -2573,6 +2780,278 @@ Also configures anti-aliasing and blend modes based on constructor options.
     
 </dd>
 
+        
+            
+<dt>
+    <h4 class="name toc-target" id="setMask"><span class="type-signature">&lt;static> </span>setMask<span class="signature">(<span class="optional">mask</span>)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        A mask limits rendering elements to the shape and position of the given mask object.
+So, if the renderable is larger than the mask, only the intersecting part of the renderable will be visible.
+Mask are not preserved through renderer context save and restore.
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+		<th>Argument</th>
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>mask</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="me.Rect.html">me.Rect</a></span>
+|
+
+<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
+|
+
+<span class="param-type"><a href="me.Line.html">me.Line</a></span>
+|
+
+<span class="param-type"><a href="me.Ellipse.html">me.Ellipse</a></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">the shape defining the mask to be applied</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    renderer.js, line 333
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="stroke"><span class="type-signature">&lt;static> </span>stroke<span class="signature">(shape)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        stroke the given shape
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>shape</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="me.Rect.html">me.Rect</a></span>
+|
+
+<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
+|
+
+<span class="param-type"><a href="me.Line.html">me.Line</a></span>
+|
+
+<span class="param-type"><a href="me.Ellipse.html">me.Ellipse</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">a shape object to stroke</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    renderer.js, line 299
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
         </dl>
     
 
@@ -2599,7 +3078,7 @@ Also configures anti-aliasing and blend modes based on constructor options.
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-11-29T14:47:53+08:00 using the <a
+		on 2018-12-24T08:55:59+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>

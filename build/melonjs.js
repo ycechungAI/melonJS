@@ -1,5 +1,5 @@
 /**
- * melonJS Game Engine v6.2.0
+ * melonJS Game Engine v6.3.0
  * http://www.melonjs.org
  * @license {@link http://www.opensource.org/licenses/mit-license.php|MIT}
  * @copyright (C) 2011 - 2018 Olivier Biot
@@ -1840,7 +1840,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @ignore
      */
     me.mod = "melonJS";
-    me.version = "6.2.0";
+    me.version = "6.3.0";
     /**
      * global system settings and browser capabilities
      * @namespace
@@ -1964,14 +1964,14 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @function
          * @param {String} first First version string to compare
-         * @param {String} [second="6.2.0"] Second version string to compare
+         * @param {String} [second="6.3.0"] Second version string to compare
          * @return {Number} comparison result <br>&lt; 0 : first &lt; second<br>
          * 0 : first == second<br>
          * &gt; 0 : first &gt; second
          * @example
-         * if (me.sys.checkVersion("6.2.0") > 0) {
+         * if (me.sys.checkVersion("6.3.0") > 0) {
          *     console.error(
-         *         "melonJS is too old. Expected: 6.2.0, Got: " + me.version
+         *         "melonJS is too old. Expected: 6.3.0, Got: " + me.version
          *     );
          * }
          */
@@ -5673,6 +5673,12 @@ me.Error = me.Object.extend.bind(Error)({
             this.edges = [];
 
             /**
+             * a list of indices for all vertices composing this polygon (@see earcut)
+             * @ignore
+             */
+            this.indices = [];
+
+            /**
              * The normals here are the direction of the normal for the `n`th edge of the polygon, relative
              * to the position of the `n`th point. If you want to draw an edge normal, you must first
              * translate to the position of the starting point.
@@ -5831,6 +5837,7 @@ me.Error = me.Object.extend.bind(Error)({
             var i;
             var edges = this.edges;
             var normals = this.normals;
+            var indices = this.indices;
 
             // Copy the original points array and apply the offset/angle
             var points = this.points;
@@ -5855,8 +5862,35 @@ me.Error = me.Object.extend.bind(Error)({
             // trunc array
             edges.length = len;
             normals.length = len;
+            // do not do anything here, indices will be computed by
+            // toIndices if array is empty upon function call
+            indices.length = 0;
 
             return this;
+        },
+
+        /**
+         * returns a list of indices for all triangles defined in this polygon
+         * @name getIndices
+         * @memberOf me.Polygon
+         * @function
+         * @param {Vector2d[]} a list of vector
+         * @return {me.Polygon} this Polygon
+         */
+        getIndices : function (x, y) {
+            if (this.indices.length === 0) {
+                var points = this.points;
+                var data = [];
+
+                // flatten the points vector array
+                for (var i = 0; i < points.length; i++) {
+                    // XXX Optimize me
+                    data.push(points[i].x);
+                    data.push(points[i].y);
+                }
+                this.indices = me.earcut(data);
+            }
+            return this.indices;
         },
 
         /**
@@ -7215,8 +7249,8 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          */
         destroy : function () {
-            this.onBodyUpdate = null;
-            this.ancestor = null;
+            this.onBodyUpdate = undefined;
+            this.ancestor = undefined;
             this.shapes.length = 0;
         }
     });
@@ -8723,8 +8757,7 @@ me.Error = me.Object.extend.bind(Error)({
             this.alpha = 1.0;
 
             /**
-             * a reference to the parent object that contains this renderable,
-             * or undefined if it has not been added to one.
+             * a reference to the parent object that contains this renderable
              * @public
              * @type me.Container|me.Entity
              * @default undefined
@@ -8744,6 +8777,32 @@ me.Error = me.Object.extend.bind(Error)({
             } else {
                 this._bounds = me.pool.pull("me.Rect", x, y, width, height);
             }
+
+            /**
+             * A mask limits rendering elements to the shape and position of the given mask object.
+             * So, if the renderable is larger than the mask, only the intersecting part of the renderable will be visible.
+             * @public
+             * @type {me.Rect|me.Polygon|me.Line|me.Ellipse}
+             * @name mask
+             * @default undefined
+             * @memberOf me.Renderable
+             * @example
+             * // apply a mask in the shape of a Star
+             * myNPCSprite.mask = new me.Polygon(myNPCSprite.width / 2, 0, [
+             *    // draw a star
+             *    {x: 0, y: 0},
+             *    {x: 14, y: 30},
+             *    {x: 47, y: 35},
+             *    {x: 23, y: 57},
+             *    {x: 44, y: 90},
+             *    {x: 0, y: 62},
+             *    {x: -44, y: 90},
+             *    {x: -23, y: 57},
+             *    {x: -47, y: 35},
+             *    {x: -14, y: 30}
+             * ]);
+             */
+            this.mask = undefined;
 
             /**
              * Absolute position in the game world
@@ -8937,7 +8996,7 @@ me.Error = me.Object.extend.bind(Error)({
             var bounds = this.getBounds();
             bounds.pos.set(newX, newY, bounds.pos.z);
             // XXX: This is called from the constructor, before it gets an ancestor
-            if (this.ancestor && !this.floating) {
+            if (this.ancestor instanceof me.Container && !this.floating) {
                 bounds.pos.add(this.ancestor._absPos);
             }
             return bounds;
@@ -9007,6 +9066,10 @@ me.Error = me.Object.extend.bind(Error)({
                 renderer.translate(-ax, -ay);
             }
 
+            if (typeof this.mask !== "undefined") {
+                renderer.setMask(this.mask);
+            }
+
         },
 
         /**
@@ -9032,6 +9095,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @param {me.CanvasRenderer|me.WebGLRenderer} renderer a renderer object
          **/
         postDraw : function (renderer) {
+            if (typeof this.mask !== "undefined") {
+                renderer.clearMask();
+            }
             // restore the context
             renderer.restore();
         },
@@ -9058,6 +9124,13 @@ me.Error = me.Object.extend.bind(Error)({
             this._bounds = undefined;
 
             this.onVisibilityChange = undefined;
+
+            if (typeof this.mask !== "undefined") {
+                me.pool.push(this.mask);
+                this.mask = undefined;
+            }
+
+            this.ancestor = undefined;
 
             // destroy the physic body if defined
             if (typeof this.body !== "undefined") {
@@ -9638,6 +9711,7 @@ me.Error = me.Object.extend.bind(Error)({
              * global offset for the position to draw from on the source image.
              * @public
              * @type me.Vector2d
+             * @default <0.0,0.0>
              * @name offset
              * @memberOf me.Sprite
              */
@@ -10124,7 +10198,7 @@ me.Error = me.Object.extend.bind(Error)({
                 newY - (this.anchorPoint.y * bounds.height)
             );
             // XXX: This is called from the constructor, before it gets an ancestor
-            if (this.ancestor && !this.floating) {
+            if (this.ancestor instanceof me.Container && !this.floating) {
                 bounds.pos.add(this.ancestor._absPos);
             }
             return bounds;
@@ -11028,7 +11102,7 @@ me.Error = me.Object.extend.bind(Error)({
 
             // Update container's absolute position
             this._absPos.set(newX, newY);
-            if (this.ancestor && !this.floating) {
+            if (this.ancestor instanceof me.Container && !this.floating) {
                 this._absPos.add(this.ancestor._absPos);
             }
 
@@ -11346,9 +11420,6 @@ me.Error = me.Object.extend.bind(Error)({
 
             this.drawCount = 0;
 
-            // adjust position if required (e.g. canvas/window centering)
-            renderer.translate(this.pos.x, this.pos.y);
-
             // clip the containter children to the container bounds
             if (this.root === false && this.clipping === true && this.childBounds.isFinite() === true) {
                 renderer.clipRect(
@@ -11358,6 +11429,9 @@ me.Error = me.Object.extend.bind(Error)({
                     this.childBounds.height
                 );
             }
+
+            // adjust position if required (e.g. canvas/window centering)
+            renderer.translate(this.pos.x, this.pos.y);
 
             for (var i = this.children.length, obj; i--, (obj = this.children[i]);) {
                 if (obj.isRenderable) {
@@ -12486,6 +12560,7 @@ me.Error = me.Object.extend.bind(Error)({
         set : function (value) {
             if (value instanceof me.Renderable) {
                 this.children[0] = value;
+                this.children[0].ancestor = this;
             } else {
                 throw new me.Entity.Error(value + "should extend me.Renderable");
             }
@@ -16788,6 +16863,60 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
+         * stroke the given shape
+         * @name stroke
+         * @memberOf me.Renderer
+         * @function
+         * @param {me.Rect|me.Polygon|me.Line|me.Ellipse} shape a shape object to stroke
+         */
+        stroke : function (shape, fill) {
+            if (shape.shapeType === "Rectangle") {
+                this.strokeRect(shape.left, shape.top, shape.width, shape.height, fill);
+            } else if (shape instanceof me.Line || shape instanceof me.Polygon) {
+                this.strokePolygon(shape, fill);
+            } else if (shape instanceof me.Ellipse) {
+                this.strokeEllipse(
+                    shape.pos.x,
+                    shape.pos.y,
+                    shape.radiusV.x,
+                    shape.radiusV.y,
+                    fill
+                );
+            }
+        },
+
+        /**
+         * fill the given shape
+         * @name fill
+         * @memberOf me.Renderer
+         * @function
+         * @param {me.Rect|me.Polygon|me.Line|me.Ellipse} shape a shape object to fill
+         */
+        fill : function (shape) {
+            this.stroke(shape, true);
+        },
+
+        /**
+         * A mask limits rendering elements to the shape and position of the given mask object.
+         * So, if the renderable is larger than the mask, only the intersecting part of the renderable will be visible.
+         * Mask are not preserved through renderer context save and restore.
+         * @name setMask
+         * @memberOf me.Renderer
+         * @function
+         * @param {me.Rect|me.Polygon|me.Line|me.Ellipse} [mask] the shape defining the mask to be applied
+         */
+        setMask : function (mask) {},
+
+        /**
+         * disable (remove) the rendering mask set through setMask.
+         * @name clearMask
+         * @see setMask
+         * @memberOf me.Renderer
+         * @function
+         */
+        clearMask : function() {},
+
+        /**
          * @ignore
          */
         drawFont : function (/*bounds*/) {}
@@ -17049,8 +17178,7 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * Sets all pixels in the given rectangle to transparent black, <br>
-         * erasing any previously drawn content.
+         * Erase the pixels in the given rectangular area by setting them to transparent black (rgba(0,0,0,0)).
          * @name clearRect
          * @memberOf me.CanvasRenderer
          * @function
@@ -17162,6 +17290,33 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
+         * Stroke an arc at the specified coordinates with given radius, start and end points
+         * @name strokeArc
+         * @memberOf me.CanvasRenderer
+         * @function
+         * @param {Number} x arc center point x-axis
+         * @param {Number} y arc center point y-axis
+         * @param {Number} radius
+         * @param {Number} start start angle in radians
+         * @param {Number} end end angle in radians
+         * @param {Boolean} [antiClockwise=false] draw arc anti-clockwise
+         */
+        strokeArc : function (x, y, radius, start, end, antiClockwise, fill) {
+            var context = this.backBufferContext2D;
+
+            if (context.globalAlpha < 1 / 255) {
+                // Fast path: don't draw fully transparent
+                return;
+            }
+            this.translate(x + radius, y + radius);
+            context.beginPath();
+            context.arc(0, 0, radius, start, end, antiClockwise || false);
+            context[fill === true ? "fill" : "stroke"]();
+            context.closePath();
+            this.translate(-(x + radius), -(y + radius));
+        },
+
+        /**
          * Fill an arc at the specified coordinates with given radius, start and end points
          * @name fillArc
          * @memberOf me.CanvasRenderer
@@ -17174,17 +17329,158 @@ me.Error = me.Object.extend.bind(Error)({
          * @param {Boolean} [antiClockwise=false] draw arc anti-clockwise
          */
         fillArc : function (x, y, radius, start, end, antiClockwise) {
-            if (this.backBufferContext2D.globalAlpha < 1 / 255) {
+            this.strokeArc(x, y, radius, start, end, antiClockwise || false, true);
+        },
+
+        /**
+         * Stroke an ellipse at the specified coordinates with given radius
+         * @name strokeEllipse
+         * @memberOf me.CanvasRenderer
+         * @function
+         * @param {Number} x ellipse center point x-axis
+         * @param {Number} y ellipse center point y-axis
+         * @param {Number} w horizontal radius of the ellipse
+         * @param {Number} h vertical radius of the ellipse
+         */
+        strokeEllipse : function (x, y, w, h, fill) {
+            var context = this.backBufferContext2D;
+
+            if (context.globalAlpha < 1 / 255) {
                 // Fast path: don't draw fully transparent
                 return;
             }
 
-            this.translate(x + radius, y + radius);
-            this.backBufferContext2D.beginPath();
-            this.backBufferContext2D.arc(0, 0, radius, start, end, antiClockwise || false);
-            this.backBufferContext2D.fill();
-            this.backBufferContext2D.closePath();
-            this.translate(- (x + radius), -(y + radius));
+            var hw = w,
+                hh = h,
+                lx = x - hw,
+                rx = x + hw,
+                ty = y - hh,
+                by = y + hh;
+
+            var xmagic = hw * 0.551784,
+                ymagic = hh * 0.551784,
+                xmin = x - xmagic,
+                xmax = x + xmagic,
+                ymin = y - ymagic,
+                ymax = y + ymagic;
+
+            context.beginPath();
+            context.moveTo(x, ty);
+            context.bezierCurveTo(xmax, ty, rx, ymin, rx, y);
+            context.bezierCurveTo(rx, ymax, xmax, by, x, by);
+            context.bezierCurveTo(xmin, by, lx, ymax, lx, y);
+            context.bezierCurveTo(lx, ymin, xmin, ty, x, ty);
+            context[fill === true ? "fill" : "stroke"]();
+        },
+
+        /**
+         * Fill an ellipse at the specified coordinates with given radius
+         * @name fillEllipse
+         * @memberOf me.CanvasRenderer
+         * @function
+         * @param {Number} x ellipse center point x-axis
+         * @param {Number} y ellipse center point y-axis
+         * @param {Number} w horizontal radius of the ellipse
+         * @param {Number} h vertical radius of the ellipse
+         */
+        fillEllipse : function (x, y, w, h) {
+            this.strokeEllipse(x, y, w, h, true);
+        },
+
+        /**
+         * Stroke a line of the given two points
+         * @name strokeLine
+         * @memberOf me.CanvasRenderer
+         * @function
+         * @param {Number} startX the start x coordinate
+         * @param {Number} startY the start y coordinate
+         * @param {Number} endX the end x coordinate
+         * @param {Number} endY the end y coordinate
+         */
+        strokeLine : function (startX, startY, endX, endY) {
+            var context = this.backBufferContext2D;
+
+            if (context < 1 / 255) {
+                // Fast path: don't draw fully transparent
+                return;
+            }
+
+            context.beginPath();
+            context.moveTo(startX, startY);
+            context.lineTo(endX, endY);
+            context.stroke();
+        },
+
+        /**
+         * Fill a line of the given two points
+         * @name fillLine
+         * @memberOf me.CanvasRenderer
+         * @function
+         * @param {Number} startX the start x coordinate
+         * @param {Number} startY the start y coordinate
+         * @param {Number} endX the end x coordinate
+         * @param {Number} endY the end y coordinate
+         */
+        fillLine : function (startX, startY, endX, endY) {
+            this.strokeLine(startX, startY, endX, endY);
+        },
+
+        /**
+         * Stroke the given me.Polygon on the screen
+         * @name strokePolygon
+         * @memberOf me.CanvasRenderer
+         * @function
+         * @param {me.Polygon} poly the shape to draw
+         */
+        strokePolygon : function (poly, fill) {
+            var context = this.backBufferContext2D;
+
+            if (context.globalAlpha < 1 / 255) {
+                // Fast path: don't draw fully transparent
+                return;
+            }
+
+            this.translate(poly.pos.x, poly.pos.y);
+            context.beginPath();
+            context.moveTo(poly.points[0].x, poly.points[0].y);
+            var point;
+            for (var i = 1; i < poly.points.length; i++) {
+                point = poly.points[i];
+                context.lineTo(point.x, point.y);
+            }
+            context.lineTo(poly.points[0].x, poly.points[0].y);
+            context[fill === true ? "fill" : "stroke"]();
+            context.closePath();
+            this.translate(-poly.pos.x, -poly.pos.y);
+        },
+
+        /**
+         * Fill the given me.Polygon on the screen
+         * @name fillPolygon
+         * @memberOf me.CanvasRenderer
+         * @function
+         * @param {me.Polygon} poly the shape to draw
+         */
+        fillPolygon : function (poly) {
+            this.strokePolygon(poly, true);
+        },
+
+        /**
+         * Stroke a rectangle at the specified coordinates
+         * @name strokeRect
+         * @memberOf me.CanvasRenderer
+         * @function
+         * @param {Number} x
+         * @param {Number} y
+         * @param {Number} width
+         * @param {Number} height
+         */
+        strokeRect : function (x, y, width, height) {
+            if (this.backBufferContext2D.globalAlpha < 1 / 255) {
+                // Fast path: don't draw fully transparent
+                return;
+            }
+            this.backBufferContext2D.strokeRect(x, y, width, height);
         },
 
         /**
@@ -17204,6 +17500,7 @@ me.Error = me.Object.extend.bind(Error)({
             }
             this.backBufferContext2D.fillRect(x, y, width, height);
         },
+
 
         /**
          * return a reference to the system 2d Context
@@ -17338,171 +17635,6 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * Stroke an arc at the specified coordinates with given radius, start and end points
-         * @name strokeArc
-         * @memberOf me.CanvasRenderer
-         * @function
-         * @param {Number} x arc center point x-axis
-         * @param {Number} y arc center point y-axis
-         * @param {Number} radius
-         * @param {Number} start start angle in radians
-         * @param {Number} end end angle in radians
-         * @param {Boolean} [antiClockwise=false] draw arc anti-clockwise
-         */
-        strokeArc : function (x, y, radius, start, end, antiClockwise) {
-            if (this.backBufferContext2D.globalAlpha < 1 / 255) {
-                // Fast path: don't draw fully transparent
-                return;
-            }
-            this.translate(x + radius, y + radius);
-            this.backBufferContext2D.beginPath();
-            this.backBufferContext2D.arc(0, 0, radius, start, end, antiClockwise || false);
-            this.backBufferContext2D.stroke();
-            this.backBufferContext2D.closePath();
-            this.translate(-(x + radius), -(y + radius));
-        },
-
-        /**
-         * Stroke an ellipse at the specified coordinates with given radius, start and end points
-         * @name strokeEllipse
-         * @memberOf me.CanvasRenderer
-         * @function
-         * @param {Number} x arc center point x-axis
-         * @param {Number} y arc center point y-axis
-         * @param {Number} w horizontal radius of the ellipse
-         * @param {Number} h vertical radius of the ellipse
-         */
-        strokeEllipse : function (x, y, w, h) {
-            if (this.backBufferContext2D.globalAlpha < 1 / 255) {
-                // Fast path: don't draw fully transparent
-                return;
-            }
-
-            var hw = w,
-                hh = h,
-                lx = x - hw,
-                rx = x + hw,
-                ty = y - hh,
-                by = y + hh;
-
-            var xmagic = hw * 0.551784,
-                ymagic = hh * 0.551784,
-                xmin = x - xmagic,
-                xmax = x + xmagic,
-                ymin = y - ymagic,
-                ymax = y + ymagic;
-
-            this.backBufferContext2D.beginPath();
-            this.backBufferContext2D.moveTo(x, ty);
-            this.backBufferContext2D.bezierCurveTo(xmax, ty, rx, ymin, rx, y);
-            this.backBufferContext2D.bezierCurveTo(rx, ymax, xmax, by, x, by);
-            this.backBufferContext2D.bezierCurveTo(xmin, by, lx, ymax, lx, y);
-            this.backBufferContext2D.bezierCurveTo(lx, ymin, xmin, ty, x, ty);
-            this.backBufferContext2D.stroke();
-        },
-
-        /**
-         * Stroke a line of the given two points
-         * @name strokeLine
-         * @memberOf me.CanvasRenderer
-         * @function
-         * @param {Number} startX the start x coordinate
-         * @param {Number} startY the start y coordinate
-         * @param {Number} endX the end x coordinate
-         * @param {Number} endY the end y coordinate
-         */
-        strokeLine : function (startX, startY, endX, endY) {
-            if (this.backBufferContext2D.globalAlpha < 1 / 255) {
-                // Fast path: don't draw fully transparent
-                return;
-            }
-
-            this.backBufferContext2D.beginPath();
-            this.backBufferContext2D.moveTo(startX, startY);
-            this.backBufferContext2D.lineTo(endX, endY);
-            this.backBufferContext2D.stroke();
-        },
-
-        /**
-         * Strokes a me.Polygon on the screen with a specified color
-         * @name strokePolygon
-         * @memberOf me.CanvasRenderer
-         * @function
-         * @param {me.Polygon} poly the shape to draw
-         */
-        strokePolygon : function (poly) {
-            if (this.backBufferContext2D.globalAlpha < 1 / 255) {
-                // Fast path: don't draw fully transparent
-                return;
-            }
-
-            this.translate(poly.pos.x, poly.pos.y);
-            this.backBufferContext2D.beginPath();
-            this.backBufferContext2D.moveTo(poly.points[0].x, poly.points[0].y);
-            var point;
-            for (var i = 1; i < poly.points.length; i++) {
-                point = poly.points[i];
-                this.backBufferContext2D.lineTo(point.x, point.y);
-            }
-            this.backBufferContext2D.lineTo(poly.points[0].x, poly.points[0].y);
-            this.backBufferContext2D.stroke();
-            this.backBufferContext2D.closePath();
-            this.translate(-poly.pos.x, -poly.pos.y);
-        },
-
-        /**
-         * Stroke a rectangle at the specified coordinates with a given color
-         * @name strokeRect
-         * @memberOf me.CanvasRenderer
-         * @function
-         * @param {Number} x
-         * @param {Number} y
-         * @param {Number} width
-         * @param {Number} height
-         */
-        strokeRect : function (x, y, width, height) {
-            if (this.backBufferContext2D.globalAlpha < 1 / 255) {
-                // Fast path: don't draw fully transparent
-                return;
-            }
-            this.backBufferContext2D.strokeRect(x, y, width, height);
-        },
-
-        /**
-         * draw the given shape
-         * @name drawShape
-         * @memberOf me.CanvasRenderer
-         * @function
-         * @param {me.Rect|me.Polygon|me.Line|me.Ellipse} shape a shape object
-         */
-        drawShape : function (shape) {
-            if (shape.shapeType === "Rectangle") {
-                this.strokeRect(shape.left, shape.top, shape.width, shape.height);
-            } else if (shape instanceof me.Line || shape instanceof me.Polygon) {
-                this.strokePolygon(shape);
-            } else if (shape instanceof me.Ellipse) {
-                if (shape.radiusV.x === shape.radiusV.y) {
-                    // it's a circle
-                    this.strokeArc(
-                        shape.pos.x - shape.radius,
-                        shape.pos.y - shape.radius,
-                        shape.radius,
-                        0,
-                        2 * Math.PI
-                    );
-                } else {
-                    // it's an ellipse
-                    this.strokeEllipse(
-                        shape.pos.x,
-                        shape.pos.y,
-                        shape.radiusV.x,
-                        shape.radiusV.y
-                    );
-                }
-            }
-        },
-
-        /**
          * Resets (overrides) the renderer transformation matrix to the
          * identity one, and then apply the given transformation matrix.
          * @name setTransform
@@ -17591,6 +17723,66 @@ me.Error = me.Object.extend.bind(Error)({
                     currentScissor[3] = height;
                 }
             }
+        },
+
+        /**
+         * A mask limits rendering elements to the shape and position of the given mask object.
+         * So, if the renderable is larger than the mask, only the intersecting part of the renderable will be visible.
+         * Mask are not preserved through renderer context save and restore.
+         * @name setMask
+         * @memberOf me.CanvasRenderer
+         * @function
+         * @param {me.Rect|me.Polygon|me.Line|me.Ellipse} [mask] the shape defining the mask to be applied
+         */
+        setMask : function (mask) {
+            var context = this.backBufferContext2D;
+            var _x = mask.pos.x, _y = mask.pos.y;
+
+            // https://github.com/melonjs/melonJS/issues/648
+            if (mask instanceof me.Ellipse) {
+                var hw = mask.radiusV.x,
+                    hh = mask.radiusV.y,
+                    lx = _x - hw,
+                    rx = _x + hw,
+                    ty = _y - hh,
+                    by = _y + hh;
+
+                var xmagic = hw * 0.551784,
+                    ymagic = hh * 0.551784,
+                    xmin = _x - xmagic,
+                    xmax = _x + xmagic,
+                    ymin = _y - ymagic,
+                    ymax = _y + ymagic;
+
+                context.beginPath();
+                context.moveTo(_x, ty);
+                context.bezierCurveTo(xmax, ty, rx, ymin, rx, _y);
+                context.bezierCurveTo(rx, ymax, xmax, by, _x, by);
+                context.bezierCurveTo(xmin, by, lx, ymax, lx, _y);
+                context.bezierCurveTo(lx, ymin, xmin, ty, _x, ty);
+            } else {
+                context.save();
+                context.beginPath();
+                context.moveTo(_x + mask.points[0].x, _y + mask.points[0].y);
+                var point;
+                for (var i = 1; i < mask.points.length; i++) {
+                    point = mask.points[i];
+                    context.lineTo(_x + point.x, _y + point.y);
+                }
+                context.closePath();
+            }
+            context.clip();
+        },
+
+        /**
+         * disable (remove) the rendering mask set through setMask.
+         * @name clearMask
+         * @see setMask
+         * @memberOf me.CanvasRenderer
+         * @function
+         */
+        clearMask : function() {
+            this.backBufferContext2D.restore();
         }
 
     });
@@ -18163,7 +18355,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @param {Number} [h] Source image height (Only use with UInt8Array[] or Float32Array[] source image)
          * @param {Number} [b] Source image border (Only use with UInt8Array[] or Float32Array[] source image)
          * @param {Number} [b] Source image border (Only use with UInt8Array[] or Float32Array[] source image)
-         * @param {number} [premultipliedAlpha=true] Multiplies the alpha channel into the other color channels
+         * @param {Boolean} [premultipliedAlpha=true] Multiplies the alpha channel into the other color channels
          * @return {WebGLTexture} A texture object
          */
         api.createTexture = function (gl, unit, image, filter, repeat, w, h, b, premultipliedAlpha) {
@@ -18257,7 +18449,7 @@ me.Error = me.Object.extend.bind(Error)({
             /**
              * @ignore
              */
-            this._linePoints = [
+            this._glPoints = [
                 new me.Vector2d(),
                 new me.Vector2d(),
                 new me.Vector2d(),
@@ -18290,8 +18482,6 @@ me.Error = me.Object.extend.bind(Error)({
                 this.compositor.maxTextures
             );
 
-            this.createFillTexture(this.cache);
-
             // Configure the WebGL viewport
             this.scaleCanvas(1, 1);
 
@@ -18308,7 +18498,6 @@ me.Error = me.Object.extend.bind(Error)({
             me.Renderer.prototype.reset.apply(this);
             this.compositor.reset();
             this.gl.disable(this.gl.SCISSOR_TEST);
-            this.createFillTexture(this.cache);
             if (typeof this.fontContext2D !== "undefined" ) {
                 this.createFontTexture(this.cache);
             }
@@ -18323,39 +18512,6 @@ me.Error = me.Object.extend.bind(Error)({
          */
         resetTransform : function () {
             this.currentTransform.identity();
-        },
-
-        /**
-         * @ignore
-         */
-        createFillTexture : function (cache) {
-            if (typeof this.fillTexture === "undefined") {
-                // Create a 1x1 white texture for fill operations
-                var image = new Uint8Array([255, 255, 255, 255]);
-                /**
-                 * @ignore
-                 */
-                this.fillTexture = new this.Texture(
-                    this.Texture.prototype.createAtlas.apply(
-                        this.Texture.prototype,
-                        [ 1, 1, "fillTexture"]
-                    ),
-                    image,
-                    cache
-                );
-                // XXX better way to disable this
-                this.fillTexture.premultipliedAlpha = false;
-            } else {
-                // fillTexture was already created, just add it back into the cache
-                cache.put(this.fillTexture.source, this.fillTexture);
-            }
-
-            this.compositor.uploadTexture(
-                this.fillTexture,
-                1,
-                1,
-                0
-            );
         },
 
         /**
@@ -18386,7 +18542,7 @@ me.Error = me.Object.extend.bind(Error)({
                 );
             }
             else {
-               // fillTexture was already created, just add it back into the cache
+               // fontTexture was already created, just add it back into the cache
                cache.put(this.fontContext2D.canvas, this.fontTexture);
            }
            this.compositor.uploadTexture(this.fontTexture, 0, 0, 0);
@@ -18466,8 +18622,7 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * Sets all pixels in the given rectangle to transparent black, <br>
-         * erasing any previously drawn content.
+         * Erase the pixels in the given rectangular area by setting them to transparent black (rgba(0,0,0,0)).
          * @name clearRect
          * @memberOf me.WebGLRenderer
          * @function
@@ -18478,7 +18633,7 @@ me.Error = me.Object.extend.bind(Error)({
          */
         clearRect : function (x, y, width, height) {
             var color = this.currentColor.clone();
-            this.currentColor.copy("#0000");
+            this.currentColor.copy("#000000");
             this.fillRect(x, y, width, height);
             this.currentColor.copy(color);
             me.pool.push(color);
@@ -18585,19 +18740,6 @@ me.Error = me.Object.extend.bind(Error)({
             this.compositor.addQuad(pattern, key, x, y, width, height);
         },
 
-        /**
-         * Draw a filled rectangle at the specified coordinates
-         * @name fillRect
-         * @memberOf me.WebGLRenderer
-         * @function
-         * @param {Number} x
-         * @param {Number} y
-         * @param {Number} width
-         * @param {Number} height
-         */
-        fillRect : function (x, y, width, height) {
-            this.compositor.addQuad(this.fillTexture, "default", x, y, width, height);
-        },
 
         /**
          * return a reference to the screen canvas corresponding WebGL Context
@@ -18635,6 +18777,7 @@ me.Error = me.Object.extend.bind(Error)({
                 alpha : transparent,
                 antialias : this.settings.antiAlias,
                 depth : false,
+                stencil: true,
                 premultipliedAlpha: transparent,
                 failIfMajorPerformanceCaveat : this.settings.failIfMajorPerformanceCaveat
             };
@@ -18672,6 +18815,7 @@ me.Error = me.Object.extend.bind(Error)({
          */
         setBlendMode : function (mode, gl) {
             gl = gl || this.gl;
+
 
             gl.enable(gl.BLEND);
             switch (mode) {
@@ -18853,22 +18997,101 @@ me.Error = me.Object.extend.bind(Error)({
          * @param {Number} end end angle in radians
          * @param {Boolean} [antiClockwise=false] draw arc anti-clockwise
          */
-        strokeArc : function (/*x, y, radius, start, end, antiClockwise*/) {
-            // TODO
+        strokeArc : function (x, y, radius, start, end, antiClockwise, fill) {
+            if (fill === true ) {
+                this.fillArc(x, y, radius, start, end, antiClockwise);
+            } else {
+                console.warn("strokeArc() is not implemented");
+            }
         },
 
         /**
-         * Stroke an ellipse at the specified coordinates with given radius, start and end points
-         * @name strokeEllipse
+         * Fill an arc at the specified coordinates with given radius, start and end points
+         * @name fillArc
          * @memberOf me.WebGLRenderer
          * @function
          * @param {Number} x arc center point x-axis
          * @param {Number} y arc center point y-axis
+         * @param {Number} radius
+         * @param {Number} start start angle in radians
+         * @param {Number} end end angle in radians
+         * @param {Boolean} [antiClockwise=false] draw arc anti-clockwise
+         */
+        fillArc : function (x, y, radius, start, end, antiClockwise) {
+            console.warn("fillArc() is not implemented");
+        },
+
+        /**
+         * Stroke an ellipse at the specified coordinates with given radius
+         * @name strokeEllipse
+         * @memberOf me.WebGLRenderer
+         * @function
+         * @param {Number} x ellipse center point x-axis
+         * @param {Number} y ellipse center point y-axis
          * @param {Number} w horizontal radius of the ellipse
          * @param {Number} h vertical radius of the ellipse
          */
-        strokeEllipse : function (/*x, y, w, h*/) {
-            // TODO
+        strokeEllipse : function (x, y, w, h, fill) {
+            if (fill === true ) {
+                this.fillEllipse(x, y, w, h);
+            } else {
+                // XXX to be optimzed using a specific shader
+                var len = Math.floor(24 * Math.sqrt(w)) ||
+                          Math.floor(12 * Math.sqrt(w + h));
+                var segment = (Math.PI * 2) / len;
+                var points = this._glPoints,
+                    i;
+
+                // Grow internal points buffer if necessary
+                for (i = points.length; i < len; i++) {
+                    points.push(new me.Vector2d());
+                }
+
+                // calculate and draw all segments
+                for (i = 0; i < len; i++) {
+                    points[i].x = x + (Math.sin(segment * -i) * w);
+                    points[i].y = y + (Math.cos(segment * -i) * h);
+                }
+                // batch draw all lines
+                this.compositor.drawLine(points, len);
+            }
+
+        },
+
+        /**
+         * Fill an ellipse at the specified coordinates with given radius
+         * @name fillEllipse
+         * @memberOf me.WebGLRenderer
+         * @function
+         * @param {Number} x ellipse center point x-axis
+         * @param {Number} y ellipse center point y-axis
+         * @param {Number} w horizontal radius of the ellipse
+         * @param {Number} h vertical radius of the ellipse
+         */
+        fillEllipse : function (x, y, w, h) {
+            // XXX to be optimzed using a specific shader
+            var len = Math.floor(24 * Math.sqrt(w)) ||
+                      Math.floor(12 * Math.sqrt(w + h));
+            var segment = (Math.PI * 2) / len;
+            var points = this._glPoints;
+            var index = 0;
+
+            // Grow internal points buffer if necessary
+            for (i = points.length; i < (len + 1) * 2; i++) {
+                points.push(new me.Vector2d());
+            }
+
+            // draw all vertices vertex coordinates
+            for (var i = 0; i < len + 1; i++) {
+                points[index++].set(x, y);
+                points[index++].set(
+                    x + (Math.sin(segment * i) * w),
+                    y + (Math.cos(segment * i) * h)
+                );
+            }
+
+            // batch draw all triangles
+            this.compositor.drawTriangle(points, index, true);
         },
 
         /**
@@ -18882,37 +19105,83 @@ me.Error = me.Object.extend.bind(Error)({
          * @param {Number} endY the end y coordinate
          */
         strokeLine : function (startX, startY, endX, endY) {
-            var points = this._linePoints.slice(0, 2);
+            var points = this._glPoints;
             points[0].x = startX;
             points[0].y = startY;
             points[1].x = endX;
             points[1].y = endY;
-            this.compositor.drawLine(points, true);
+            this.compositor.drawLine(points, 2, true);
+        },
+
+
+        /**
+         * Fill a line of the given two points
+         * @name fillLine
+         * @memberOf me.WebGLRenderer
+         * @function
+         * @param {Number} startX the start x coordinate
+         * @param {Number} startY the start y coordinate
+         * @param {Number} endX the end x coordinate
+         * @param {Number} endY the end y coordinate
+         */
+        fillLine : function (startX, startY, endX, endY) {
+            this.strokeLine(startX, startY, endX, endY);
         },
 
         /**
-         * Strokes a me.Polygon on the screen with a specified color
+         * Stroke a me.Polygon on the screen with a specified color
          * @name strokePolygon
          * @memberOf me.WebGLRenderer
          * @function
          * @param {me.Polygon} poly the shape to draw
          */
-        strokePolygon : function (poly) {
-            var len = poly.points.length,
-                points,
-                i;
+        strokePolygon : function (poly, fill) {
+            if (fill === true ) {
+                this.fillPolygon(poly);
+            } else {
+                var len = poly.points.length,
+                    points = this._glPoints,
+                    i;
+
+                // Grow internal points buffer if necessary
+                for (i = points.length; i < len; i++) {
+                    points.push(new me.Vector2d());
+                }
+
+                // calculate and draw all segments
+                for (i = 0; i < len; i++) {
+                    points[i].x = poly.pos.x + poly.points[i].x;
+                    points[i].y = poly.pos.y + poly.points[i].y;
+                }
+                this.compositor.drawLine(points, len);
+            }
+        },
+
+        /**
+         * Fill a me.Polygon on the screen
+         * @name fillPolygon
+         * @memberOf me.WebGLRenderer
+         * @function
+         * @param {me.Polygon} poly the shape to draw
+        */
+        fillPolygon : function (poly) {
+            var points = poly.points;
+            var glPoints = this._glPoints;
+            var indices = poly.getIndices();
+            var x = poly.pos.x, y = poly.pos.y;
 
             // Grow internal points buffer if necessary
-            for (i = this._linePoints.length; i < len; i++) {
-                this._linePoints.push(new me.Vector2d());
+            for (i = glPoints.length; i < indices.length; i++) {
+                glPoints.push(new me.Vector2d());
             }
 
-            points = this._linePoints.slice(0, len);
-            for (i = 0; i < len; i++) {
-                points[i].x = poly.pos.x + poly.points[i].x;
-                points[i].y = poly.pos.y + poly.points[i].y;
+            // calculate all vertices
+            for ( var i = 0; i < indices.length; i ++ ) {
+                glPoints[i].set(x + points[indices[i]].x, y + points[indices[i]].y);
             }
-            this.compositor.drawLine(points);
+
+            // draw all triangle
+            this.compositor.drawTriangle(glPoints, indices.length);
         },
 
         /**
@@ -18926,7 +19195,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @param {Number} height
          */
         strokeRect : function (x, y, width, height) {
-            var points = this._linePoints.slice(0, 4);
+            var points = this._glPoints;
             points[0].x = x;
             points[0].y = y;
             points[1].x = x + width;
@@ -18935,45 +19204,34 @@ me.Error = me.Object.extend.bind(Error)({
             points[2].y = y + height;
             points[3].x = x;
             points[3].y = y + height;
-            this.compositor.drawLine(points);
+            this.compositor.drawLine(points, 4);
         },
 
         /**
-         * draw the given shape
-         * @name drawShape
+         * Draw a filled rectangle at the specified coordinates
+         * @name fillRect
          * @memberOf me.WebGLRenderer
          * @function
-         * @param {me.Rect|me.Polygon|me.Line|me.Ellipse} shape a shape object
+         * @param {Number} x
+         * @param {Number} y
+         * @param {Number} width
+         * @param {Number} height
          */
-        drawShape : function (shape) {
-            if (shape.shapeType === "Rectangle") {
-                this.strokeRect(shape.left, shape.top, shape.width, shape.height);
-            } else if (shape instanceof me.Line || shape instanceof me.Polygon) {
-                this.strokePolygon(shape);
-            } else if (shape instanceof me.Ellipse) {
-                if (shape.radiusV.x === shape.radiusV.y) {
-                    // it's a circle
-                    this.strokeArc(
-                        shape.pos.x - shape.radius,
-                        shape.pos.y - shape.radius,
-                        shape.radius,
-                        0,
-                        2 * Math.PI
-                    );
-                } else {
-                    // it's an ellipse
-                    this.strokeEllipse(
-                        shape.pos.x,
-                        shape.pos.y,
-                        shape.radiusV.x,
-                        shape.radiusV.y
-                    );
-                }
-            }
+        fillRect : function (x, y, width, height) {
+            var glPoints = this._glPoints;
+            glPoints[0].x = x + width;
+            glPoints[0].y = y;
+            glPoints[1].x = x;
+            glPoints[1].y = y;
+            glPoints[2].x = x + width;
+            glPoints[2].y = y + height;
+            glPoints[3].x = x;
+            glPoints[3].y = y + height;
+            this.compositor.drawTriangle(glPoints, 4, true)
         },
 
         /**
-         * Resets (overrides) the renderer transformation matrix to the
+         * Reset (overrides) the renderer transformation matrix to the
          * identity one, and then apply the given transformation matrix.
          * @name setTransform
          * @memberOf me.WebGLRenderer
@@ -19066,6 +19324,52 @@ me.Error = me.Object.extend.bind(Error)({
                 // turn off scissor test
                 gl.disable(gl.SCISSOR_TEST);
             }
+        },
+
+        /**
+         * A mask limits rendering elements to the shape and position of the given mask object.
+         * So, if the renderable is larger than the mask, only the intersecting part of the renderable will be visible.
+         * Mask are not preserved through renderer context save and restore.
+         * @name setMask
+         * @memberOf me.WebGLRenderer
+         * @function
+         * @param {me.Rect|me.Polygon|me.Line|me.Ellipse} [mask] the shape defining the mask to be applied
+         */
+        setMask : function (mask) {
+            var gl = this.gl;
+
+            // flush the compositor
+            this.flush();
+
+            // Enable and setup GL state to write to stencil buffer
+            gl.enable(gl.STENCIL_TEST);
+            gl.clear(gl.STENCIL_BUFFER_BIT);
+            gl.colorMask(false, false, false, false);
+            gl.stencilFunc(gl.NOTEQUAL, 1, 1);
+            gl.stencilOp(gl.REPLACE, gl.REPLACE, gl.REPLACE);
+
+            this.fill(mask);
+
+            // flush the compositor
+            this.flush();
+
+            // Use stencil buffer to affect next rendering object
+            gl.colorMask(true, true, true, true);
+            gl.stencilFunc(gl.EQUAL, 1, 1);
+            gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+        },
+
+        /**
+         * disable (remove) the rendering mask set through setMask.
+         * @name clearMask
+         * @see setMask
+         * @memberOf me.WebGLRenderer
+         * @function
+         */
+        clearMask : function() {
+            // flush the compositor
+            this.flush();
+            this.gl.disable(this.gl.STENCIL_TEST);
         }
     });
 
@@ -19306,6 +19610,9 @@ me.Error = me.Object.extend.bind(Error)({
             // Uniform projection matrix
             this.uMatrix = new me.Matrix2d();
 
+            // reference to the active shader
+            this.activeShader = null;
+
             // Detect GPU capabilities
             var precision = (gl.getShaderPrecisionFormat(
                 gl.FRAGMENT_SHADER,
@@ -19314,13 +19621,14 @@ me.Error = me.Object.extend.bind(Error)({
 
             // Load and create shader programs
             /* eslint-disable */
-            this.lineShader = me.video.shader.createShader(
+            this.primitiveShader = me.video.shader.createShader(
                 this.gl,
-                (function anonymous(ctx){var out='precision highp float;attribute vec2 aVertex;uniform mat3 uMatrix;void main(void){gl_Position=vec4((uMatrix*vec3(aVertex,1)).xy,0,1);}';return out;})(),
-                (function anonymous(ctx){var out='precision '+(ctx.precision)+' float;uniform vec4 uColor;void main(void){gl_FragColor=uColor;}';return out;})({
+                (function anonymous(ctx){var out='precision highp float;attribute vec2 aVertex;uniform mat3 uMatrix;uniform vec4 uColor;varying vec4 vColor;void main(void){gl_Position=vec4((uMatrix*vec3(aVertex,1)).xy,0,1);vColor=vec4(uColor.rgb*uColor.a,uColor.a);}';return out;})(),
+                (function anonymous(ctx){var out='precision '+(ctx.precision)+' float;varying vec4 vColor;void main(void){gl_FragColor=vColor;}';return out;})({
                     "precision"     : precision
                 })
             );
+
             this.quadShader = me.video.shader.createShader(
                 this.gl,
                 (function anonymous(ctx){var out='precision highp float;attribute vec2 aVertex;attribute vec4 aColor;attribute float aTexture;attribute vec2 aRegion;uniform mat3 uMatrix;varying vec4 vColor;varying float vTexture;varying vec2 vRegion;void main(void){gl_Position=vec4((uMatrix*vec3(aVertex,1)).xy,0,1);vColor=vec4(aColor.rgb*aColor.a,aColor.a);vTexture=aTexture;vRegion=aRegion;}';return out;})(),
@@ -19330,8 +19638,6 @@ me.Error = me.Object.extend.bind(Error)({
                 })
             );
             /* eslint-enable */
-
-            this.shader = this.quadShader.handle;
 
             // Stream buffer
             this.sb = gl.createBuffer();
@@ -19390,6 +19696,7 @@ me.Error = me.Object.extend.bind(Error)({
             );
 
             this.reset();
+
             this.setProjection(gl.canvas.width, gl.canvas.height);
 
             // Initialize clear color
@@ -19412,8 +19719,6 @@ me.Error = me.Object.extend.bind(Error)({
                 0,      -2 / h, 0,
                 -1,     1,      1
             );
-            // FIXME: Configure the projection matrix in `useShader`
-            this.quadShader.uniforms.uMatrix = this.uMatrix.val;
         },
 
         /**
@@ -19432,7 +19737,7 @@ me.Error = me.Object.extend.bind(Error)({
                     w,
                     h,
                     b,
-                    texture.premultipliedAlpha // @see createFillTexture
+                    texture.premultipliedAlpha
                 );
             }
 
@@ -19453,7 +19758,8 @@ me.Error = me.Object.extend.bind(Error)({
                 this.units[i] = false;
                 samplers[i] = i;
             }
-
+            // set the quad shader as the default program
+            this.useShader(this.quadShader);
             this.quadShader.uniforms.uSampler = samplers;
         },
 
@@ -19491,15 +19797,17 @@ me.Error = me.Object.extend.bind(Error)({
         /**
          * Select the shader to use for compositing
          * @name useShader
+         * @see me.video.shader.createShader
          * @memberOf me.WebGLRenderer.Compositor
          * @function
-         * @param {WebGLProgram} shader The shader program to use
+         * @param {Object} a reference to a WebGL Shader Program
          */
         useShader : function (shader) {
-            if (this.shader !== shader) {
+            if (this.activeShader !== shader) {
                 this.flush();
-                this.shader = shader;
-                this.gl.useProgram(this.shader);
+                this.activeShader = shader;
+                this.gl.useProgram(this.activeShader.handle);
+                this.activeShader.uniforms.uMatrix = this.uMatrix.val;
             }
         },
 
@@ -19523,7 +19831,8 @@ me.Error = me.Object.extend.bind(Error)({
                 return;
             }
 
-            this.useShader(this.quadShader.handle);
+            this.useShader(this.quadShader);
+
             if (this.length >= MAX_LENGTH) {
                 this.flush();
             }
@@ -19641,44 +19950,46 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * Draw a line
-         * @name drawLine
+         * Draw triangle(s)
+         * @name drawTriangle
          * @memberOf me.WebGLRenderer.Compositor
          * @function
-         * @param {me.Vector2d[]} points Line vertices
-         * @param {Boolean} [open=false] Whether the line is open (true) or closed (false)
+         * @param {me.Vector2d[]} points vertices
+         * @param {Number} [len=points.length] amount of points defined in the points array
+         * @param {Boolean} [strip=false] Whether the array defines a serie of connected triangles, sharing vertices
          */
-        drawLine : function (points, open) {
-            this.useShader(this.lineShader.handle);
+        drawTriangle : function (points, len, strip) {
+            var gl = this.gl;
+
+            len = len || points.length;
+
+            this.useShader(this.primitiveShader);
 
             // Put vertex data into the stream buffer
             var j = 0;
+            var m = this.matrix;
+            var m_isIdentity = m.isIdentity();
             for (var i = 0; i < points.length; i++) {
-                if (!this.matrix.isIdentity()) {
-                    this.matrix.multiplyVector(points[i]);
+                if (!m_isIdentity) {
+                    m.multiplyVector(points[i]);
                 }
                 this.stream[j++] = points[i].x;
                 this.stream[j++] = points[i].y;
             }
 
-            var gl = this.gl;
-
-            // FIXME
-            this.lineShader.uniforms.uMatrix = this.uMatrix.val;
-
             // Set the line color
-            this.lineShader.uniforms.uColor = this.color.glArray;
+            this.primitiveShader.uniforms.uColor = this.color.glArray;
 
             // Copy data into the stream buffer
             gl.bufferData(
                 gl.ARRAY_BUFFER,
-                this.stream.subarray(0, points.length * 2),
+                this.stream.subarray(0, len * 2),
                 gl.STREAM_DRAW
             );
 
             // FIXME: Configure vertex attrib pointers in `useShader`
             gl.vertexAttribPointer(
-                this.lineShader.attributes.aVertex,
+                this.primitiveShader.attributes.aVertex,
                 VERTEX_SIZE,
                 gl.FLOAT,
                 false,
@@ -19687,7 +19998,95 @@ me.Error = me.Object.extend.bind(Error)({
             );
 
             // Draw the stream buffer
-            gl.drawArrays(open ? gl.LINE_STRIP : gl.LINE_LOOP, 0, points.length);
+            gl.drawArrays(strip === true ? gl.TRIANGLE_STRIP : gl.TRIANGLES, 0, len);
+
+            // FIXME: Configure vertex attrib pointers in `useShader`
+            gl.vertexAttribPointer(
+                this.quadShader.attributes.aVertex,
+                VERTEX_SIZE,
+                gl.FLOAT,
+                false,
+                ELEMENT_OFFSET,
+                VERTEX_OFFSET
+            );
+            gl.vertexAttribPointer(
+                this.quadShader.attributes.aColor,
+                COLOR_SIZE,
+                gl.FLOAT,
+                false,
+                ELEMENT_OFFSET,
+                COLOR_OFFSET
+            );
+
+            gl.vertexAttribPointer(
+                this.quadShader.attributes.aTexture,
+                TEXTURE_SIZE,
+                gl.FLOAT,
+                false,
+                ELEMENT_OFFSET,
+                TEXTURE_OFFSET
+            );
+            gl.vertexAttribPointer(
+                this.quadShader.attributes.aRegion,
+                REGION_SIZE,
+                gl.FLOAT,
+                false,
+                ELEMENT_OFFSET,
+                REGION_OFFSET
+            );
+
+        },
+
+        /**
+         * Draw a line
+         * @name drawLine
+         * @memberOf me.WebGLRenderer.Compositor
+         * @function
+         * @param {me.Vector2d[]} points Line vertices
+         * @param {Number} [len=points.length] amount of points defined in the points array
+         * @param {Boolean} [open=false] Whether the line is open (true) or closed (false)
+         */
+        drawLine : function (points, len, open) {
+            var gl = this.gl;
+
+            len = len || points.length;
+
+            this.useShader(this.primitiveShader);
+
+            // Put vertex data into the stream buffer
+            var j = 0;
+            var m = this.matrix;
+            var m_isIdentity = m.isIdentity();
+            for (var i = 0; i < points.length; i++) {
+                if (!m_isIdentity) {
+                    m.multiplyVector(points[i]);
+                }
+                this.stream[j++] = points[i].x;
+                this.stream[j++] = points[i].y;
+            }
+
+            // Set the line color
+            this.primitiveShader.uniforms.uColor = this.color.glArray;
+
+            // Copy data into the stream buffer
+            gl.bufferData(
+                gl.ARRAY_BUFFER,
+                this.stream.subarray(0, len * 2),
+                gl.STREAM_DRAW
+            );
+
+            // FIXME: Configure vertex attrib pointers in `useShader`
+            gl.vertexAttribPointer(
+                this.primitiveShader.attributes.aVertex,
+                VERTEX_SIZE,
+                gl.FLOAT,
+                false,
+                0,
+                0
+            );
+
+            // Draw the stream buffer
+            gl.drawArrays(open === true ? gl.LINE_STRIP : gl.LINE_LOOP, 0, len);
 
             // FIXME: Configure vertex attrib pointers in `useShader`
             gl.vertexAttribPointer(
@@ -22799,7 +23198,7 @@ me.Error = me.Object.extend.bind(Error)({
         /**
          * @ignore
          */
-        set : function (value) { this.glArray[3] = typeof(value) === "undefined" ? 1.0 : me.Math.clamp(+value, 0, 255); },
+        set : function (value) { this.glArray[3] = typeof(value) === "undefined" ? 1.0 : me.Math.clamp(+value, 0, 1.0); },
         enumerable : true,
         configurable : true
     });
@@ -27710,7 +28109,7 @@ me.Error = me.Object.extend.bind(Error)({
 })();
 
 /*!
- *  howler.js v2.0.15
+ *  howler.js v2.1.1
  *  howlerjs.com
  *
  *  (c) 2013-2018, James Simpson of GoldFire Studios
@@ -27746,6 +28145,10 @@ me.Error = me.Object.extend.bind(Error)({
       // Create a global ID counter.
       self._counter = 1000;
 
+      // Pool of unlocked HTML5 Audio objects.
+      self._html5AudioPool = [];
+      self.html5PoolSize = 10;
+
       // Internal properties.
       self._codecs = {};
       self._howls = [];
@@ -27761,8 +28164,8 @@ me.Error = me.Object.extend.bind(Error)({
       self.autoSuspend = true;
       self.ctx = null;
 
-      // Set to false to disable the auto iOS enabler.
-      self.mobileAutoEnable = true;
+      // Set to false to disable the auto audio unlocker.
+      self.autoUnlock = true;
 
       // Setup the various state values for global tracking.
       self._setup();
@@ -27897,7 +28300,7 @@ me.Error = me.Object.extend.bind(Error)({
       var self = this || Howler;
 
       // Keeps track of the suspend/resume state of the AudioContext.
-      self.state = self.ctx ? self.ctx.state || 'running' : 'running';
+      self.state = self.ctx ? self.ctx.state || 'suspended' : 'suspended';
 
       // Automatically begin the 30-second suspend process
       self._autoSuspend();
@@ -27983,22 +28386,22 @@ me.Error = me.Object.extend.bind(Error)({
     },
 
     /**
-     * Mobile browsers will only allow audio to be played after a user interaction.
+     * Some browsers/devices will only allow audio to be played after a user interaction.
      * Attempt to automatically unlock audio on the first user interaction.
      * Concept from: http://paulbakaus.com/tutorials/html5/web-audio-on-ios/
      * @return {Howler}
      */
-    _enableMobileAudio: function() {
+    _unlockAudio: function() {
       var self = this || Howler;
 
-      // Only run this on mobile devices if audio isn't already eanbled.
-      var isMobile = /iPhone|iPad|iPod|Android|BlackBerry|BB10|Silk|Mobi|Chrome/i.test(self._navigator && self._navigator.userAgent);
-      if (self._mobileEnabled || !self.ctx || !isMobile) {
+      // Only run this on certain browsers/devices.
+      var shouldUnlock = /iPhone|iPad|iPod|Android|BlackBerry|BB10|Silk|Mobi|Chrome|Safari/i.test(self._navigator && self._navigator.userAgent);
+      if (self._audioUnlocked || !self.ctx || !shouldUnlock) {
         return;
       }
 
-      self._mobileEnabled = false;
-      self.mobileAutoEnable = false;
+      self._audioUnlocked = false;
+      self.autoUnlock = false;
 
       // Some mobile devices/platforms have distortion issues when opening/closing tabs and/or web views.
       // Bugs in the browser (especially Mobile Safari) can cause the sampleRate to change from 44100 to 48000.
@@ -28016,8 +28419,43 @@ me.Error = me.Object.extend.bind(Error)({
       // then check if the audio actually played to determine if
       // audio has now been unlocked on iOS, Android, etc.
       var unlock = function(e) {
+        // Create a pool of unlocked HTML5 Audio objects that can
+        // be used for playing sounds without user interaction. HTML5
+        // Audio objects must be individually unlocked, as opposed
+        // to the WebAudio API which only needs a single activation.
+        // This must occur before WebAudio setup or the source.onended
+        // event will not fire.
+        for (var i=0; i<self.html5PoolSize; i++) {
+          var audioNode = new Audio();
+
+          // Mark this Audio object as unlocked to ensure it can get returned
+          // to the unlocked pool when released.
+          audioNode._unlocked = true;
+
+          // Add the audio node to the pool.
+          self._releaseHtml5Audio(audioNode);
+        }
+
+        // Loop through any assigned audio nodes and unlock them.
+        for (var i=0; i<self._howls.length; i++) {
+          if (!self._howls[i]._webAudio) {
+            // Get all of the sounds in this Howl group.
+            var ids = self._howls[i]._getSoundIds();
+
+            // Loop through all sounds and unlock the audio nodes.
+            for (var j=0; j<ids.length; j++) {
+              var sound = self._howls[i]._soundById(ids[j]);
+
+              if (sound && sound._node && !sound._node._unlocked) {
+                sound._node._unlocked = true;
+                sound._node.load();
+              }
+            }
+          }
+        }
+
         // Fix Android can not play in suspend state.
-        Howler._autoResume();
+        self._autoResume();
 
         // Create an empty buffer.
         var source = self.ctx.createBufferSource();
@@ -28041,7 +28479,7 @@ me.Error = me.Object.extend.bind(Error)({
           source.disconnect(0);
 
           // Update the unlocked state and prevent this check from happening again.
-          self._mobileEnabled = true;
+          self._audioUnlocked = true;
 
           // Remove the touch start listener.
           document.removeEventListener('touchstart', unlock, true);
@@ -28059,6 +28497,45 @@ me.Error = me.Object.extend.bind(Error)({
       document.addEventListener('touchstart', unlock, true);
       document.addEventListener('touchend', unlock, true);
       document.addEventListener('click', unlock, true);
+
+      return self;
+    },
+
+    /**
+     * Get an unlocked HTML5 Audio object from the pool. If none are left,
+     * return a new Audio object and throw a warning.
+     * @return {Audio} HTML5 Audio object.
+     */
+    _obtainHtml5Audio: function() {
+      var self = this || Howler;
+
+      // Return the next object from the pool if one exists.
+      if (self._html5AudioPool.length) {
+        return self._html5AudioPool.pop();
+      }
+
+      //.Check if the audio is locked and throw a warning.
+      var testPlay = new Audio().play();
+      if (testPlay && typeof Promise !== 'undefined' && (testPlay instanceof Promise || typeof testPlay.then === 'function')) {
+        testPlay.catch(function() {
+          console.warn('HTML5 Audio pool exhausted, returning potentially locked audio object.');
+        });
+      }
+
+      return new Audio();
+    },
+
+    /**
+     * Return an activated HTML5 Audio object to the pool.
+     * @return {Howler}
+     */
+    _releaseHtml5Audio: function(audio) {
+      var self = this || Howler;
+
+      // Don't add audio to the pool if we don't know if it has been unlocked.
+      if (audio._unlocked) {
+        self._html5AudioPool.push(audio);
+      }
 
       return self;
     },
@@ -28223,9 +28700,9 @@ me.Error = me.Object.extend.bind(Error)({
       // Web Audio or HTML5 Audio?
       self._webAudio = Howler.usingWebAudio && !self._html5;
 
-      // Automatically try to enable audio on iOS.
-      if (typeof Howler.ctx !== 'undefined' && Howler.ctx && Howler.mobileAutoEnable) {
-        Howler._enableMobileAudio();
+      // Automatically try to enable audio.
+      if (typeof Howler.ctx !== 'undefined' && Howler.ctx && Howler.autoUnlock) {
+        Howler._unlockAudio();
       }
 
       // Keep track of this Howl group in the global controller.
@@ -28355,18 +28832,20 @@ me.Error = me.Object.extend.bind(Error)({
 
         // Check if there is a single paused sound that isn't ended.
         // If there is, play that sound. If not, continue as usual.
-        var num = 0;
-        for (var i=0; i<self._sounds.length; i++) {
-          if (self._sounds[i]._paused && !self._sounds[i]._ended) {
-            num++;
-            id = self._sounds[i]._id;
+        if (!self._playLock) {
+          var num = 0;
+          for (var i=0; i<self._sounds.length; i++) {
+            if (self._sounds[i]._paused && !self._sounds[i]._ended) {
+              num++;
+              id = self._sounds[i]._id;
+            }
           }
-        }
 
-        if (num === 1) {
-          sprite = null;
-        } else {
-          id = null;
+          if (num === 1) {
+            sprite = null;
+          } else {
+            id = null;
+          }
         }
       }
 
@@ -28390,7 +28869,7 @@ me.Error = me.Object.extend.bind(Error)({
         // Set the sprite value on this sound.
         sound._sprite = sprite;
 
-        // Makr this sounded as not ended in case another sound is played before this one loads.
+        // Mark this sound as not ended in case another sound is played before this one loads.
         sound._ended = false;
 
         // Add the sound to the queue to be played on load.
@@ -28424,18 +28903,26 @@ me.Error = me.Object.extend.bind(Error)({
       var seek = Math.max(0, sound._seek > 0 ? sound._seek : self._sprite[sprite][0] / 1000);
       var duration = Math.max(0, ((self._sprite[sprite][0] + self._sprite[sprite][1]) / 1000) - seek);
       var timeout = (duration * 1000) / Math.abs(sound._rate);
-
-      // Update the parameters of the sound
-      sound._paused = false;
-      sound._ended = false;
+      var start = self._sprite[sprite][0] / 1000;
+      var stop = (self._sprite[sprite][0] + self._sprite[sprite][1]) / 1000;
+      var loop = !!(sound._loop || self._sprite[sprite][2]);
       sound._sprite = sprite;
-      sound._seek = seek;
-      sound._start = self._sprite[sprite][0] / 1000;
-      sound._stop = (self._sprite[sprite][0] + self._sprite[sprite][1]) / 1000;
-      sound._loop = !!(sound._loop || self._sprite[sprite][2]);
+
+      // Mark the sound as ended instantly so that this async playback
+      // doesn't get grabbed by another call to play while this one waits to start.
+      sound._ended = false;
+
+      // Update the parameters of the sound.
+      var setParams = function() {
+        sound._paused = false;
+        sound._seek = seek;
+        sound._start = start;
+        sound._stop = stop;
+        sound._loop = loop;
+      };
 
       // End the sound instantly if seek is at the end.
-      if (sound._seek >= sound._stop) {
+      if (seek >= stop) {
         self._ended(sound);
         return;
       }
@@ -28445,6 +28932,8 @@ me.Error = me.Object.extend.bind(Error)({
       if (self._webAudio) {
         // Fire this when the sound is ready to play to begin Web Audio playback.
         var playWebAudio = function() {
+          self._playLock = false;
+          setParams();
           self._refreshBuffer(sound);
 
           // Setup the playback params.
@@ -28467,6 +28956,7 @@ me.Error = me.Object.extend.bind(Error)({
           if (!internal) {
             setTimeout(function() {
               self._emit('play', sound._id);
+              self._loadQueue();
             }, 0);
           }
         };
@@ -28474,6 +28964,9 @@ me.Error = me.Object.extend.bind(Error)({
         if (Howler.state === 'running') {
           playWebAudio();
         } else {
+          self._playLock = true;
+
+          // Wait for the audio context to resume before playing.
           self.once('resume', playWebAudio);
 
           // Cancel the end timer.
@@ -28487,7 +28980,7 @@ me.Error = me.Object.extend.bind(Error)({
           node.volume = sound._volume * Howler.volume();
           node.playbackRate = sound._rate;
 
-          // Mobile browsers will throw an error if this is called without user interaction.
+          // Some browsers will throw an error if this is called without user interaction.
           try {
             var play = node.play();
 
@@ -28496,21 +28989,33 @@ me.Error = me.Object.extend.bind(Error)({
               // Implements a lock to prevent DOMException: The play() request was interrupted by a call to pause().
               self._playLock = true;
 
+              // Set param values immediately.
+              setParams();
+
               // Releases the lock and executes queued actions.
               play
                 .then(function() {
                   self._playLock = false;
+                  node._unlocked = true;
                   if (!internal) {
                     self._emit('play', sound._id);
+                    self._loadQueue();
                   }
                 })
                 .catch(function() {
                   self._playLock = false;
                   self._emit('playerror', sound._id, 'Playback was unable to start. This is most commonly an issue ' +
                     'on mobile devices and Chrome where playback was not within a user interaction.');
+
+                  // Reset the ended and paused values.
+                  sound._ended = true;
+                  sound._paused = true;
                 });
             } else if (!internal) {
+              self._playLock = false;
+              setParams();
               self._emit('play', sound._id);
+              self._loadQueue();
             }
 
             // Setting rate before playing won't work in IE, so we set it again here.
@@ -28546,6 +29051,8 @@ me.Error = me.Object.extend.bind(Error)({
         if (node.readyState >= 3 || loadedNoReadyState) {
           playHtml5();
         } else {
+          self._playLock = true;
+
           var listener = function() {
             // Begin playback.
             playHtml5();
@@ -28864,6 +29371,11 @@ me.Error = me.Object.extend.bind(Error)({
         return self;
       }
 
+      // Make sure the to/from/len values are numbers.
+      from = parseFloat(from);
+      to = parseFloat(to);
+      len = parseFloat(len);
+
       // Set the volume to the start position.
       self.volume(from, id);
 
@@ -29089,8 +29601,10 @@ me.Error = me.Object.extend.bind(Error)({
           if (sound) {
             // Keep track of our position when the rate changed and update the playback
             // start position so we can properly adjust the seek position for time elapsed.
-            sound._rateSeek = self.seek(id[i]);
-            sound._playStart = self._webAudio ? Howler.ctx.currentTime : sound._playStart;
+            if (self.playing(id[i])) {
+              sound._rateSeek = self.seek(id[i]);
+              sound._playStart = self._webAudio ? Howler.ctx.currentTime : sound._playStart;
+            }
             sound._rate = rate;
 
             // Change the playback rate.
@@ -29188,7 +29702,7 @@ me.Error = me.Object.extend.bind(Error)({
           self._clearTimer(id);
 
           // Update the seek position for HTML5 Audio.
-          if (!self._webAudio && sound._node) {
+          if (!self._webAudio && sound._node && !isNaN(sound._node.duration)) {
             sound._node.currentTime = seek;
           }
 
@@ -29305,6 +29819,9 @@ me.Error = me.Object.extend.bind(Error)({
           // Remove any event listeners.
           sounds[i]._node.removeEventListener('error', sounds[i]._errorFn, false);
           sounds[i]._node.removeEventListener(Howler._canPlayEvent, sounds[i]._loadFn, false);
+
+          // Release the Audio object back to the pool.
+          Howler._releaseHtml5Audio(sounds[i]._node);
         }
 
         // Empty out all of the nodes.
@@ -29323,7 +29840,7 @@ me.Error = me.Object.extend.bind(Error)({
       // Delete this sound from the cache (if no other Howl is using it).
       var remCache = true;
       for (i=0; i<Howler._howls.length; i++) {
-        if (Howler._howls[i]._src === self._src) {
+        if (Howler._howls[i]._src === self._src || self._src.indexOf(Howler._howls[i]._src) >= 0) {
           remCache = false;
           break;
         }
@@ -29703,11 +30220,14 @@ me.Error = me.Object.extend.bind(Error)({
      */
     _cleanBuffer: function(node) {
       var self = this;
+      var isIOS = Howler._navigator && Howler._navigator.vendor.indexOf('Apple') >= 0;
 
       if (Howler._scratchBuffer && node.bufferSource) {
         node.bufferSource.onended = null;
         node.bufferSource.disconnect(0);
-        try { node.bufferSource.buffer = Howler._scratchBuffer; } catch(e) {}
+        if (isIOS) {
+          try { node.bufferSource.buffer = Howler._scratchBuffer; } catch(e) {}
+        }
       }
       node.bufferSource = null;
 
@@ -29773,7 +30293,8 @@ me.Error = me.Object.extend.bind(Error)({
         self._node.paused = true;
         self._node.connect(Howler.masterGain);
       } else {
-        self._node = new Audio();
+        // Get an unlocked Audio object from the pool.
+        self._node = Howler._obtainHtml5Audio();
 
         // Listen for errors (http://dev.w3.org/html5/spec-author-view/spec.html#mediaerror).
         self._errorFn = self._errorListener.bind(self);
@@ -29990,6 +30511,11 @@ me.Error = me.Object.extend.bind(Error)({
    * Setup the audio context when available, or switch to HTML5 Audio mode.
    */
   var setupAudioContext = function() {
+    // If we have already detected that Web Audio isn't supported, don't run this step again.
+    if (!Howler.usingWebAudio) {
+      return;
+    }
+
     // Check if we are using Web Audio and setup the AudioContext if we are.
     try {
       if (typeof AudioContext !== 'undefined') {
@@ -30000,6 +30526,11 @@ me.Error = me.Object.extend.bind(Error)({
         Howler.usingWebAudio = false;
       }
     } catch(e) {
+      Howler.usingWebAudio = false;
+    }
+
+    // If the audio context creation still failed, set using web audio to false.
+    if (!Howler.ctx) {
       Howler.usingWebAudio = false;
     }
 
@@ -30058,6 +30589,665 @@ me.Error = me.Object.extend.bind(Error)({
 
 /* eslint-enable quotes, space-infix-ops, new-cap, keyword-spacing, no-redeclare, no-undef, no-new */
 
+/**
+ * from https://github.com/mapbox/earcut (v2.1.4)
+ */
+
+/* eslint-disable curly */
+(function() {
+
+    function earcut(data, holeIndices, dim) {
+
+        dim = dim || 2;
+
+        var hasHoles = holeIndices && holeIndices.length,
+            outerLen = hasHoles ? holeIndices[0] * dim : data.length,
+            outerNode = linkedList(data, 0, outerLen, dim, true),
+            triangles = [];
+
+        if (!outerNode || outerNode.next === outerNode.prev) return triangles;
+
+        var minX, minY, maxX, maxY, x, y, invSize;
+
+        if (hasHoles) outerNode = eliminateHoles(data, holeIndices, outerNode, dim);
+
+        // if the shape is not too simple, we'll use z-order curve hash later; calculate polygon bbox
+        if (data.length > 80 * dim) {
+            minX = maxX = data[0];
+            minY = maxY = data[1];
+
+            for (var i = dim; i < outerLen; i += dim) {
+                x = data[i];
+                y = data[i + 1];
+                if (x < minX) minX = x;
+                if (y < minY) minY = y;
+                if (x > maxX) maxX = x;
+                if (y > maxY) maxY = y;
+            }
+
+            // minX, minY and invSize are later used to transform coords into integers for z-order calculation
+            invSize = Math.max(maxX - minX, maxY - minY);
+            invSize = invSize !== 0 ? 1 / invSize : 0;
+        }
+
+        earcutLinked(outerNode, triangles, dim, minX, minY, invSize);
+
+        return triangles;
+    }
+
+    // create a circular doubly linked list from polygon points in the specified winding order
+    function linkedList(data, start, end, dim, clockwise) {
+        var i, last;
+
+        if (clockwise === (signedArea(data, start, end, dim) > 0)) {
+            for (i = start; i < end; i += dim) last = insertNode(i, data[i], data[i + 1], last);
+        } else {
+            for (i = end - dim; i >= start; i -= dim) last = insertNode(i, data[i], data[i + 1], last);
+        }
+
+        if (last && equals(last, last.next)) {
+            removeNode(last);
+            last = last.next;
+        }
+
+        return last;
+    }
+
+    // eliminate colinear or duplicate points
+    function filterPoints(start, end) {
+        if (!start) return start;
+        if (!end) end = start;
+
+        var p = start,
+            again;
+        do {
+            again = false;
+
+            if (!p.steiner && (equals(p, p.next) || area(p.prev, p, p.next) === 0)) {
+                removeNode(p);
+                p = end = p.prev;
+                if (p === p.next) break;
+                again = true;
+
+            } else {
+                p = p.next;
+            }
+        } while (again || p !== end);
+
+        return end;
+    }
+
+    // main ear slicing loop which triangulates a polygon (given as a linked list)
+    function earcutLinked(ear, triangles, dim, minX, minY, invSize, pass) {
+        if (!ear) return;
+
+        // interlink polygon nodes in z-order
+        if (!pass && invSize) indexCurve(ear, minX, minY, invSize);
+
+        var stop = ear,
+            prev, next;
+
+        // iterate through ears, slicing them one by one
+        while (ear.prev !== ear.next) {
+            prev = ear.prev;
+            next = ear.next;
+
+            if (invSize ? isEarHashed(ear, minX, minY, invSize) : isEar(ear)) {
+                // cut off the triangle
+                triangles.push(prev.i / dim);
+                triangles.push(ear.i / dim);
+                triangles.push(next.i / dim);
+
+                removeNode(ear);
+
+                // skipping the next vertex leads to less sliver triangles
+                ear = next.next;
+                stop = next.next;
+
+                continue;
+            }
+
+            ear = next;
+
+            // if we looped through the whole remaining polygon and can't find any more ears
+            if (ear === stop) {
+                // try filtering points and slicing again
+                if (!pass) {
+                    earcutLinked(filterPoints(ear), triangles, dim, minX, minY, invSize, 1);
+
+                // if this didn't work, try curing all small self-intersections locally
+                } else if (pass === 1) {
+                    ear = cureLocalIntersections(ear, triangles, dim);
+                    earcutLinked(ear, triangles, dim, minX, minY, invSize, 2);
+
+                // as a last resort, try splitting the remaining polygon into two
+                } else if (pass === 2) {
+                    splitEarcut(ear, triangles, dim, minX, minY, invSize);
+                }
+
+                break;
+            }
+        }
+    }
+
+    // check whether a polygon node forms a valid ear with adjacent nodes
+    function isEar(ear) {
+        var a = ear.prev,
+            b = ear,
+            c = ear.next;
+
+        if (area(a, b, c) >= 0) return false; // reflex, can't be an ear
+
+        // now make sure we don't have other points inside the potential ear
+        var p = ear.next.next;
+
+        while (p !== ear.prev) {
+            if (pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) &&
+                area(p.prev, p, p.next) >= 0) return false;
+            p = p.next;
+        }
+
+        return true;
+    }
+
+    function isEarHashed(ear, minX, minY, invSize) {
+        var a = ear.prev,
+            b = ear,
+            c = ear.next;
+
+        if (area(a, b, c) >= 0) return false; // reflex, can't be an ear
+
+        // triangle bbox; min & max are calculated like this for speed
+        var minTX = a.x < b.x ? (a.x < c.x ? a.x : c.x) : (b.x < c.x ? b.x : c.x),
+            minTY = a.y < b.y ? (a.y < c.y ? a.y : c.y) : (b.y < c.y ? b.y : c.y),
+            maxTX = a.x > b.x ? (a.x > c.x ? a.x : c.x) : (b.x > c.x ? b.x : c.x),
+            maxTY = a.y > b.y ? (a.y > c.y ? a.y : c.y) : (b.y > c.y ? b.y : c.y);
+
+        // z-order range for the current triangle bbox;
+        var minZ = zOrder(minTX, minTY, minX, minY, invSize),
+            maxZ = zOrder(maxTX, maxTY, minX, minY, invSize);
+
+        var p = ear.prevZ,
+            n = ear.nextZ;
+
+        // look for points inside the triangle in both directions
+        while (p && p.z >= minZ && n && n.z <= maxZ) {
+            if (p !== ear.prev && p !== ear.next &&
+                pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) &&
+                area(p.prev, p, p.next) >= 0) return false;
+            p = p.prevZ;
+
+            if (n !== ear.prev && n !== ear.next &&
+                pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, n.x, n.y) &&
+                area(n.prev, n, n.next) >= 0) return false;
+            n = n.nextZ;
+        }
+
+        // look for remaining points in decreasing z-order
+        while (p && p.z >= minZ) {
+            if (p !== ear.prev && p !== ear.next &&
+                pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) &&
+                area(p.prev, p, p.next) >= 0) return false;
+            p = p.prevZ;
+        }
+
+        // look for remaining points in increasing z-order
+        while (n && n.z <= maxZ) {
+            if (n !== ear.prev && n !== ear.next &&
+                pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, n.x, n.y) &&
+                area(n.prev, n, n.next) >= 0) return false;
+            n = n.nextZ;
+        }
+
+        return true;
+    }
+
+    // go through all polygon nodes and cure small local self-intersections
+    function cureLocalIntersections(start, triangles, dim) {
+        var p = start;
+        do {
+            var a = p.prev,
+                b = p.next.next;
+
+            if (!equals(a, b) && intersects(a, p, p.next, b) && locallyInside(a, b) && locallyInside(b, a)) {
+
+                triangles.push(a.i / dim);
+                triangles.push(p.i / dim);
+                triangles.push(b.i / dim);
+
+                // remove two nodes involved
+                removeNode(p);
+                removeNode(p.next);
+
+                p = start = b;
+            }
+            p = p.next;
+        } while (p !== start);
+
+        return p;
+    }
+
+    // try splitting polygon into two and triangulate them independently
+    function splitEarcut(start, triangles, dim, minX, minY, invSize) {
+        // look for a valid diagonal that divides the polygon into two
+        var a = start;
+        do {
+            var b = a.next.next;
+            while (b !== a.prev) {
+                if (a.i !== b.i && isValidDiagonal(a, b)) {
+                    // split the polygon in two by the diagonal
+                    var c = splitPolygon(a, b);
+
+                    // filter colinear points around the cuts
+                    a = filterPoints(a, a.next);
+                    c = filterPoints(c, c.next);
+
+                    // run earcut on each half
+                    earcutLinked(a, triangles, dim, minX, minY, invSize);
+                    earcutLinked(c, triangles, dim, minX, minY, invSize);
+                    return;
+                }
+                b = b.next;
+            }
+            a = a.next;
+        } while (a !== start);
+    }
+
+    // link every hole into the outer loop, producing a single-ring polygon without holes
+    function eliminateHoles(data, holeIndices, outerNode, dim) {
+        var queue = [],
+            i, len, start, end, list;
+
+        for (i = 0, len = holeIndices.length; i < len; i++) {
+            start = holeIndices[i] * dim;
+            end = i < len - 1 ? holeIndices[i + 1] * dim : data.length;
+            list = linkedList(data, start, end, dim, false);
+            if (list === list.next) list.steiner = true;
+            queue.push(getLeftmost(list));
+        }
+
+        queue.sort(compareX);
+
+        // process holes from left to right
+        for (i = 0; i < queue.length; i++) {
+            eliminateHole(queue[i], outerNode);
+            outerNode = filterPoints(outerNode, outerNode.next);
+        }
+
+        return outerNode;
+    }
+
+    function compareX(a, b) {
+        return a.x - b.x;
+    }
+
+    // find a bridge between vertices that connects hole with an outer ring and and link it
+    function eliminateHole(hole, outerNode) {
+        outerNode = findHoleBridge(hole, outerNode);
+        if (outerNode) {
+            var b = splitPolygon(outerNode, hole);
+            filterPoints(b, b.next);
+        }
+    }
+
+    // David Eberly's algorithm for finding a bridge between hole and outer polygon
+    function findHoleBridge(hole, outerNode) {
+        var p = outerNode,
+            hx = hole.x,
+            hy = hole.y,
+            qx = -Infinity,
+            m;
+
+        // find a segment intersected by a ray from the hole's leftmost point to the left;
+        // segment's endpoint with lesser x will be potential connection point
+        do {
+            if (hy <= p.y && hy >= p.next.y && p.next.y !== p.y) {
+                var x = p.x + (hy - p.y) * (p.next.x - p.x) / (p.next.y - p.y);
+                if (x <= hx && x > qx) {
+                    qx = x;
+                    if (x === hx) {
+                        if (hy === p.y) return p;
+                        if (hy === p.next.y) return p.next;
+                    }
+                    m = p.x < p.next.x ? p : p.next;
+                }
+            }
+            p = p.next;
+        } while (p !== outerNode);
+
+        if (!m) return null;
+
+        if (hx === qx) return m.prev; // hole touches outer segment; pick lower endpoint
+
+        // look for points inside the triangle of hole point, segment intersection and endpoint;
+        // if there are no points found, we have a valid connection;
+        // otherwise choose the point of the minimum angle with the ray as connection point
+
+        var stop = m,
+            mx = m.x,
+            my = m.y,
+            tanMin = Infinity,
+            tan;
+
+        p = m.next;
+
+        while (p !== stop) {
+            if (hx >= p.x && p.x >= mx && hx !== p.x &&
+                    pointInTriangle(hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy, p.x, p.y)) {
+
+                tan = Math.abs(hy - p.y) / (hx - p.x); // tangential
+
+                if ((tan < tanMin || (tan === tanMin && p.x > m.x)) && locallyInside(p, hole)) {
+                    m = p;
+                    tanMin = tan;
+                }
+            }
+
+            p = p.next;
+        }
+
+        return m;
+    }
+
+    // interlink polygon nodes in z-order
+    function indexCurve(start, minX, minY, invSize) {
+        var p = start;
+        do {
+            if (p.z === null) p.z = zOrder(p.x, p.y, minX, minY, invSize);
+            p.prevZ = p.prev;
+            p.nextZ = p.next;
+            p = p.next;
+        } while (p !== start);
+
+        p.prevZ.nextZ = null;
+        p.prevZ = null;
+
+        sortLinked(p);
+    }
+
+    // Simon Tatham's linked list merge sort algorithm
+    // http://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html
+    function sortLinked(list) {
+        var i, p, q, e, tail, numMerges, pSize, qSize,
+            inSize = 1;
+
+        do {
+            p = list;
+            list = null;
+            tail = null;
+            numMerges = 0;
+
+            while (p) {
+                numMerges++;
+                q = p;
+                pSize = 0;
+                for (i = 0; i < inSize; i++) {
+                    pSize++;
+                    q = q.nextZ;
+                    if (!q) break;
+                }
+                qSize = inSize;
+
+                while (pSize > 0 || (qSize > 0 && q)) {
+
+                    if (pSize !== 0 && (qSize === 0 || !q || p.z <= q.z)) {
+                        e = p;
+                        p = p.nextZ;
+                        pSize--;
+                    } else {
+                        e = q;
+                        q = q.nextZ;
+                        qSize--;
+                    }
+
+                    if (tail) tail.nextZ = e;
+                    else list = e;
+
+                    e.prevZ = tail;
+                    tail = e;
+                }
+
+                p = q;
+            }
+
+            tail.nextZ = null;
+            inSize *= 2;
+
+        } while (numMerges > 1);
+
+        return list;
+    }
+
+    // z-order of a point given coords and inverse of the longer side of data bbox
+    function zOrder(x, y, minX, minY, invSize) {
+        // coords are transformed into non-negative 15-bit integer range
+        x = 32767 * (x - minX) * invSize;
+        y = 32767 * (y - minY) * invSize;
+
+        x = (x | (x << 8)) & 0x00FF00FF;
+        x = (x | (x << 4)) & 0x0F0F0F0F;
+        x = (x | (x << 2)) & 0x33333333;
+        x = (x | (x << 1)) & 0x55555555;
+
+        y = (y | (y << 8)) & 0x00FF00FF;
+        y = (y | (y << 4)) & 0x0F0F0F0F;
+        y = (y | (y << 2)) & 0x33333333;
+        y = (y | (y << 1)) & 0x55555555;
+
+        return x | (y << 1);
+    }
+
+    // find the leftmost node of a polygon ring
+    function getLeftmost(start) {
+        var p = start,
+            leftmost = start;
+        do {
+            if (p.x < leftmost.x) leftmost = p;
+            p = p.next;
+        } while (p !== start);
+
+        return leftmost;
+    }
+
+    // check if a point lies within a convex triangle
+    function pointInTriangle(ax, ay, bx, by, cx, cy, px, py) {
+        return (cx - px) * (ay - py) - (ax - px) * (cy - py) >= 0 &&
+               (ax - px) * (by - py) - (bx - px) * (ay - py) >= 0 &&
+               (bx - px) * (cy - py) - (cx - px) * (by - py) >= 0;
+    }
+
+    // check if a diagonal between two polygon nodes is valid (lies in polygon interior)
+    function isValidDiagonal(a, b) {
+        return a.next.i !== b.i && a.prev.i !== b.i && !intersectsPolygon(a, b) &&
+               locallyInside(a, b) && locallyInside(b, a) && middleInside(a, b);
+    }
+
+    // signed area of a triangle
+    function area(p, q, r) {
+        return (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
+    }
+
+    // check if two points are equal
+    function equals(p1, p2) {
+        return p1.x === p2.x && p1.y === p2.y;
+    }
+
+    // check if two segments intersect
+    function intersects(p1, q1, p2, q2) {
+        if ((equals(p1, q1) && equals(p2, q2)) ||
+            (equals(p1, q2) && equals(p2, q1))) return true;
+        return area(p1, q1, p2) > 0 !== area(p1, q1, q2) > 0 &&
+               area(p2, q2, p1) > 0 !== area(p2, q2, q1) > 0;
+    }
+
+    // check if a polygon diagonal intersects any polygon segments
+    function intersectsPolygon(a, b) {
+        var p = a;
+        do {
+            if (p.i !== a.i && p.next.i !== a.i && p.i !== b.i && p.next.i !== b.i &&
+                    intersects(p, p.next, a, b)) return true;
+            p = p.next;
+        } while (p !== a);
+
+        return false;
+    }
+
+    // check if a polygon diagonal is locally inside the polygon
+    function locallyInside(a, b) {
+        return area(a.prev, a, a.next) < 0 ?
+            area(a, b, a.next) >= 0 && area(a, a.prev, b) >= 0 :
+            area(a, b, a.prev) < 0 || area(a, a.next, b) < 0;
+    }
+
+    // check if the middle point of a polygon diagonal is inside the polygon
+    function middleInside(a, b) {
+        var p = a,
+            inside = false,
+            px = (a.x + b.x) / 2,
+            py = (a.y + b.y) / 2;
+        do {
+            if (((p.y > py) !== (p.next.y > py)) && p.next.y !== p.y &&
+                    (px < (p.next.x - p.x) * (py - p.y) / (p.next.y - p.y) + p.x))
+                inside = !inside;
+            p = p.next;
+        } while (p !== a);
+
+        return inside;
+    }
+
+    // link two polygon vertices with a bridge; if the vertices belong to the same ring, it splits polygon into two;
+    // if one belongs to the outer ring and another to a hole, it merges it into a single ring
+    function splitPolygon(a, b) {
+        var a2 = new Node(a.i, a.x, a.y),
+            b2 = new Node(b.i, b.x, b.y),
+            an = a.next,
+            bp = b.prev;
+
+        a.next = b;
+        b.prev = a;
+
+        a2.next = an;
+        an.prev = a2;
+
+        b2.next = a2;
+        a2.prev = b2;
+
+        bp.next = b2;
+        b2.prev = bp;
+
+        return b2;
+    }
+
+    // create a node and optionally link it with previous one (in a circular doubly linked list)
+    function insertNode(i, x, y, last) {
+        var p = new Node(i, x, y);
+
+        if (!last) {
+            p.prev = p;
+            p.next = p;
+
+        } else {
+            p.next = last.next;
+            p.prev = last;
+            last.next.prev = p;
+            last.next = p;
+        }
+        return p;
+    }
+
+    function removeNode(p) {
+        p.next.prev = p.prev;
+        p.prev.next = p.next;
+
+        if (p.prevZ) p.prevZ.nextZ = p.nextZ;
+        if (p.nextZ) p.nextZ.prevZ = p.prevZ;
+    }
+
+    function Node(i, x, y) {
+        // vertex index in coordinates array
+        this.i = i;
+
+        // vertex coordinates
+        this.x = x;
+        this.y = y;
+
+        // previous and next vertex nodes in a polygon ring
+        this.prev = null;
+        this.next = null;
+
+        // z-order curve value
+        this.z = null;
+
+        // previous and next nodes in z-order
+        this.prevZ = null;
+        this.nextZ = null;
+
+        // indicates whether this is a steiner point
+        this.steiner = false;
+    }
+
+    // return a percentage difference between the polygon area and its triangulation area;
+    // used to verify correctness of triangulation
+    earcut.deviation = function (data, holeIndices, dim, triangles) {
+        var hasHoles = holeIndices && holeIndices.length;
+        var outerLen = hasHoles ? holeIndices[0] * dim : data.length;
+
+        var polygonArea = Math.abs(signedArea(data, 0, outerLen, dim));
+        if (hasHoles) {
+            for (var i = 0, len = holeIndices.length; i < len; i++) {
+                var start = holeIndices[i] * dim;
+                var end = i < len - 1 ? holeIndices[i + 1] * dim : data.length;
+                polygonArea -= Math.abs(signedArea(data, start, end, dim));
+            }
+        }
+
+        var trianglesArea = 0;
+        for (i = 0; i < triangles.length; i += 3) {
+            var a = triangles[i] * dim;
+            var b = triangles[i + 1] * dim;
+            var c = triangles[i + 2] * dim;
+            trianglesArea += Math.abs(
+                (data[a] - data[c]) * (data[b + 1] - data[a + 1]) -
+                (data[a] - data[b]) * (data[c + 1] - data[a + 1]));
+        }
+
+        return polygonArea === 0 && trianglesArea === 0 ? 0 :
+            Math.abs((trianglesArea - polygonArea) / polygonArea);
+    };
+
+    function signedArea(data, start, end, dim) {
+        var sum = 0;
+        for (var i = start, j = end - dim; i < end; i += dim) {
+            sum += (data[j] - data[i]) * (data[i + 1] + data[j + 1]);
+            j = i;
+        }
+        return sum;
+    }
+
+    // turn a polygon in a multi-dimensional array form (e.g. as in GeoJSON) into a form Earcut accepts
+    earcut.flatten = function (data) {
+        var dim = data[0][0].length,
+            result = {vertices: [], holes: [], dimensions: dim},
+            holeIndex = 0;
+
+        for (var i = 0; i < data.length; i++) {
+            for (var j = 0; j < data[i].length; j++) {
+                for (var d = 0; d < dim; d++) result.vertices.push(data[i][j][d]);
+            }
+            if (i > 0) {
+                holeIndex += data[i - 1].length;
+                result.holes.push(holeIndex);
+            }
+        }
+        return result;
+    };
+
+    // add it to melonJS namespace
+    me.earcut = earcut;
+
+})();
+/* eslint-enable curly */
+
 /*
  * MelonJS Game Engine
  * Copyright (C) 2011 - 2018 Olivier Biot
@@ -30107,10 +31297,10 @@ me.Error = me.Object.extend.bind(Error)({
                  * this can be overridden by the plugin
                  * @public
                  * @type String
-                 * @default "6.2.0"
+                 * @default "6.3.0"
                  * @name me.plugin.Base#version
                  */
-                this.version = "6.2.0";
+                this.version = "6.3.0";
             }
         });
 
@@ -31529,6 +32719,7 @@ me.Font = me.Text.extend({
  * @ignore
  */
 me.BitmapFontData = me.BitmapTextData;
+
 /**
  * @ignore
  */
@@ -31549,3 +32740,11 @@ me.BitmapFont = me.BitmapText.extend({
         console.log("me.BitmapFont is deprecated, please use me.BitmapText");
     }
 });
+
+/**
+ * @ignore
+ */
+me.Renderer.prototype.drawShape = function () {
+    console.log("drawShape() is deprecated, please use the stroke() or fill() function");
+    me.Renderer.prototype.stroke.apply(this, arguments);
+}

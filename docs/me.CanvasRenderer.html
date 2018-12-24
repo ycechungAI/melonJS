@@ -1273,6 +1273,84 @@
         
             
 <dt>
+    <h4 class="name toc-target" id="clearMask"><span class="type-signature">&lt;static> </span>clearMask<span class="signature">()</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        disable (remove) the rendering mask set through setMask.
+    </div>
+    
+
+    
+
+    
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    canvas_renderer.js, line 758
+	</dd>
+	
+
+	
+
+	
+	<dt class="tag-see">See:</dt>
+	<dd class="tag-see">
+		<ul>
+			<li>setMask</li>
+			</ul>
+	</dd>
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<dt>
     <h4 class="name toc-target" id="clearRect"><span class="type-signature">&lt;static> </span>clearRect<span class="signature">(x, y, width, height)</span><span class="type-signature"></span></h4>
 
     
@@ -1281,8 +1359,7 @@
 
     
     <div class="description">
-        Sets all pixels in the given rectangle to transparent black, <br>
-erasing any previously drawn content.
+        Erase the pixels in the given rectangular area by setting them to transparent black (rgba(0,0,0,0)).
     </div>
     
 
@@ -1628,7 +1705,7 @@ and restore it (with the restore() method) any time in the future.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 671
+    canvas_renderer.js, line 674
 	</dd>
 	
 
@@ -1771,7 +1848,7 @@ and restore it (with the restore() method) any time in the future.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 176
+    canvas_renderer.js, line 175
 	</dd>
 	
 
@@ -2110,7 +2187,7 @@ var basic      = renderer.createPattern(image, &quot;no-repeat&quot;);</pre>
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 195
+    canvas_renderer.js, line 194
 	</dd>
 	
 
@@ -2333,7 +2410,7 @@ renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);</pr
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 251
+    canvas_renderer.js, line 250
 	</dd>
 	
 
@@ -2346,135 +2423,6 @@ renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);</pr
 			<li>me.CanvasRenderer#createPattern</li>
 			</ul>
 	</dd>
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name toc-target" id="drawShape"><span class="type-signature">&lt;static> </span>drawShape<span class="signature">(shape)</span><span class="type-signature"></span></h4>
-
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        draw the given shape
-    </div>
-    
-
-    
-
-    
-
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>shape</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="me.Rect.html">me.Rect</a></span>
-|
-
-<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
-|
-
-<span class="param-type"><a href="me.Line.html">me.Line</a></span>
-|
-
-<span class="param-type"><a href="me.Ellipse.html">me.Ellipse</a></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">a shape object</td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-	<dt class="tag-source">Source:</dt>
-	<dd class="tag-source">
-    canvas_renderer.js, line 581
-	</dd>
-	
-
-	
-
 	
 
 	
@@ -2784,7 +2732,505 @@ renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);</pr
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 274
+    canvas_renderer.js, line 300
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="fillEllipse"><span class="type-signature">&lt;static> </span>fillEllipse<span class="signature">(x, y, w, h)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Fill an ellipse at the specified coordinates with given radius
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>x</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">ellipse center point x-axis</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>y</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">ellipse center point y-axis</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>w</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">horizontal radius of the ellipse</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>h</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">vertical radius of the ellipse</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    canvas_renderer.js, line 357
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="fillLine"><span class="type-signature">&lt;static> </span>fillLine<span class="signature">(startX, startY, endX, endY)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Fill a line of the given two points
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>startX</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">the start x coordinate</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>startY</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">the start y coordinate</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>endX</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">the end x coordinate</td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>endY</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">the end y coordinate</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    canvas_renderer.js, line 395
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="fillPolygon"><span class="type-signature">&lt;static> </span>fillPolygon<span class="signature">(poly)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Fill the given me.Polygon on the screen
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>poly</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">the shape to draw</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    canvas_renderer.js, line 438
 	</dd>
 	
 
@@ -2973,7 +3419,7 @@ renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);</pr
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 300
+    canvas_renderer.js, line 467
 	</dd>
 	
 
@@ -3115,7 +3561,7 @@ renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);</pr
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 318
+    canvas_renderer.js, line 486
 	</dd>
 	
 
@@ -3276,7 +3722,7 @@ renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);</pr
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 374
+    canvas_renderer.js, line 542
 	</dd>
 	
 
@@ -3396,7 +3842,7 @@ renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);</pr
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 389
+    canvas_renderer.js, line 557
 	</dd>
 	
 
@@ -3467,7 +3913,7 @@ renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);</pr
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 364
+    canvas_renderer.js, line 532
 	</dd>
 	
 
@@ -3610,7 +4056,7 @@ renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);</pr
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 400
+    canvas_renderer.js, line 568
 	</dd>
 	
 
@@ -3681,7 +4127,7 @@ renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);</pr
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 338
+    canvas_renderer.js, line 506
 	</dd>
 	
 
@@ -3981,7 +4427,7 @@ renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);</pr
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 412
+    canvas_renderer.js, line 580
 	</dd>
 	
 
@@ -4101,7 +4547,7 @@ renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);</pr
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 428
+    canvas_renderer.js, line 596
 	</dd>
 	
 
@@ -4221,7 +4667,150 @@ renderer.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);</pr
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 439
+    canvas_renderer.js, line 607
+	</dd>
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name toc-target" id="setMask"><span class="type-signature">&lt;static> </span>setMask<span class="signature">(<span class="optional">mask</span>)</span><span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        A mask limits rendering elements to the shape and position of the given mask object.
+So, if the renderable is larger than the mask, only the intersecting part of the renderable will be visible.
+Mask are not preserved through renderer context save and restore.
+    </div>
+    
+
+    
+
+    
+
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+		<th>Argument</th>
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>mask</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="me.Rect.html">me.Rect</a></span>
+|
+
+<span class="param-type"><a href="me.Polygon.html">me.Polygon</a></span>
+|
+
+<span class="param-type"><a href="me.Line.html">me.Line</a></span>
+|
+
+<span class="param-type"><a href="me.Ellipse.html">me.Ellipse</a></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">the shape defining the mask to be applied</td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+	<dt class="tag-source">Source:</dt>
+	<dd class="tag-source">
+    canvas_renderer.js, line 709
 	</dd>
 	
 
@@ -4342,7 +4931,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 615
+    canvas_renderer.js, line 618
 	</dd>
 	
 
@@ -4657,7 +5246,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 450
+    canvas_renderer.js, line 273
 	</dd>
 	
 
@@ -4693,7 +5282,7 @@ identity one, and then apply the given transformation matrix.
 
     
     <div class="description">
-        Stroke an ellipse at the specified coordinates with given radius, start and end points
+        Stroke an ellipse at the specified coordinates with given radius
     </div>
     
 
@@ -4743,7 +5332,7 @@ identity one, and then apply the given transformation matrix.
 
             
 
-            <td class="description last">arc center point x-axis</td>
+            <td class="description last">ellipse center point x-axis</td>
         </tr>
 
 	
@@ -4766,7 +5355,7 @@ identity one, and then apply the given transformation matrix.
 
             
 
-            <td class="description last">arc center point y-axis</td>
+            <td class="description last">ellipse center point y-axis</td>
         </tr>
 
 	
@@ -4846,7 +5435,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 475
+    canvas_renderer.js, line 316
 	</dd>
 	
 
@@ -5035,7 +5624,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 514
+    canvas_renderer.js, line 371
 	</dd>
 	
 
@@ -5071,7 +5660,7 @@ identity one, and then apply the given transformation matrix.
 
     
     <div class="description">
-        Strokes a me.Polygon on the screen with a specified color
+        Stroke the given me.Polygon on the screen
     </div>
     
 
@@ -5155,7 +5744,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 536
+    canvas_renderer.js, line 409
 	</dd>
 	
 
@@ -5191,7 +5780,7 @@ identity one, and then apply the given transformation matrix.
 
     
     <div class="description">
-        Stroke a rectangle at the specified coordinates with a given color
+        Stroke a rectangle at the specified coordinates
     </div>
     
 
@@ -5344,7 +5933,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 563
+    canvas_renderer.js, line 449
 	</dd>
 	
 
@@ -5464,7 +6053,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 628
+    canvas_renderer.js, line 631
 	</dd>
 	
 
@@ -5607,7 +6196,7 @@ identity one, and then apply the given transformation matrix.
 	
 	<dt class="tag-source">Source:</dt>
 	<dd class="tag-source">
-    canvas_renderer.js, line 655
+    canvas_renderer.js, line 658
 	</dd>
 	
 
@@ -5658,7 +6247,7 @@ identity one, and then apply the given transformation matrix.
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
-		on 2018-11-29T14:47:52+08:00 using the <a
+		on 2018-12-24T08:55:58+08:00 using the <a
 			href="https://github.com/terryweiss/docstrap">DocStrap template</a> modified by <a href="https://github.com/codename-">codename-</a>.
 		</span>
 				</footer>
