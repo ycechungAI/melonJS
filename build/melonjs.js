@@ -1,5 +1,5 @@
 /**
- * melonJS Game Engine v6.3.0
+ * melonJS Game Engine v6.4.0
  * http://www.melonjs.org
  * @license {@link http://www.opensource.org/licenses/mit-license.php|MIT}
  * @copyright (C) 2011 - 2018 Olivier Biot
@@ -7,7 +7,7 @@
 
 /**
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  */
 
@@ -44,7 +44,7 @@
 
 /**
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  */
 
@@ -293,7 +293,7 @@
 
 /**
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  */
 
@@ -307,13 +307,14 @@ me.Object = window.Jay;
 
 /**
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  */
 
 /**
  * melonJS base class for exception handling.
- * @name Error
+ * @class
+ * @extends me.Object
  * @memberOf me
  * @constructor
  * @param {String} msg Error message.
@@ -330,7 +331,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org/
  *
  */
@@ -423,7 +424,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -1215,6 +1216,26 @@ me.Error = me.Object.extend.bind(Error)({
         };
 
         /**
+         * return the highest precision format supported by this device for GL Shaders
+         * @name getMaxShaderPrecision
+         * @memberOf me.device
+         * @function
+         * @param {WebGLRenderingContext} gl
+         * @return {Boolean} "lowp", "mediump", or "highp"
+         */
+        api.getMaxShaderPrecision = function (gl) {
+            if (gl.getShaderPrecisionFormat(gl.VERTEX_SHADER, gl.HIGH_FLOAT ).precision > 0 &&
+                gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT ).precision > 0) {
+                    return "highp";
+            }
+            if (gl.getShaderPrecisionFormat(gl.VERTEX_SHADER, gl.MEDIUM_FLOAT ).precision > 0 &&
+                gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.MEDIUM_FLOAT ).precision > 0) {
+                    return "mediump";
+            }
+            return "lowp";
+        };
+
+        /**
          * Makes a request to bring this device window to the front.
          * @name focus
          * @memberOf me.device
@@ -1491,7 +1512,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /**
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  */
 
@@ -1779,7 +1800,9 @@ me.Error = me.Object.extend.bind(Error)({
                     // update the camera/viewport
                     // iterate through all cameras
                     stage.cameras.forEach(function(camera) {
-                        isDirty |= camera.update(updateDelta);
+                        if (camera.update(updateDelta)) {
+                            isDirty = true;
+                        };
                     });
 
                     me.timer.lastUpdate = window.performance.now();
@@ -1829,7 +1852,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /**
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  */
 
@@ -1840,7 +1863,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @ignore
      */
     me.mod = "melonJS";
-    me.version = "6.3.0";
+    me.version = "6.4.0";
     /**
      * global system settings and browser capabilities
      * @namespace
@@ -1964,14 +1987,14 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @function
          * @param {String} first First version string to compare
-         * @param {String} [second="6.3.0"] Second version string to compare
+         * @param {String} [second="6.4.0"] Second version string to compare
          * @return {Number} comparison result <br>&lt; 0 : first &lt; second<br>
          * 0 : first == second<br>
          * &gt; 0 : first &gt; second
          * @example
-         * if (me.sys.checkVersion("6.3.0") > 0) {
+         * if (me.sys.checkVersion("6.4.0") > 0) {
          *     console.error(
-         *         "melonJS is too old. Expected: 6.3.0, Got: " + me.version
+         *         "melonJS is too old. Expected: 6.4.0, Got: " + me.version
          *     );
          * }
          */
@@ -2095,7 +2118,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -2231,7 +2254,7 @@ me.Error = me.Object.extend.bind(Error)({
         };
 
         /**
-         * Calls a function once after a specified delay.
+         * Calls a function once after a specified delay. See me.timer.setInterval to repeativly call a function.
          * @name setTimeout
          * @memberOf me.timer
          * @param {Function} fn the function you want to execute after delay milliseconds.
@@ -2253,7 +2276,7 @@ me.Error = me.Object.extend.bind(Error)({
         };
 
         /**
-         * Calls a function at specified interval.
+         * Calls a function continously at the specified interval.  See setTimeout to call function a single time.
          * @name setInterval
          * @memberOf me.timer
          * @param {Function} fn the function to execute
@@ -2369,7 +2392,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -2577,7 +2600,7 @@ me.Error = me.Object.extend.bind(Error)({
 
         /**
          * returns the amount of object instance currently in the pool
-         * @name exists
+         * @name getInstanceCount
          * @memberOf me.pool
          * @public
          * @function
@@ -2594,7 +2617,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -2610,14 +2633,44 @@ me.Error = me.Object.extend.bind(Error)({
         var api = {};
 
         /*
-         * PRIVATE STUFF
-         */
-        var DEG_TO_RAD = Math.PI / 180.0;
-        var RAD_TO_DEG = 180.0 / Math.PI;
-
-        /*
          * PUBLIC STUFF
          */
+
+        /**
+         * constant to convert from degrees to radians
+         * @public
+         * @type {Number}
+         * @name DEG_TO_RAD
+         * @memberOf me.Math
+         */
+        api.DEG_TO_RAD = Math.PI / 180.0;
+
+        /**
+         * constant to convert from radians to degrees
+         * @public
+         * @type {Number}
+         * @name RAD_TO_DEG
+         * @memberOf me.Math
+         */
+        api.RAD_TO_DEG = 180.0 / Math.PI;
+
+        /**
+         * constant equals to 2 times pi
+         * @public
+         * @type {Number}
+         * @name TAU
+         * @memberOf me.Math
+         */
+        api.TAU = Math.PI * 2;
+
+        /**
+         * constant equals to half pi
+         * @public
+         * @type {Number}
+         * @name ETA
+         * @memberOf me.Math
+         */
+        api.ETA = Math.PI * 0.5;
 
         /**
          * returns true if the given value is a power of two
@@ -2665,7 +2718,7 @@ me.Error = me.Object.extend.bind(Error)({
          * me.Math.degToRad(60); // return 1.0471...
          */
         api.degToRad = function (angle) {
-            return angle * DEG_TO_RAD;
+            return angle * api.DEG_TO_RAD;
         };
 
         /**
@@ -2681,7 +2734,7 @@ me.Error = me.Object.extend.bind(Error)({
          * me.Math.radToDeg(1.0471975511965976); // return 60
          */
         api.radToDeg = function (radians) {
-            return radians * RAD_TO_DEG;
+            return radians * api.RAD_TO_DEG;
         };
 
         /**
@@ -2755,7 +2808,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @function
          * @memberOf me.Math
-         * @name weightedRandom
+         * @name round
          * @param {number} num value to be rounded.
          * @param {number} [dec=0] number of decimal digit to be rounded to.
          * @return {number} rounded value
@@ -2799,7 +2852,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -2813,10 +2866,10 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} [x=0] x value of the vector
      * @param {Number} [y=0] y value of the vector
      */
-    me.Vector2d = me.Object.extend(
-    /** @scope me.Vector2d.prototype */
-    {
-        /** @ignore */
+    me.Vector2d = me.Object.extend({
+        /**
+         * @ignore
+         */
         init : function (x, y) {
             return this.set(x || 0, y || 0);
         },
@@ -3271,7 +3324,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @return {me.Vector2d} new me.Vector2d
          */
         clone : function () {
-            return new me.Vector2d(this.x, this.y);
+            return me.pool.pull("me.Vector2d", this.x, this.y);
         },
 
         /**
@@ -3291,6 +3344,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @name Error
      * @class
      * @memberOf me.Vector2d
+     * @private
      * @constructor
      * @param {String} msg Error message.
      */
@@ -3307,7 +3361,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -3322,10 +3376,10 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} [y=0] y value of the vector
      * @param {Number} [z=0] z value of the vector
      */
-    me.Vector3d = me.Object.extend(
-    /** @scope me.Vector3d.prototype */
-    {
-        /** @ignore */
+    me.Vector3d = me.Object.extend({
+        /**
+         * @ignore
+         */
         init : function (x, y, z) {
             return this.set(x || 0, y || 0, z || 0);
         },
@@ -3797,7 +3851,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @return {me.Vector3d} new me.Vector3d
          */
         clone : function () {
-            return new me.Vector3d(this.x, this.y, this.z);
+            return me.pool.pull("me.Vector3d", this.x, this.y, this.z);
         },
 
         /**
@@ -3817,6 +3871,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @name Error
      * @class
      * @memberOf me.Vector3d
+     * @private
      * @constructor
      * @param {String} msg Error message.
      */
@@ -3833,7 +3888,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -3849,9 +3904,9 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Function} settings.onUpdate the callback to be executed when the vector is changed
      */
     me.ObservableVector2d = me.Vector2d.extend({
-    /** @scope me.ObservableVector2d.prototype */
-
-        /** @ignore */
+        /**
+         * @ignore
+         */
         init : function (x, y, settings) {
             /**
              * x value of the vector
@@ -4265,8 +4320,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @return {me.ObservableVector2d} new me.ObservableVector2d
          */
         clone : function () {
-            // shall we return a cloned me.ObservableVector2d here ?
-            return new me.ObservableVector2d(this._x, this._y, {onUpdate: this.onUpdate});
+            return me.pool.pull("me.ObservableVector2d", this._x, this._y, {onUpdate: this.onUpdate});
         },
 
         /**
@@ -4277,7 +4331,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @return {me.Vector2d} new me.Vector2d
          */
         toVector2d : function () {
-            return new me.Vector2d(this._x, this._y);
+            return me.pool.pull("me.Vector2d", this._x, this._y);
         },
 
         /**
@@ -4297,6 +4351,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @name Error
      * @class
      * @memberOf me.ObservableVector2d
+     * @private
      * @constructor
      * @param {String} msg Error message.
      */
@@ -4313,7 +4368,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -4330,8 +4385,6 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Function} settings.onUpdate the callback to be executed when the vector is changed
      */
     me.ObservableVector3d = me.Vector3d.extend({
-    /** @scope me.ObservableVector3d.prototype */
-
         /**
          * @ignore
          */
@@ -4829,8 +4882,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @return {me.ObservableVector3d} new me.ObservableVector3d
          */
         clone : function () {
-            // shall we return a cloned me.ObservableVector3d here ?
-            return new me.ObservableVector3d(
+            return me.pool.pull("me.ObservableVector3d",
                 this._x,
                 this._y,
                 this._z,
@@ -4846,7 +4898,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @return {me.Vector3d} new me.Vector3d
          */
         toVector3d : function () {
-            return new me.Vector3d(this._x, this._y, this._z);
+            return me.pool.pull("me.Vector3d", this._x, this._y, this._z);
         },
 
         /**
@@ -4866,6 +4918,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @name Error
      * @class
      * @memberOf me.ObservableVector3d
+     * @private
      * @constructor
      * @param {String} msg Error message.
      */
@@ -4882,7 +4935,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -4898,10 +4951,10 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {me.Matrix2d} [mat2d] An instance of me.Matrix2d to copy from
      * @param {Number[]} [arguments...] Matrix elements. See {@link me.Matrix2d.set}
      */
-    me.Matrix2d = me.Object.extend(
-    /** @scope me.Matrix2d.prototype */    {
-
-        /** @ignore */
+    me.Matrix2d = me.Object.extend({
+        /**
+         * @ignore
+         */
         init : function () {
             if (typeof(this.val) === "undefined") {
                 this.val = new Float32Array(9);
@@ -5330,7 +5383,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -5346,10 +5399,10 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} w width (diameter) of the ellipse
      * @param {Number} h height (diameter) of the ellipse
      */
-    me.Ellipse = me.Object.extend(
-    {
-        /** @scope me.Ellipse.prototype */
-        /** @ignore */
+    me.Ellipse = me.Object.extend({
+        /**
+         * @ignore
+         */
         init : function (x, y, w, h) {
             /**
              * the center coordinates of the ellipse
@@ -5611,7 +5664,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -5631,10 +5684,10 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} y origin point of the Polygon
      * @param {me.Vector2d[]} points array of vector defining the Polygon
      */
-    me.Polygon = me.Object.extend(
-    /** @scope me.Polygon.prototype */ {
-
-        /** @ignore */
+    me.Polygon = me.Object.extend({
+        /**
+         * @ignore
+         */
         init : function (x, y, points) {
             /**
              * origin point of the Polygon
@@ -6012,6 +6065,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @name Error
      * @class
      * @memberOf me.Polygon
+     * @private
      * @constructor
      * @param {String} msg Error message.
      */
@@ -6028,7 +6082,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -6044,10 +6098,10 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} w width of the rectangle
      * @param {Number} h height of the rectangle
      */
-    me.Rect = me.Polygon.extend(
-    /** @scope me.Rect.prototype */ {
-
-        /** @ignore */
+    me.Rect = me.Polygon.extend({
+        /**
+         * @ignore
+         */
         init : function (x, y, w, h) {
             me.Polygon.prototype.init.apply(this, [x, y, [
                 new me.Vector2d(0, 0), // 0, 0
@@ -6504,7 +6558,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -6519,8 +6573,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} y origin point of the Line
      * @param {me.Vector2d[]} points array of vectors defining the Line
      */
-    me.Line = me.Polygon.extend(
-    /** @scope me.Line.prototype */ {
+    me.Line = me.Polygon.extend({
 
         /**
          * check if this line segment contains the specified point
@@ -6606,6 +6659,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @name Error
      * @class
      * @memberOf me.Line
+     * @private
      * @constructor
      * @param {String} msg Error message.
      */
@@ -6622,7 +6676,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -6630,7 +6684,15 @@ me.Error = me.Object.extend.bind(Error)({
 (function () {
 
     /**
-     * a Generic Body Object <br>
+     * a Generic Body Object with some physic properties and behavior functionality<br>
+     The body object is offten attached as a member of an Entity.  The Body object can handle movements of the parent with
+     the body.update call.  It important to know that when body.update is called there are several things that happen related to
+     the movement and positioning of the parent entity (assuming its an Entity).  1) The force/gravity/friction parameters are used
+     to calcuate a new velocity and 2) the parent position is updated by adding this to the parent.pos (position me.Vector2d)
+     value. Thus Affecting the movement of the parent.  Look at the source code for /src/physics/body.js:update (me.Body.update) for 
+     a better understanding.  
+     
+     
      * @class
      * @extends me.Rect
      * @memberOf me
@@ -6639,14 +6701,14 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {me.Rect[]|me.Polygon[]|me.Line[]|me.Ellipse[]} [shapes] the initial list of shapes
      * @param {Function} [onBodyUpdate] callback for when the body is updated (e.g. add/remove shapes)
      */
-    me.Body = me.Rect.extend(
-    /** @scope me.Body.prototype */
-    {
-        /** @ignore */
+    me.Body = me.Rect.extend({
+        /**
+         * @ignore
+         */
         init : function (parent, shapes, onBodyUpdate) {
 
             /**
-             * a reference to the parent object that contains this bodt,
+             * a reference to the parent object that contains this body,
              * or undefined if it has not been added to one.
              * @public
              * @type me.Renderable
@@ -6693,7 +6755,8 @@ me.Error = me.Object.extend.bind(Error)({
             this.collisionType = me.collision.types.ENEMY_OBJECT;
 
             /**
-             * body velocity
+             * body velocity<br>
+             * 
              * @public
              * @type me.Vector2d
              * @default <0,0>
@@ -6706,7 +6769,8 @@ me.Error = me.Object.extend.bind(Error)({
             this.vel.set(0, 0);
 
             /**
-             * body acceleration
+             * body acceleration <br>
+             * Not fully implemented yet.  At this time accel is used to set the MaximumVelocity allowed.
              * @public
              * @type me.Vector2d
              * @default <0,0>
@@ -7116,8 +7180,9 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * set the body default velocity<br>
-         * note : velocity is by default limited to the same value, see
+         * Sets accel to Velocity if x or y is not 0.  Net effect is to set the maxVel.x/y to the passed values for x/y<br>
+         * note: This does not set the vel member of the body object. This is identical to the setMaxVelocity call except that the
+         * accel property is updated to match the passed x and y. 
          * setMaxVelocity if needed<br>
          * @name setVelocity
          * @memberOf me.Body
@@ -7137,7 +7202,7 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * cap the body velocity to the specified value<br>
+         * cap the body velocity (body.maxVel property) to the specified value<br>
          * @name setMaxVelocity
          * @memberOf me.Body
          * @function
@@ -7227,11 +7292,23 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * update the body position
+         * Updates the parent's position as well as computes the new body's velocity based
+         * on the values of force/friction/gravity.  Velocity chages are proportional to the 
+         * me.timer.tick value (which can be used to scale velocities).  The approach to moving the 
+         * parent Entity is to compute new values of the Body.vel property then add them to
+         * the parent.pos value thus changing the postion the amount of Body.vel each time the
+         * update call is made. <br>
+         * Updates to Body.vel are bounded by maxVel (which defaults to viewport size if not set) <br>
+         *
+         * In addition, when the gravity calcuation is made, if the Body.vel.y > 0 then the Body.falling
+         * property is set to true and Body.jumping is set to !Body.falling.
+         *
+         * At this time a call to Body.Update does not call the onBodyUpdate callback that is listed in the init: function.
          * @name update
          * @memberOf me.Body
          * @function
          * @return {boolean} true if resulting velocity is different than 0
+         * @see source code for me.Body.computeVelocity (private member)
          */
         update : function (/* dt */) {
             // update the velocity
@@ -7260,6 +7337,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @name Error
      * @class
      * @memberOf me.Body
+     * @private
      * @constructor
      * @param {String} msg Error message.
      */
@@ -7276,7 +7354,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  * A QuadTree implementation in JavaScript, a 2d spatial subdivision algorithm.
@@ -7660,7 +7738,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  * Separating Axis Theorem implementation, based on the SAT.js library by Jim Riecken <jimr@jimr.ca>
@@ -8534,7 +8612,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -8551,9 +8629,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} width object width
      * @param {Number} height object height
      */
-    me.Renderable = me.Rect.extend(
-    /** @scope me.Renderable.prototype */
-    {
+    me.Renderable = me.Rect.extend({
         /**
          * @ignore
          */
@@ -8803,6 +8879,31 @@ me.Error = me.Object.extend.bind(Error)({
              * ]);
              */
             this.mask = undefined;
+
+            /**
+             * apply a tint to this renderable (WebGL Only)
+             * @public
+             * @type {me.Color}
+             * @name tint
+             * @default undefined
+             * @memberOf me.Renderable
+             * @example
+             * // add a red tint to this renderable
+             * this.renderable.tint = new me.Color(255, 128, 128);
+             * // disable the tint
+             * this.renderable.tint.setColor(255, 255, 255);
+             */
+            this.tint = undefined;
+
+            /**
+             * The name of the renderable
+             * @public
+             * @type {String}
+             * @name name
+             * @default ""
+             * @memberOf me.Renderable
+             */
+            this.name = "";
 
             /**
              * Absolute position in the game world
@@ -9070,6 +9171,10 @@ me.Error = me.Object.extend.bind(Error)({
                 renderer.setMask(this.mask);
             }
 
+            if (typeof this.tint !== "undefined") {
+                renderer.setTint(this.tint);
+            }
+
         },
 
         /**
@@ -9097,6 +9202,9 @@ me.Error = me.Object.extend.bind(Error)({
         postDraw : function (renderer) {
             if (typeof this.mask !== "undefined") {
                 renderer.clearMask();
+            }
+            if (typeof this.tint !== "undefined") {
+                renderer.clearTint();
             }
             // restore the context
             renderer.restore();
@@ -9128,6 +9236,11 @@ me.Error = me.Object.extend.bind(Error)({
             if (typeof this.mask !== "undefined") {
                 me.pool.push(this.mask);
                 this.mask = undefined;
+            }
+
+            if (typeof this.tint !== "undefined") {
+                me.pool.push(this.tint);
+                this.tint = undefined;
             }
 
             this.ancestor = undefined;
@@ -9201,8 +9314,10 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          */
         set : function (value) {
-            this.getBounds().width = value;
-            this._width = value;
+            if (this._width !== value) {
+                this.getBounds().width = value;
+                this._width = value;
+            }
         },
         configurable : true
     });
@@ -9225,8 +9340,10 @@ me.Error = me.Object.extend.bind(Error)({
          * @ignore
          */
         set : function (value) {
-            this.getBounds().height = value;
-            this._height = value;
+            if (this._height !== value) {
+                this.getBounds().height = value;
+                this._height = value;
+            }
         },
         configurable : true
     });
@@ -9236,6 +9353,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @name Error
      * @class
      * @memberOf me.Renderable
+     * @private
      * @constructor
      * @param {String} msg Error message.
      */
@@ -9252,7 +9370,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -9270,7 +9388,6 @@ me.Error = me.Object.extend.bind(Error)({
      */
     me.ColorLayer = me.Renderable.extend({
         /**
-         * Constructor
          * @ignore
          */
         init: function (name, color, z) {
@@ -9329,7 +9446,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -9360,12 +9477,11 @@ me.Error = me.Object.extend.bind(Error)({
      */
     me.ImageLayer = me.Renderable.extend({
         /**
-         * constructor
          * @ignore
          */
         init: function (x, y, settings) {
-            // layer name
-            this.name = settings.name || "me.ImageLayer";
+            // call the constructor
+            me.Renderable.prototype.init.apply(this, [x, y, Infinity, Infinity]);
 
             // get the corresponding image
             this.image = (typeof settings.image === "object") ? settings.image : me.loader.getImage(settings.image);
@@ -9382,8 +9498,10 @@ me.Error = me.Object.extend.bind(Error)({
             this.imagewidth = this.image.width;
             this.imageheight = this.image.height;
 
-            // call the constructor
-            me.Renderable.prototype.init.apply(this, [x, y, Infinity, Infinity]);
+            // set the sprite name if specified
+            if (typeof (settings.name) === "string") {
+                this.name = settings.name;
+            }
 
             // render in screen coordinates
             this.floating = true;
@@ -9653,7 +9771,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -9669,24 +9787,36 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} y the y coordinates of the sprite object
      * @param {Object} settings Configuration parameters for the Sprite object
      * @param {me.video.renderer.Texture|HTMLImageElement|HTMLCanvasElement|String} settings.image reference to a texture, spritesheet image or to a texture atlas
+     * @param {String} [settings.name=""] name of this object
+     * @param {String} [settings.region] region name of a specific region to use when using a texture atlas, see {@link me.Renderer.Texture}
      * @param {Number} [settings.framewidth] Width of a single frame within the spritesheet
      * @param {Number} [settings.frameheight] Height of a single frame within the spritesheet
      * @param {Number} [settings.flipX] flip the sprite on the horizontal axis
      * @param {Number} [settings.flipY] flip the sprite on the vertical axis
      * @param {me.Vector2d} [settings.anchorPoint={x:0.5, y:0.5}] Anchor point to draw the frame at (defaults to the center of the frame).
      * @example
-     * // create a standalone sprite, with anchor in the center
+     * // create a single sprite from a standalone image, with anchor in the center
      * var sprite = new me.Sprite(0, 0, {
      *     image : "PlayerTexture",
      *     framewidth : 64,
      *     frameheight : 64,
      *     anchorPoint : new me.Vector2d(0.5, 0.5)
      * });
+     *
+     * // create a single sprite from a packed texture
+     * game.texture = new me.video.renderer.Texture(
+     *     me.loader.getJSON("texture"),
+     *     me.loader.getImage("texture")
+     * );
+     * var sprite = new me.Sprite(0, 0, {
+     *     image : game.texture,
+     *     region : "npc2.png",
+     * });
      */
-    me.Sprite = me.Renderable.extend(
-    /** @scope .prototype */
-    {
-        /** @ignore */
+    me.Sprite = me.Renderable.extend({
+        /**
+         * @ignore
+         */
         init : function (x, y, settings) {
 
             /**
@@ -9717,6 +9847,15 @@ me.Error = me.Object.extend.bind(Error)({
              */
             this.offset = me.pool.pull("me.Vector2d", 0, 0);
 
+            /**
+             * The source texture object this sprite object is using
+             * @public
+             * @type me.video.renderer.Texture
+             * @name source
+             * @memberOf me.Sprite
+             */
+            this.source = null;
+
             // hold all defined animation
             this.anim = {};
 
@@ -9726,13 +9865,19 @@ me.Error = me.Object.extend.bind(Error)({
             // current frame information
             // (reusing current, any better/cleaner place?)
             this.current = {
+                // the current animation name
+                name : "default",
+                // length of the current animation name
+                length : 0,
                 //current frame texture offset
                 offset : new me.Vector2d(),
                 // current frame size
                 width : 0,
                 height : 0,
                 // Source rotation angle for pre-rotating the source image
-                angle : 0
+                angle : 0,
+                // current frame index
+                idx : 0
             };
 
             // animation frame delta
@@ -9746,15 +9891,18 @@ me.Error = me.Object.extend.bind(Error)({
                 state : false
             };
 
+            // call the super constructor
+            me.Renderable.prototype.init.apply(this, [ x, y, 0, 0 ]);
+
             // set the proper image/texture to use
-            if (settings.image instanceof me.CanvasRenderer.prototype.Texture) {
-                // use the texture from the texture Atlas
-                this.image = settings.image.getTexture();
+            if (settings.image instanceof me.Renderer.prototype.Texture) {
+                this.source = settings.image;
+                this.image = this.source.getTexture();
                 this.textureAtlas = settings.image;
                 // check for defined region
                 if (typeof (settings.region) !== "undefined") {
                     // use a texture atlas
-                    var region = settings.image.getRegion(settings.region);
+                    var region = this.source.getRegion(settings.region);
                     if (region) {
                         // set the sprite region within the texture
                         this.setRegion(region);
@@ -9772,7 +9920,8 @@ me.Error = me.Object.extend.bind(Error)({
                 // update the default "current" frame size
                 this.current.width = settings.framewidth = settings.framewidth || this.image.width;
                 this.current.height = settings.frameheight = settings.frameheight || this.image.height;
-                this.textureAtlas = me.video.renderer.cache.get(this.image, settings).getAtlas();
+                this.source = me.video.renderer.cache.get(this.image, settings);
+                this.textureAtlas = this.source.getAtlas();
             }
 
             // store/reset the current atlas information if specified
@@ -9783,12 +9932,9 @@ me.Error = me.Object.extend.bind(Error)({
                 this.atlasIndices = null;
             }
 
-            // call the super constructor
-            me.Renderable.prototype.init.apply(this, [
-                x, y,
-                this.current.width,
-                this.current.height
-            ]);
+            // resize based on the active frame
+            this.width = this.current.width;
+            this.height = this.current.height;
 
             // apply flip flags if specified
             if (typeof (settings.flipX) !== "undefined") {
@@ -9797,7 +9943,6 @@ me.Error = me.Object.extend.bind(Error)({
             if (typeof (settings.flipY) !== "undefined") {
                 this.flipY(!!settings.flipY);
             }
-
 
             // set the default rotation angle is defined in the settings
             // * WARNING: rotating sprites decreases performance with Canvas Renderer
@@ -9808,6 +9953,11 @@ me.Error = me.Object.extend.bind(Error)({
             // update anchorPoint
             if (settings.anchorPoint) {
                 this.anchorPoint.set(settings.anchorPoint.x, settings.anchorPoint.y);
+            }
+
+            // set the sprite name if specified
+            if (typeof (settings.name) === "string") {
+                this.name = settings.name;
             }
 
             // for sprite, addAnimation will return !=0
@@ -10002,7 +10152,8 @@ me.Error = me.Object.extend.bind(Error)({
          **/
         setCurrentAnimation : function (name, resetAnim, _preserve_dt) {
             if (this.anim[name]) {
-                this.current = this.anim[name];
+                this.current.name = name;
+                this.current.length = this.anim[this.current.name].length;
                 if (typeof resetAnim === "string") {
                     this.resetAnim = this.setCurrentAnimation.bind(this, resetAnim, null, true);
                 } else if (typeof resetAnim === "function") {
@@ -10011,8 +10162,6 @@ me.Error = me.Object.extend.bind(Error)({
                     this.resetAnim = undefined;
                 }
                 this.setAnimationFrame(this.current.idx);
-                // XXX this should not be overwritten
-                this.current.name = name;
                 if (!_preserve_dt) {
                     this.dt = 0;
                 }
@@ -10035,7 +10184,7 @@ me.Error = me.Object.extend.bind(Error)({
             if (typeof name !== "undefined" && typeof this.anim[name] !== "undefined") {
                 this.anim[name].frames.reverse();
             } else {
-                this.current.frames.reverse();
+                this.anim[this.current.name].frames.reverse();
             }
             return this;
         },
@@ -10069,14 +10218,24 @@ me.Error = me.Object.extend.bind(Error)({
          * mySprite.setRegion(game.texture.getRegion("shadedDark13.png"));
          */
         setRegion : function (region) {
+            if (this.source !== null) {
+                // set the source texture for the given region
+                this.image = this.source.getTexture(region);
+            }
             // set the sprite offset within the texture
             this.current.offset.setV(region.offset);
             // set angle if defined
             this.current.angle = region.angle;
             // update the default "current" size
-            this.current.width = region.width;
-            this.current.height = region.height;
-
+            this.width = this.current.width = region.width;
+            this.height = this.current.height = region.height;
+            // set global anchortPoint if defined
+            if (region.anchorPoint) {
+                this.anchorPoint.set(
+                    this._flip.x && region.trimmed === true ? 1 - region.anchorPoint.x : region.anchorPoint.x,
+                    this._flip.y && region.trimmed === true ? 1 - region.anchorPoint.y : region.anchorPoint.y
+                );
+            }
             return this;
         },
 
@@ -10093,23 +10252,7 @@ me.Error = me.Object.extend.bind(Error)({
          */
         setAnimationFrame : function (idx) {
             this.current.idx = (idx || 0) % this.current.length;
-            // XXX this should not be overwritten
-            var name = this.current.name;
-            var frame = this.getAnimationFrameObjectByIndex(this.current.idx);
-            // copy all properties of the current frame into current
-            Object.assign(this.current, frame);
-            // XXX this should not be overwritten
-            this.current.name = name;
-            this.width = frame.width;
-            this.height = frame.height;
-            // set global anchortPoint if defined
-            if (frame.anchorPoint) {
-                this.anchorPoint.set(
-                    this._flip.x && frame.trimmed === true ? 1 - frame.anchorPoint.x : frame.anchorPoint.x,
-                    this._flip.y && frame.trimmed === true ? 1 - frame.anchorPoint.y : frame.anchorPoint.y
-                );
-            }
-            return this;
+            return this.setRegion(this.getAnimationFrameObjectByIndex(this.current.idx));
         },
 
         /**
@@ -10132,7 +10275,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @return {Number} if using number indices. Returns {Object} containing frame data if using texture atlas
          */
         getAnimationFrameObjectByIndex : function (id) {
-            return this.current.frames[id];
+            return this.anim[this.current.name].frames[id];
         },
 
         /**
@@ -10279,7 +10422,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -10296,7 +10439,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @constructor
      * @param {Number} x the x coordinate of the GUI Object
      * @param {Number} y the y coordinate of the GUI Object
-     * @param {Object} settings See {@link me.Entity}
+     * @param {Object} settings See {@link me.Sprite}
      * @example
      *
      * // create a basic GUI Object
@@ -10329,8 +10472,6 @@ me.Error = me.Object.extend.bind(Error)({
      *
      */
     me.GUI_Object = me.Sprite.extend({
-    /** @scope me.GUI_Object.prototype */
-
         /**
          * @ignore
          */
@@ -10555,7 +10696,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -10581,11 +10722,8 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} [w=me.game.viewport.width] width of the container
      * @param {Number} [h=me.game.viewport.height] height of the container
      */
-    me.Container = me.Renderable.extend(
-    /** @scope me.Container.prototype */
-    {
+    me.Container = me.Renderable.extend({
         /**
-         * constructor
          * @ignore
          */
         init : function (x, y, width, height, root) {
@@ -10894,8 +11032,8 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * Returns the index of the Child
-         * @name getChildAt
+         * Returns the index of the given Child
+         * @name getChildIndex
          * @memberOf me.Container
          * @function
          * @param {me.Renderable} child
@@ -11390,7 +11528,9 @@ me.Error = me.Object.extend.bind(Error)({
                     obj.inViewport = false;
                     // iterate through all cameras
                     me.state.current().cameras.forEach(function(camera) {
-                        obj.inViewport |= camera.isVisible(obj, isFloating);
+                        if (camera.isVisible(obj, isFloating)) {
+                            obj.inViewport = true;
+                        };
                     });
 
                     // update our object
@@ -11472,6 +11612,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @name Error
      * @class
      * @memberOf me.Container
+     * @private
      * @constructor
      * @param {String} msg Error message.
      */
@@ -11488,7 +11629,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -11510,9 +11651,10 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} maxX end x offset
      * @param {Number} maxY end y offset
      */
-    me.Camera2d = me.Renderable.extend(
-    /** @scope me.Camera2d.prototype */ {
-        /** @ignore */
+    me.Camera2d = me.Renderable.extend({
+        /**
+         * @ignore
+         */
         init : function (minX, minY, maxX, maxY) {
             me.Renderable.prototype.init.apply(this, [minX, minY, maxX - minX, maxY - minY]);
 
@@ -11566,16 +11708,6 @@ me.Error = me.Object.extend.bind(Error)({
              */
             this.damping = 1.0;
 
-            /**
-             * the name of this camera
-             * @public
-             * @type {String}
-             * @name name
-             * @default "default"
-             * @memberOf me.Camera2d
-             */
-            this.name = "default";
-
             // offset for shake effect
             this.offset = new me.Vector2d();
 
@@ -11603,6 +11735,9 @@ me.Error = me.Object.extend.bind(Error)({
                 color : null,
                 tween : null
             };
+
+            // default camera name
+            this.name = "default";
 
             // set a default deadzone
             this.setDeadzone(this.width / 6, this.height / 6);
@@ -12188,7 +12323,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -12216,10 +12351,10 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} [settings.collisionMask] Mask collision detection for this object
      * @param {me.Rect[]|me.Polygon[]|me.Line[]|me.Ellipse[]} [settings.shapes] the initial list of collision shapes (usually populated through Tiled)
      */
-    me.Entity = me.Renderable.extend(
-    /** @scope me.Entity.prototype */
-    {
-        /** @ignore */
+    me.Entity = me.Renderable.extend({
+        /**
+         * @ignore
+         */
         init : function (x, y, settings) {
 
             /**
@@ -12248,15 +12383,10 @@ me.Error = me.Object.extend.bind(Error)({
                 this.anchorPoint.set(settings.anchorPoint.x, settings.anchorPoint.y);
             }
 
-            /**
-             * Entity name<br>
-             * as defined in the Tiled Object Properties
-             * @public
-             * @type String
-             * @name name
-             * @memberOf me.Entity
-             */
-            this.name = settings.name || "";
+            // set the sprite name if specified
+            if (typeof (settings.name) === "string") {
+                this.name = settings.name;
+            }
 
             /**
              * object type (as defined in Tiled)
@@ -12574,6 +12704,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @class
      * @memberOf me.Entity
      * @constructor
+     * @private
      * @param {String} msg Error message.
      */
     me.Entity.Error = me.Renderable.Error.extend({
@@ -12589,7 +12720,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  * Stages & State machine
@@ -12618,10 +12749,10 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Boolean} [options.cameras=[new me.Camera2d()]] a list of cameras (experimental)
      * @see me.state
      */
-    me.Stage = me.Object.extend(
-    /** @scope me.Stage.prototype */
-    {
-        /** @ignore */
+    me.Stage = me.Object.extend({
+        /**
+         * @ignore
+         */
         init: function (settings) {
             /**
              * The list of active cameras in this stage.
@@ -12715,7 +12846,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  * Screens objects & State machine
@@ -13308,7 +13439,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  */
 (function () {
@@ -13539,7 +13670,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -13914,6 +14045,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @name Error
          * @class
          * @memberOf me.loader
+         * @private
          * @constructor
          * @param {String} msg Error message.
          */
@@ -13935,8 +14067,10 @@ me.Error = me.Object.extend.bind(Error)({
             // increment the loading counter
             loadCount++;
 
-            // callback ?
-            var progress = api.getLoadProgress();
+            // currrent progress
+            var progress = loadCount / resourceCount;
+
+            // call callback if defined
             if (api.onProgress) {
                 // pass the load progress in percent, as parameter
                 api.onProgress(progress, res);
@@ -14327,6 +14461,8 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @function
          * @deprecated use callback instead
+         * @see me.loader.onProgress
+         * @see me.event.LOADER_PROGRESS
          * @return {Number}
          */
         api.getLoadProgress = function () {
@@ -14340,7 +14476,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  * Font / Bitmap font
@@ -14391,8 +14527,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {me.Vector2d} [settings.anchorPoint={x:0.0, y:0.0}] anchor point to draw the text at
      * @param {(String|String[])} [settings.text] a string, or an array of strings
      */
-    me.Text = me.Renderable.extend(
-    /** @scope me.Font.prototype */ {
+    me.Text = me.Renderable.extend({
 
         /** @ignore */
         init : function (x, y, settings) {
@@ -14404,7 +14539,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @public
              * @type me.Color
              * @default black
-             * @name me.Font#fillStyle
+             * @name me.Text#fillStyle
              */
             if (typeof settings.fillStyle !== "undefined") {
                 if (settings.fillStyle instanceof me.Color) {
@@ -14422,7 +14557,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @public
              * @type me.Color
              * @default black
-             * @name me.Font#strokeStyle
+             * @name me.Text#strokeStyle
              */
              if (typeof settings.strokeStyle !== "undefined") {
                  if (settings.strokeStyle instanceof me.Color) {
@@ -14440,7 +14575,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @public
              * @type Number
              * @default 1
-             * @name me.Font#lineWidth
+             * @name me.Text#lineWidth
              */
             this.lineWidth = settings.lineWidth || 1;
 
@@ -14450,7 +14585,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @public
              * @type String
              * @default "left"
-             * @name me.Font#textAlign
+             * @name me.Text#textAlign
              */
             this.textAlign = settings.textAlign || "left";
 
@@ -14460,7 +14595,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @public
              * @type String
              * @default "top"
-             * @name me.Font#textBaseline
+             * @name me.Text#textBaseline
              */
             this.textBaseline = settings.textBaseline || "top";
 
@@ -14470,7 +14605,7 @@ me.Error = me.Object.extend.bind(Error)({
              * @public
              * @type Number
              * @default 1.0
-             * @name me.Font#lineHeight
+             * @name me.Text#lineHeight
              */
             this.lineHeight = settings.lineHeight || 1.0;
 
@@ -14582,7 +14717,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @name setText
          * @memberOf me.Text
          * @function
-         * @param {(Number|String|String[])}} value a string, or an array of strings
+         * @param {Number|String|String[]} value a string, or an array of strings
          * @return this object for chaining
          */
         setText : function (value) {
@@ -14772,7 +14907,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  * Font / Bitmap font
@@ -14828,8 +14963,8 @@ me.Error = me.Object.extend.bind(Error)({
      * @example
      * // Use me.loader.preload or me.loader.load to load assets
      * me.loader.preload([
-     * { name: "arial", type: "binary" src: "data/font/arial.fnt" },
-     * { name: "arial", type: "image" src: "data/font/arial.png" },
+     *     { name: "arial", type: "binary" src: "data/font/arial.fnt" },
+     *     { name: "arial", type: "image" src: "data/font/arial.png" },
      * ])
      * // Then create an instance of your bitmap font:
      * var myFont = new me.BitmapText(x, y, {font:"arial", text:"Hello"});
@@ -14839,8 +14974,8 @@ me.Error = me.Object.extend.bind(Error)({
      * // or just add it to the word container
      * me.game.world.addChild(myFont);
      */
-    me.BitmapText = me.Renderable.extend(
-    /** @scope me.BitmapText.prototype */ {
+    me.BitmapText = me.Renderable.extend({
+
         /** @ignore */
         init : function (x, y, settings) {
             // call the parent constructor
@@ -14942,7 +15077,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @name setText
          * @memberOf me.BitmapText
          * @function
-         * @param {(Number|String|String[])} value a string, or an array of strings
+         * @param {Number|String|String[]} value a string, or an array of strings
          * @return this object for chaining
          */
         setText : function (value) {
@@ -15143,7 +15278,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -15406,7 +15541,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  * Audio Mngt Objects
@@ -16001,6 +16136,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @class
      * @memberOf me.audio
      * @constructor
+     * @private
      * @param {String} msg Error message.
      */
     me.audio.Error = me.Error.extend({
@@ -16016,7 +16152,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -16081,6 +16217,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @name Error
          * @class
          * @constructor
+         * @private
          * @memberOf me.video
          * @param {String} msg Error message.
          */
@@ -16566,7 +16703,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -16593,9 +16730,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} [options.zoomX=width] The actual width of the canvas with scaling applied
      * @param {Number} [options.zoomY=height] The actual height of the canvas with scaling applied
      */
-    me.Renderer = me.Object.extend(
-    /** @scope me.Renderer.prototype */
-    {
+    me.Renderer = me.Object.extend({
         /**
          * @ignore
          */
@@ -16628,8 +16763,10 @@ me.Error = me.Object.extend.bind(Error)({
             this.context = null;
 
             // global color
-            // FIXME : setting this to black, breaks the WebGL Renderer
-            this.currentColor = new me.Color(255, 255, 255, 1.0);
+            this.currentColor = new me.Color(0, 0, 0, 1.0);
+
+            // global tint color
+            this.currentTint = new me.Color(255, 255, 255, 1.0);
 
             // default uvOffset
             this.uvOffset = 0;
@@ -16653,7 +16790,9 @@ me.Error = me.Object.extend.bind(Error)({
         reset : function () {
             this.resetTransform();
             this.setBlendMode(this.settings.blendMode);
-            this.cache.reset();
+            this.setColor("#000000");
+            this.currentTint.setColor(255, 255, 255, 1.0);
+            this.cache.clear();
             this.currentScissor[0] = 0;
             this.currentScissor[1] = 0;
             this.currentScissor[2] = this.backBufferCanvas.width;
@@ -16917,6 +17056,30 @@ me.Error = me.Object.extend.bind(Error)({
         clearMask : function() {},
 
         /**
+         * set a rendering tint (WebGL only) for sprite based renderables.
+         * @name setTint
+         * @memberOf me.Renderer
+         * @function
+         * @param {me.Color} [tint] the tint color
+         */
+        setTint : function (tint) {
+            // global tint color
+            this.currentTint.copy(tint);
+        },
+
+        /**
+         * clear the rendering tint set through setTint.
+         * @name clearTint
+         * @see setTint
+         * @memberOf me.Renderer
+         * @function
+         */
+        clearTint : function() {
+            // reset to default
+            this.currentTint.setColor(255, 255, 255, 1.0);
+        },
+
+        /**
          * @ignore
          */
         drawFont : function (/*bounds*/) {}
@@ -16926,8 +17089,528 @@ me.Error = me.Object.extend.bind(Error)({
 })();
 
 /*
+ * MelonJS Game Engine
+ * Copyright (C) 2011 - 2019 Olivier Biot
+ * http://www.melonjs.org
+ *
+ */
+(function () {
+
+    /**
+     * A Texture atlas object, currently supports : <br>
+     * - [TexturePacker]{@link http://www.codeandweb.com/texturepacker/} : through JSON export (standard and multipack texture atlas) <br>
+     * - [ShoeBox]{@link http://renderhjs.net/shoebox/} : through JSON export using the
+     * melonJS setting [file]{@link https://github.com/melonjs/melonJS/raw/master/media/shoebox_JSON_export.sbx} <br>
+     * - Standard (fixed cell size) spritesheet : through a {framewidth:xx, frameheight:xx, anchorPoint:me.Vector2d} object
+     * @class
+     * @extends me.Object
+     * @memberOf me.Renderer
+     * @name Texture
+     * @constructor
+     * @param {Object|Object[]} atlas atlas information. See {@link me.loader.getJSON}
+     * @param {HTMLImageElement|HTMLCanvasElement|String|HTMLImageElement[]|HTMLCanvasElement[]|String[]} [source=atlas.meta.image] Image source
+     * @param {Boolean} [cached=false] Use true to skip caching this Texture
+     * @example
+     * // create a texture atlas from a JSON Object
+     * game.texture = new me.video.renderer.Texture(
+     *     me.loader.getJSON("texture")
+     * );
+     *
+     * // create a texture atlas from a multipack JSON Object
+     * game.texture = new me.video.renderer.Texture([
+     *     me.loader.getJSON("texture-0"),
+     *     me.loader.getJSON("texture-1"),
+     *     me.loader.getJSON("texture-2")
+     * ]);
+     *
+     * // create a texture atlas for a spritesheet with an anchorPoint in the center of each frame
+     * game.texture = new me.video.renderer.Texture(
+     *     {
+     *         framewidth : 32,
+     *         frameheight : 32,
+     *         anchorPoint : new me.Vector2d(0.5, 0.5)
+     *     },
+     *     me.loader.getImage("spritesheet")
+     * );
+     */
+    me.Renderer.prototype.Texture = me.Object.extend({
+        /**
+         * @ignore
+         */
+        init : function (atlases, src, cache) {
+            /**
+             * to identify the atlas format (e.g. texture packer)
+             * @ignore
+             */
+            this.format = null;
+
+            /**
+             * the texture source(s) itself
+             * @type Map
+             * @ignore
+             */
+            this.sources = new Map();
+
+            /**
+             * the atlas dictionnaries
+             * @type Map
+             * @ignore
+             */
+            this.atlases = new Map();
+
+            // parse given atlas(es) paremeters
+            if (typeof (atlases) !== "undefined") {
+                // normalize to array to keep the following code generic
+                atlases = Array.isArray(atlases) ? atlases : [atlases];
+                for (var i in atlases) {
+                    var atlas = atlases[i];
+
+                    if (typeof(atlas.meta) !== "undefined") {
+                        // Texture Packer
+                        if (atlas.meta.app.includes("texturepacker")) {
+                            this.format = "texturepacker";
+                            // set the texture
+                            if (typeof(src) === "undefined") {
+                                // get the texture name from the atlas meta data
+                                var image = me.loader.getImage(atlas.meta.image);
+                                if (!image) {
+                                    throw new me.video.renderer.Texture.Error(
+                                        "Atlas texture '" + image + "' not found"
+                                    );
+                                }
+                                this.sources.set(atlas.meta.image, image);
+                            } else {
+                                this.sources.set(atlas.meta.image || "default", typeof src === "string" ? me.loader.getImage(src) : src);
+                            }
+                            this.repeat = "no-repeat";
+                        }
+                        // ShoeBox
+                        else if (atlas.meta.app.includes("ShoeBox")) {
+                            if (!atlas.meta.exporter || !atlas.meta.exporter.includes("melonJS")) {
+                                throw new me.video.renderer.Texture.Error(
+                                    "ShoeBox requires the JSON exporter : " +
+                                    "https://github.com/melonjs/melonJS/tree/master/media/shoebox_JSON_export.sbx"
+                                );
+                            }
+                            this.format = "ShoeBox";
+                            this.repeat = "no-repeat";
+                            this.sources.set("default", typeof src === "string" ? me.loader.getImage(src) : src);
+                        }
+                        // Internal texture atlas
+                        else if (atlas.meta.app.includes("melonJS")) {
+                            this.format = "melonJS";
+                            this.repeat = atlas.meta.repeat || "no-repeat";
+                            this.sources.set("default", typeof src === "string" ? me.loader.getImage(src) : src);
+                        }
+                        // initialize the atlas
+                        this.atlases.set(atlas.meta.image || "default", this.parse(atlas));
+
+                    } else {
+                        // a regular spritesheet
+                        if (typeof(atlas.framewidth) !== "undefined" &&
+                            typeof(atlas.frameheight) !== "undefined") {
+                            this.format = "Spritesheet (fixed cell size)";
+                            this.repeat = "no-repeat";
+
+                            if (typeof(src) !== "undefined") {
+                                // overwrite if specified
+                                atlas.image = typeof src === "string" ? me.loader.getImage(src) : src;
+                            }
+                            // initialize the atlas
+                            this.atlases.set("default", this.parseFromSpriteSheet(atlas));
+                            this.sources.set("default", atlas.image);
+
+                        }
+                    }
+                } // end forEach
+            }
+
+            // if format not recognized
+            if (this.atlases.length === 0) {
+                throw new me.video.renderer.Texture.Error("texture atlas format not supported");
+            }
+
+            // Add self to TextureCache if cache !== false
+            if (cache !== false) {
+                src = Array.isArray(src) ? src : [src];
+                for (var source of this.sources) {
+                    if (cache instanceof me.Renderer.TextureCache) {
+                        cache.set(source, this);
+                    } else {
+                        me.video.renderer.cache.set(source, this);
+                    }
+                }
+            }
+        },
+
+        /**
+         * create a simple 1 frame texture atlas based on the given parameters
+         * @ignore
+         */
+        createAtlas : function (width, height, name, repeat) {
+            return {
+                "meta" : {
+                    "app" : "melonJS",
+                    "size" : { "w" : width, "h" : height },
+                    "repeat" : repeat || "no-repeat",
+                    "image" : "default"
+                },
+                "frames" : [{
+                    "filename" : name || "default",
+                    "frame" : { "x" : 0, "y" : 0, "w" : width, "h" : height }
+                }]
+            };
+        },
+
+        /**
+         * build an atlas from the given data
+         * @ignore
+         */
+        parse : function (data) {
+            var atlas = {};
+            var self = this;
+            data.frames.forEach(function (frame) {
+                // fix wrongly formatted JSON (e.g. last dummy object in ShoeBox)
+                if (frame.hasOwnProperty("filename")) {
+                    // Source coordinates
+                    var s = frame.frame;
+
+                    var originX, originY;
+                    // Pixel-based offset origin from the top-left of the source frame
+                    var hasTextureAnchorPoint = (frame.spriteSourceSize && frame.sourceSize && frame.pivot);
+                    if (hasTextureAnchorPoint) {
+                        originX = (frame.sourceSize.w * frame.pivot.x) - ((frame.trimmed) ? frame.spriteSourceSize.x : 0);
+                        originY = (frame.sourceSize.h * frame.pivot.y) - ((frame.trimmed) ? frame.spriteSourceSize.y : 0);
+                    }
+
+                    atlas[frame.filename] = {
+                        name         : frame.filename, // frame name
+                        texture      : data.meta.image || "default", // the source texture
+                        offset       : new me.Vector2d(s.x, s.y),
+                        anchorPoint  : (hasTextureAnchorPoint) ? new me.Vector2d(originX / s.w, originY / s.h) : null,
+                        trimmed      : !!frame.trimmed,
+                        width        : s.w,
+                        height       : s.h,
+                        angle        : (frame.rotated === true) ? -me.Math.ETA : 0
+                    };
+                    self.addUvsMap(atlas, frame.filename, data.meta.size.w, data.meta.size.h);
+                }
+            });
+            return atlas;
+        },
+
+        /**
+         * build an atlas from the given spritesheet
+         * @ignore
+         */
+        parseFromSpriteSheet : function (data) {
+            var atlas = {};
+            var image = data.image;
+            var spacing = data.spacing || 0;
+            var margin = data.margin || 0;
+
+            var width = image.width;
+            var height = image.height;
+
+            // calculate the sprite count (line, col)
+            var spritecount = me.pool.pull("me.Vector2d",
+                ~~((width - margin + spacing) / (data.framewidth + spacing)),
+                ~~((height - margin + spacing) / (data.frameheight + spacing))
+            );
+
+            // verifying the texture size
+            if ((width % (data.framewidth + spacing)) !== 0 ||
+                (height % (data.frameheight + spacing)) !== 0) {
+                // "truncate size"
+                width = spritecount.x * (data.framewidth + spacing);
+                height = spritecount.y * (data.frameheight + spacing);
+                // warning message
+                console.warn(
+                    "Spritesheet Texture for image: " + image.src +
+                    " is not divisible by " + (data.framewidth + spacing) +
+                    "x" + (data.frameheight + spacing) +
+                    ", truncating effective size to " + width + "x" + height
+                );
+            }
+
+            // build the local atlas
+            for (var frame = 0, count = spritecount.x * spritecount.y; frame < count; frame++) {
+                var name = "" + frame;
+                atlas[name] = {
+                    name        : name,
+                    texture     : "default", // the source texture
+                    offset      : new me.Vector2d(
+                        margin + (spacing + data.framewidth) * (frame % spritecount.x),
+                        margin + (spacing + data.frameheight) * ~~(frame / spritecount.x)
+                    ),
+                    anchorPoint : (data.anchorPoint || null),
+                    trimmed     : false,
+                    width       : data.framewidth,
+                    height      : data.frameheight,
+                    angle       : 0
+                };
+                this.addUvsMap(atlas, name, width, height);
+            }
+
+            me.pool.push(spritecount);
+
+            return atlas;
+        },
+
+        /**
+         * @ignore
+         */
+        addUvsMap : function (atlas, frame, w, h) {
+            // ignore if using the Canvas Renderer
+            if (me.video.renderer instanceof me.Renderer) {
+                // Source coordinates
+                var s = atlas[frame].offset;
+                var sw = atlas[frame].width;
+                var sh = atlas[frame].height;
+
+                atlas[frame].uvs = new Float32Array([
+                    s.x / w,        // Left
+                    s.y / h,        // Top
+                    (s.x + sw) / w, // Right
+                    (s.y + sh) / h  // Bottom
+                ]);
+                // Cache source coordinates
+                // TODO: Remove this when the Batcher only accepts a region name
+                var key = s.x + "," + s.y + "," + w + "," + h;
+                atlas[key] = atlas[frame];
+            }
+            return atlas[frame];
+        },
+
+        /**
+         * @ignore
+         */
+        addQuadRegion : function (name, x, y, w, h) {
+            // TODO: Require proper atlas regions instead of caching arbitrary region keys
+            if (me.video.renderer.settings.verbose === true) {
+                console.warn("Adding texture region", name, "for texture", this);
+            }
+
+            var source = this.getTexture();
+            var atlas = this.getAtlas();
+            var dw = source.width;
+            var dh = source.height;
+
+            atlas[name] = {
+                name    : name,
+                offset  : new me.Vector2d(x, y),
+                width   : w,
+                height  : h,
+                angle   : 0
+            };
+
+            this.addUvsMap(atlas, name, dw, dh);
+
+            return atlas[name];
+        },
+
+        /**
+         * return the default or specified atlas dictionnary
+         * @name getAtlas
+         * @memberOf me.Renderer.Texture
+         * @function
+         * @param {String} [name] atlas name in case of multipack textures
+         * @return {Object}
+         */
+        getAtlas : function (key) {
+            if (typeof key === "string") {
+                return this.atlases.get(key);
+            } else {
+                return this.atlases.values().next().value;
+            }
+        },
+
+        /**
+         * return the source texture for the given region (or default one if none specified)
+         * @name getTexture
+         * @memberOf me.Renderer.Texture
+         * @function
+         * @param {Object} [region] region name in case of multipack textures
+         * @return {HTMLImageElement|HTMLCanvasElement}
+         */
+        getTexture : function (region) {
+            if ((typeof region === "object") && (typeof region.texture === "string")) {
+                return this.sources.get(region.texture);
+            } else {
+                return this.sources.values().next().value;
+            }
+        },
+
+        /**
+         * return a normalized region (or frame) information for the specified sprite name
+         * @name getRegion
+         * @memberOf me.Renderer.Texture
+         * @function
+         * @param {String} name name of the sprite
+         * @param {String} [atlas] name of a specific atlas where to search for the region
+         * @return {Object}
+         */
+        getRegion : function (name, atlas) {
+            var region;
+            if (typeof atlas === "string") {
+                region = this.getAtlas(atlas)[name];
+            } else {
+                // look for the given region in each existing atlas
+                this.atlases.forEach(function (atlas) {
+                    if (typeof atlas[name] !== "undefined") {
+                        // there should be only one
+                        region = atlas[name];
+                    }
+                });
+            }
+            return region;
+        },
+
+        /**
+         * return the uvs mapping for the given region
+         * @name getUVs
+         * @memberOf me.Renderer.Texture
+         * @function
+         * @param {Object} region region (or frame) name
+         * @return {Float32Array} region Uvs
+         */
+        getUVs : function (name) {
+            // Get the source texture region
+            var region = this.getRegion(name);
+
+            if (typeof(region) === "undefined") {
+                // TODO: Require proper atlas regions instead of caching arbitrary region keys
+                var keys = name.split(","),
+                    sx = +keys[0],
+                    sy = +keys[1],
+                    sw = +keys[2],
+                    sh = +keys[3];
+                region = this.addQuadRegion(name, sx, sy, sw, sh);
+            }
+            return region.uvs;
+        },
+
+        /**
+         * Create a sprite object using the first region found using the specified name
+         * @name createSpriteFromName
+         * @memberOf me.Renderer.Texture
+         * @function
+         * @param {String} name name of the sprite
+         * @param {Object} [settings] Additional settings passed to the {@link me.Sprite} contructor
+         * @return {me.Sprite}
+         * @example
+         * // create a new texture object under the `game` namespace
+         * game.texture = new me.video.renderer.Texture(
+         *    me.loader.getJSON("texture"),
+         *    me.loader.getImage("texture")
+         * );
+         * ...
+         * ...
+         * // add the coin sprite as renderable for the entity
+         * this.renderable = game.texture.createSpriteFromName("coin.png");
+         * // set the renderable position to bottom center
+         * this.anchorPoint.set(0.5, 1.0);
+         */
+        createSpriteFromName : function (name, settings) {
+            // instantiate a new sprite object
+            return me.pool.pull(
+                "me.Sprite",
+                0, 0,
+                Object.assign({
+                    image: this,
+                    region : name
+                }, settings || {})
+            );
+        },
+
+        /**
+         * Create an animation object using the first region found using all specified names
+         * @name createAnimationFromName
+         * @memberOf me.Renderer.Texture
+         * @function
+         * @param {String[]|Number[]} names list of names for each sprite
+         * (when manually creating a Texture out of a spritesheet, only numeric values are authorized)
+         * @param {Object} [settings] Additional settings passed to the {@link me.Sprite} contructor
+         * @return {me.Sprite}
+         * @example
+         * // create a new texture object under the `game` namespace
+         * game.texture = new me.video.renderer.Texture(
+         *     me.loader.getJSON("texture"),
+         *     me.loader.getImage("texture")
+         * );
+         *
+         * // create a new Sprite as renderable for the entity
+         * this.renderable = game.texture.createAnimationFromName([
+         *     "walk0001.png", "walk0002.png", "walk0003.png",
+         *     "walk0004.png", "walk0005.png", "walk0006.png",
+         *     "walk0007.png", "walk0008.png", "walk0009.png",
+         *     "walk0010.png", "walk0011.png"
+         * ]);
+         *
+         * // define an additional basic walking animation
+         * this.renderable.addAnimation ("simple_walk", [0,2,1]);
+         * // you can also use frame name to define your animation
+         * this.renderable.addAnimation ("speed_walk", ["walk0007.png", "walk0008.png", "walk0009.png", "walk0010.png"]);
+         * // set the default animation
+         * this.renderable.setCurrentAnimation("simple_walk");
+         * // set the renderable position to bottom center
+         * this.anchorPoint.set(0.5, 1.0);
+         */
+        createAnimationFromName : function (names, settings) {
+            var tpAtlas = [], indices = {};
+            var width = 0, height = 0;
+            var region;
+            // iterate through the given names
+            // and create a "normalized" atlas
+            for (var i = 0; i < names.length; ++i) {
+                region = this.getRegion(names[i]);
+                if (region == null) {
+                    // throw an error
+                    throw new me.video.renderer.Texture.Error("Texture - region for " + names[i] + " not found");
+                }
+                tpAtlas[i] = region;
+                // save the corresponding index
+                indices[names[i]] = i;
+                // calculate the max size of a frame
+                width = Math.max(region.width, width);
+                height = Math.max(region.height, height);
+            }
+            // instantiate a new animation sheet object
+            return new me.Sprite(0, 0, Object.assign({
+                image: this,
+                framewidth: width,
+                frameheight: height,
+                margin: 0,
+                spacing: 0,
+                atlas: tpAtlas,
+                atlasIndices: indices
+            }, settings || {}));
+        }
+    });
+
+    /**
+     * Base class for Texture exception handling.
+     * @name Error
+     * @class
+     * @memberOf me.Renderer.Texture
+     * @private
+     * @constructor
+     * @param {String} msg Error message.
+     */
+    me.Renderer.prototype.Texture.Error = me.Error.extend({
+        /**
+         * @ignore
+         */
+        init : function (msg) {
+            me.Error.prototype.init.apply(this, [ msg ]);
+            this.name = "me.Renderer.Texture.Error";
+        }
+    });
+})();
+
+/*
 * MelonJS Game Engine
-* Copyright (C) 2011 - 2018 Olivier Biot
+* Copyright (C) 2011 - 2019 Olivier Biot
 * http://www.melonjs.org
 *
 */
@@ -16945,13 +17628,13 @@ me.Error = me.Object.extend.bind(Error)({
             this.cache = new Map();
             this.units = new Map();
             this.max_size = max_size || Infinity;
-            this.reset();
+            this.clear();
         },
 
         /**
          * @ignore
          */
-        reset : function () {
+        clear : function () {
             this.cache.clear();
             this.units.clear();
             this.length = 0;
@@ -16981,7 +17664,7 @@ me.Error = me.Object.extend.bind(Error)({
                         [image.width, image.height, image.src ? me.utils.file.getBasename(image.src) : undefined]
                     );
                 }
-                this.put(image, new me.video.renderer.Texture(atlas, image, false));
+                this.set(image, new me.video.renderer.Texture(atlas, image, false));
             }
             return this.cache.get(image);
         },
@@ -16989,7 +17672,7 @@ me.Error = me.Object.extend.bind(Error)({
         /**
          * @ignore
          */
-        put : function (image, texture) {
+        set : function (image, texture) {
             var width = image.width;
             var height = image.height;
 
@@ -17019,7 +17702,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -17044,9 +17727,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} [options.zoomX=width] The actual width of the canvas with scaling applied
      * @param {Number} [options.zoomY=height] The actual height of the canvas with scaling applied
      */
-    me.CanvasRenderer = me.Renderer.extend(
-    /** @scope me.CanvasRenderer.prototype */
-    {
+    me.CanvasRenderer = me.Renderer.extend({
         /**
          * @ignore
          */
@@ -17091,7 +17772,7 @@ me.Error = me.Object.extend.bind(Error)({
         /**
          * Reset context state
          * @name reset
-         * @memberOf me.WebGLRenderer
+         * @memberOf me.CanvasRenderer
          * @function
          */
         reset : function () {
@@ -17099,7 +17780,7 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * resets the canvas transform to identity
+         * Reset the canvas transform to identity
          * @name resetTransform
          * @memberOf me.CanvasRenderer
          * @function
@@ -17109,7 +17790,7 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * set a blend mode for the given context
+         * Set a blend mode for the given context
          * @name setBlendMode
          * @memberOf me.CanvasRenderer
          * @function
@@ -17597,7 +18278,8 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * Sets the fill & stroke style colors for the context.
+         * Set the current fill & stroke style color.
+         * By default, or upon reset, the value is set to #000000.
          * @name setColor
          * @memberOf me.CanvasRenderer
          * @function
@@ -17613,7 +18295,7 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * Sets the global alpha on the canvas context
+         * Set the global alpha on the canvas context
          * @name setGlobalAlpha
          * @memberOf me.CanvasRenderer
          * @function
@@ -17624,7 +18306,7 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * sets the line width on the context
+         * Set the line width on the context
          * @name setLineWidth
          * @memberOf me.CanvasRenderer
          * @function
@@ -17635,7 +18317,7 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * Resets (overrides) the renderer transformation matrix to the
+         * Reset (overrides) the renderer transformation matrix to the
          * identity one, and then apply the given transformation matrix.
          * @name setTransform
          * @memberOf me.CanvasRenderer
@@ -17791,400 +18473,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
- * http://www.melonjs.org
- *
- */
-(function () {
-    /**
-     * a local constant for the -(Math.PI / 2) value
-     * @ignore
-     */
-    var nhPI = -(Math.PI / 2);
-
-    /**
-     * A Texture atlas object <br>
-     * For portability, a global reference to this class is available through the default renderer: {@link me.video.renderer}.Texture <br>
-     * <br>
-     * Currently supports : <br>
-     * - [TexturePacker]{@link http://www.codeandweb.com/texturepacker/} : through JSON export <br>
-     * - [ShoeBox]{@link http://renderhjs.net/shoebox/} : through JSON export using the
-     * melonJS setting [file]{@link https://github.com/melonjs/melonJS/raw/master/media/shoebox_JSON_export.sbx} <br>
-     * - Standard (fixed cell size) spritesheet : through a {framewidth:xx, frameheight:xx, anchorPoint:me.Vector2d} object
-     * @class
-     * @extends me.Object
-     * @memberOf me.CanvasRenderer
-     * @name Texture
-     * @constructor
-     * @param {Object} atlas atlas information. See {@link me.loader.getJSON}
-     * @param {HTMLImageElement|HTMLCanvasElement|String} [source=atlas.meta.image] Image source
-     * @param {Boolean} [cached=false] Use true to skip caching this Texture
-     * @example
-     * // create a texture atlas from a JSON Object
-     * texture = new me.video.renderer.Texture(
-     *     me.loader.getJSON("texture"),
-     *     me.loader.getImage("texture")
-     * );
-     *
-     * // create a texture atlas for a spritesheet, with (optional) an anchorPoint in the center of each frame
-     * texture = new me.video.renderer.Texture(
-     *     { framewidth : 32, frameheight : 32, anchorPoint : new me.Vector2d(0.5, 0.5) },
-     *     me.loader.getImage("spritesheet")
-     * );
-     */
-    me.CanvasRenderer.prototype.Texture = me.Object.extend(
-    /** @scope me.video.renderer.Texture.prototype */
-    {
-        /**
-         * @ignore
-         */
-        init : function (atlas, source, cache) {
-            /**
-             * to identify the atlas format (e.g. texture packer)
-             * @ignore
-             */
-            this.format = null;
-
-            /**
-             * the texture source itself
-             * @type {HTMLImageElement|HTMLCanvasElement}
-             * @ignore
-             */
-            this.source = source || null;
-
-            /**
-             * the atlas dictionnary
-             * @ignore
-             */
-            this.atlas = null;
-
-            if (typeof (atlas) !== "undefined") {
-
-                if (typeof(atlas.meta) !== "undefined") {
-                    // Texture Packer
-                    if (atlas.meta.app.includes("texturepacker")) {
-                        this.format = "texturepacker";
-                        // set the texture
-                        if (typeof(source) === "undefined") {
-                            var image = atlas.meta.image;
-                            this.source = me.loader.getImage(image);
-                            if (!this.source) {
-                                throw new me.video.renderer.Texture.Error(
-                                    "Atlas texture '" + image + "' not found"
-                                );
-                            }
-                        }
-                        this.repeat = "no-repeat";
-                    }
-                    // ShoeBox
-                    else if (atlas.meta.app.includes("ShoeBox")) {
-                        if (!atlas.meta.exporter || !atlas.meta.exporter.includes("melonJS")) {
-                            throw new me.video.renderer.Texture.Error(
-                                "ShoeBox requires the JSON exporter : " +
-                                "https://github.com/melonjs/melonJS/tree/master/media/shoebox_JSON_export.sbx"
-                            );
-                        }
-                        this.format = "ShoeBox";
-                        this.repeat = "no-repeat";
-                    }
-                    // Internal texture atlas
-                    else if (atlas.meta.app.includes("melonJS")) {
-                        this.format = "melonJS";
-                        this.repeat = atlas.meta.repeat || "no-repeat";
-                    }
-                    // initialize the atlas
-                    this.atlas = this.parse(atlas);
-
-                } else {
-                    // a regular spritesheet ?
-                    if (typeof(atlas.framewidth) !== "undefined" &&
-                        typeof(atlas.frameheight) !== "undefined") {
-                        this.format = "Spritesheet (fixed cell size)";
-                        if (typeof(this.source) !== "undefined") {
-                            // overwrite if specified
-                            atlas.image = this.source;
-                        }
-                        // initialize the atlas
-                        this.atlas = this.parseFromSpriteSheet(atlas);
-                        this.repeat = "no-repeat";
-                    }
-                }
-            }
-            // if format not recognized
-            if (!this.atlas) {
-                throw new me.video.renderer.Texture.Error("texture atlas format not supported");
-            }
-
-            // Add self to TextureCache if cache !== false
-            if (cache !== false) {
-                if (cache instanceof me.Renderer.TextureCache) {
-                    cache.put(this.source, this);
-                } else {
-                    me.video.renderer.cache.put(this.source, this);
-                }
-            }
-        },
-
-        /**
-         * create a simple 1 frame texture atlas based on the given parameters
-         * @ignore
-         */
-        createAtlas : function (width, height, name, repeat) {
-            return {
-                "meta" : {
-                    "app" : "melonJS",
-                    "size" : { "w" : width, "h" : height },
-                    "repeat" : repeat || "no-repeat"
-                },
-                "frames" : [{
-                    "filename" : name || "default",
-                    "frame" : { "x" : 0, "y" : 0, "w" : width, "h" : height }
-                }]
-            };
-        },
-
-        /**
-         * build an atlas from the given data
-         * @ignore
-         */
-        parse : function (data) {
-            var atlas = {};
-            data.frames.forEach(function (frame) {
-                // fix wrongly formatted JSON (e.g. last dummy object in ShoeBox)
-                if (frame.hasOwnProperty("filename")) {
-                    // Source coordinates
-                    var s = frame.frame;
-
-                    var originX, originY;
-                    // Pixel-based offset origin from the top-left of the source frame
-                    var hasTextureAnchorPoint = (frame.spriteSourceSize && frame.sourceSize && frame.pivot);
-                    if (hasTextureAnchorPoint) {
-                        originX = (frame.sourceSize.w * frame.pivot.x) - ((frame.trimmed) ? frame.spriteSourceSize.x : 0);
-                        originY = (frame.sourceSize.h * frame.pivot.y) - ((frame.trimmed) ? frame.spriteSourceSize.y : 0);
-                    }
-
-                    atlas[frame.filename] = {
-                        name         : frame.filename, // frame name
-                        offset       : new me.Vector2d(s.x, s.y),
-                        anchorPoint  : (hasTextureAnchorPoint) ? new me.Vector2d(originX / s.w, originY / s.h) : null,
-                        trimmed      : frame.trimmed,
-                        width        : s.w,
-                        height       : s.h,
-                        angle        : (frame.rotated === true) ? nhPI : 0
-                    };
-                }
-            });
-            return atlas;
-        },
-
-        /**
-         * build an atlas from the given spritesheet
-         * @ignore
-         */
-        parseFromSpriteSheet : function (data) {
-            var atlas = {};
-            var image = data.image;
-            var spacing = data.spacing || 0;
-            var margin = data.margin || 0;
-
-            var width = image.width;
-            var height = image.height;
-
-            // calculate the sprite count (line, col)
-            var spritecount = me.pool.pull("me.Vector2d",
-                ~~((width - margin + spacing) / (data.framewidth + spacing)),
-                ~~((height - margin + spacing) / (data.frameheight + spacing))
-            );
-
-            // verifying the texture size
-            if ((width % (data.framewidth + spacing)) !== 0 ||
-                (height % (data.frameheight + spacing)) !== 0) {
-                // "truncate size"
-                width = spritecount.x * (data.framewidth + spacing);
-                height = spritecount.y * (data.frameheight + spacing);
-                // warning message
-                console.warn(
-                    "Spritesheet Texture for image: " + image.src +
-                    " is not divisible by " + (data.framewidth + spacing) +
-                    "x" + (data.frameheight + spacing) +
-                    ", truncating effective size to " + width + "x" + height
-                );
-            }
-
-            // build the local atlas
-            for (var frame = 0, count = spritecount.x * spritecount.y; frame < count; frame++) {
-                atlas["" + frame] = {
-                    name: "" + frame,
-                    offset: new me.Vector2d(
-                        margin + (spacing + data.framewidth) * (frame % spritecount.x),
-                        margin + (spacing + data.frameheight) * ~~(frame / spritecount.x)
-                    ),
-                    anchorPoint: (data.anchorPoint || null),
-                    width: data.framewidth,
-                    height: data.frameheight,
-                    angle: 0
-                };
-            }
-
-            me.pool.push(spritecount);
-
-            return atlas;
-        },
-
-        /**
-         * return the Atlas dictionnary
-         * @name getAtlas
-         * @memberOf me.CanvasRenderer.Texture
-         * @function
-         * @return {Object}
-         */
-        getAtlas : function () {
-            return this.atlas;
-        },
-
-        /**
-         * return the Atlas texture
-         * @name getTexture
-         * @memberOf me.CanvasRenderer.Texture
-         * @function
-         * @return {HTMLImageElement|HTMLCanvasElement}
-         */
-        getTexture : function () {
-            return this.source;
-        },
-
-        /**
-         * return a normalized region/frame information for the specified sprite name
-         * @name getRegion
-         * @memberOf me.CanvasRenderer.Texture
-         * @function
-         * @param {String} name name of the sprite
-         * @return {Object}
-         */
-        getRegion : function (name) {
-            return this.atlas[name];
-        },
-
-        /**
-         * Create a sprite object using the first region found using the specified name
-         * @name createSpriteFromName
-         * @memberOf me.CanvasRenderer.Texture
-         * @function
-         * @param {String} name name of the sprite
-         * @param {Object} [settings] Additional settings passed to the {@link me.Sprite} contructor
-         * @return {me.Sprite}
-         * @example
-         * // create a new texture atlas object under the `game` namespace
-         * game.texture = new me.video.renderer.Texture(
-         *    me.loader.getJSON("texture"),
-         *    me.loader.getImage("texture")
-         * );
-         * ...
-         * ...
-         * // add the coin sprite as renderable for the entity
-         * this.renderable = game.texture.createSpriteFromName("coin.png");
-         * // set the renderable position to bottom center
-         * this.anchorPoint.set(0.5, 1.0);
-         */
-        createSpriteFromName : function (name, settings) {
-            // instantiate a new sprite object
-            return me.pool.pull(
-                "me.Sprite",
-                0, 0,
-                Object.assign({
-                    image: this,
-                    region : name
-                }, settings || {})
-            );
-        },
-
-        /**
-         * Create an animation object using the first region found using all specified names
-         * @name createAnimationFromName
-         * @memberOf me.CanvasRenderer.Texture
-         * @function
-         * @param {String[]|Number[]} names list of names for each sprite
-         * (when manually creating a Texture out of a spritesheet, only numeric values are authorized)
-         * @param {Object} [settings] Additional settings passed to the {@link me.Sprite} contructor
-         * @return {me.Sprite}
-         * @example
-         * // create a new texture atlas object under the `game` namespace
-         * game.texture = new me.video.renderer.Texture(
-         *     me.loader.getJSON("texture"),
-         *     me.loader.getImage("texture")
-         * );
-         *
-         * // create a new Sprite as renderable for the entity
-         * this.renderable = game.texture.createAnimationFromName([
-         *     "walk0001.png", "walk0002.png", "walk0003.png",
-         *     "walk0004.png", "walk0005.png", "walk0006.png",
-         *     "walk0007.png", "walk0008.png", "walk0009.png",
-         *     "walk0010.png", "walk0011.png"
-         * ]);
-         *
-         * // define an additional basic walking animation
-         * this.renderable.addAnimation ("simple_walk", [0,2,1]);
-         * // you can also use frame name to define your animation
-         * this.renderable.addAnimation ("speed_walk", ["walk0007.png", "walk0008.png", "walk0009.png", "walk0010.png"]);
-         * // set the default animation
-         * this.renderable.setCurrentAnimation("simple_walk");
-         * // set the renderable position to bottom center
-         * this.anchorPoint.set(0.5, 1.0);
-         */
-        createAnimationFromName : function (names, settings) {
-            var tpAtlas = [], indices = {};
-            var width = 0, height = 0;
-            var region;
-            // iterate through the given names
-            // and create a "normalized" atlas
-            for (var i = 0; i < names.length; ++i) {
-                region = this.getRegion(names[i]);
-                if (region == null) {
-                    // throw an error
-                    throw new me.video.renderer.Texture.Error("Texture - region for " + names[i] + " not found");
-                }
-                tpAtlas[i] = region;
-                // save the corresponding index
-                indices[names[i]] = i;
-                // calculate the max size of a frame
-                width = Math.max(region.width, width);
-                height = Math.max(region.height, height);
-            }
-            // instantiate a new animation sheet object
-            return new me.Sprite(0, 0, Object.assign({
-                image: this,
-                framewidth: width,
-                frameheight: height,
-                margin: 0,
-                spacing: 0,
-                atlas: tpAtlas,
-                atlasIndices: indices
-            }, settings || {}));
-        }
-    });
-
-    /**
-     * Base class for Texture exception handling.
-     * @name Error
-     * @class
-     * @memberOf me.CanvasRenderer.Texture
-     * @constructor
-     * @param {String} msg Error message.
-     */
-    me.CanvasRenderer.prototype.Texture.Error = me.Error.extend({
-        /**
-         * @ignore
-         */
-        init : function (msg) {
-            me.Error.prototype.init.apply(this, [ msg ]);
-            this.name = "me.CanvasRenderer.Texture.Error";
-        }
-    });
-})();
-
-/*
- * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -18390,7 +18679,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -18415,9 +18704,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} [options.zoomY=height] The actual height of the canvas with scaling applied
      * @param {me.WebGLRenderer.Compositor} [options.compositor] A class that implements the compositor API
      */
-    me.WebGLRenderer = me.Renderer.extend(
-    /** @scope me.WebGLRenderer.prototype */
-    {
+    me.WebGLRenderer = me.Renderer.extend({
         /**
          * @ignore
          */
@@ -18505,7 +18792,7 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * resets the gl transform to identity
+         * Reset the gl transform to identity
          * @name resetTransform
          * @memberOf me.WebGLRenderer
          * @function
@@ -18543,7 +18830,7 @@ me.Error = me.Object.extend.bind(Error)({
             }
             else {
                // fontTexture was already created, just add it back into the cache
-               cache.put(this.fontContext2D.canvas, this.fontTexture);
+               cache.set(this.fontContext2D.canvas, this.fontTexture);
            }
            this.compositor.uploadTexture(this.fontTexture, 0, 0, 0);
 
@@ -18951,7 +19238,7 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * Sets the global alpha
+         * Set the global alpha
          * @name setGlobalAlpha
          * @memberOf me.WebGLRenderer
          * @function
@@ -18962,7 +19249,8 @@ me.Error = me.Object.extend.bind(Error)({
         },
 
         /**
-         * Sets the color for further draw calls
+         * Set the current fill & stroke style color.
+         * By default, or upon reset, the value is set to #000000.
          * @name setColor
          * @memberOf me.WebGLRenderer
          * @function
@@ -19038,7 +19326,7 @@ me.Error = me.Object.extend.bind(Error)({
                 // XXX to be optimzed using a specific shader
                 var len = Math.floor(24 * Math.sqrt(w)) ||
                           Math.floor(12 * Math.sqrt(w + h));
-                var segment = (Math.PI * 2) / len;
+                var segment = (me.Math.TAU) / len;
                 var points = this._glPoints,
                     i;
 
@@ -19072,7 +19360,7 @@ me.Error = me.Object.extend.bind(Error)({
             // XXX to be optimzed using a specific shader
             var len = Math.floor(24 * Math.sqrt(w)) ||
                       Math.floor(12 * Math.sqrt(w + h));
-            var segment = (Math.PI * 2) / len;
+            var segment = (me.Math.TAU) / len;
             var points = this._glPoints;
             var index = 0;
 
@@ -19377,134 +19665,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
- * http://www.melonjs.org
- *
- */
-(function () {
-    /**
-     * A Texture atlas object for WebGL <br>
-     * For portability, a global reference to this class is available through the default renderer: {@link me.video.renderer}.Texture <br>
-     * <br>
-     * Currently supports : <br>
-     * - [TexturePacker]{@link http://www.codeandweb.com/texturepacker/} : through JSON export <br>
-     * - [ShoeBox]{@link http://renderhjs.net/shoebox/} : through JSON export using the
-     * melonJS setting [file]{@link https://github.com/melonjs/melonJS/raw/master/media/shoebox_JSON_export.sbx} <br>
-     * - Standard (fixed cell size) spritesheet : through a {framewidth:xx, frameheight:xx} object
-     * @class
-     * @extends me.CanvasRenderer
-     * @memberOf me.WebGLRenderer
-     * @name Texture
-     * @constructor
-     * @param {Object} atlas atlas information. See {@link me.loader.getJSON}
-     * @param {Image} [texture=atlas.meta.image] texture name
-     * @param {Boolean} [cached=false] Use true to skip caching this Texture
-     * @example
-     * // create a texture atlas from a JSON Object
-     * texture = new me.video.renderer.Texture(
-     *     me.loader.getJSON("texture"),
-     *     me.loader.getImage("texture")
-     * );
-     *
-     * // create a texture atlas for a spritesheet
-     * texture = new me.video.renderer.Texture(
-     *     { framewidth : 32, frameheight : 32 },
-     *     me.loader.getImage("spritesheet")
-     * );
-     */
-    me.WebGLRenderer.prototype.Texture = me.CanvasRenderer.prototype.Texture.extend(
-    /** @scope me.video.renderer.Texture.prototype */
-    {
-        /**
-         * @ignore
-         */
-        parse : function (data) {
-            var w = data.meta.size.w;
-            var h = data.meta.size.h;
-            var atlas = me.CanvasRenderer.prototype.Texture.prototype.parse.apply(this, [ data ]);
-
-            return this._addStMap(atlas, w, h);
-        },
-
-        /**
-         * @ignore
-         */
-        parseFromSpriteSheet : function (data) {
-            var w = data.image.width;
-            var h = data.image.height;
-            var atlas = me.CanvasRenderer.prototype.Texture.prototype.parseFromSpriteSheet.apply(this, [ data ]);
-
-            return this._addStMap(atlas, w, h);
-        },
-
-        /**
-         * @ignore
-         */
-        _addStMap : function (atlas, w, h) {
-            Object.keys(atlas).forEach(function (frame) {
-                // Source coordinates
-                var s = atlas[frame].offset;
-                var sw = atlas[frame].width;
-                var sh = atlas[frame].height;
-
-                // ST texture coordinates
-                atlas[frame].stMap = new Float32Array([
-                    s.x / w,        // Left
-                    s.y / h,        // Top
-                    (s.x + sw) / w, // Right
-                    (s.y + sh) / h  // Bottom
-                ]);
-
-                // Cache source coordinates
-                // TODO: Remove this when the Batcher only accepts a region name
-                var key = s.x + "," + s.y + "," + w + "," + h;
-                atlas[key] = atlas[frame];
-            });
-            return atlas;
-        },
-
-        /**
-         * @ignore
-         */
-        _insertRegion : function (name, x, y, w, h) {
-            var dw = this.source.width;
-            var dh = this.source.height;
-            this.atlas[name] = {
-                name    : name,
-                offset  : new me.Vector2d(x, y),
-                width   : w,
-                height  : h,
-                angle   : 0,
-                stMap   : new Float32Array([
-                    x / dw,         // Left
-                    y / dh,         // Top
-                    (x + w) / dw,   // Right
-                    (y + h) / dh    // Bottom
-                ])
-            };
-
-            return this.atlas[name];
-        }
-    });
-
-    /**
-    * Base class for Texture exception handling.
-    * @ignore
-    */
-    me.WebGLRenderer.prototype.Texture.Error = me.Error.extend({
-        /**
-         * @ignore
-         */
-        init : function (msg) {
-            me.Error.prototype.init.apply(this, [ msg ]);
-            this.name = "me.WebGLRenderer.Texture.Error";
-        }
-    });
-})();
-
-/*
- * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  */
 (function () {
@@ -19542,9 +19703,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @constructor
      * @param {me.WebGLRenderer} renderer the current WebGL renderer session
      */
-    me.WebGLRenderer.Compositor = me.Object.extend(
-    /** @scope me.WebGLRenderer.Compositor.prototype */
-    {
+    me.WebGLRenderer.Compositor = me.Object.extend({
         /**
          * @ignore
          */
@@ -19604,8 +19763,10 @@ me.Error = me.Object.extend.bind(Error)({
             // Global transformation matrix
             this.matrix = renderer.currentTransform;
 
-            // Global color
+            // Global fill color
             this.color = renderer.currentColor;
+            // Global tint color
+            this.tint = renderer.currentTint;
 
             // Uniform projection matrix
             this.uMatrix = new me.Matrix2d();
@@ -19613,19 +19774,13 @@ me.Error = me.Object.extend.bind(Error)({
             // reference to the active shader
             this.activeShader = null;
 
-            // Detect GPU capabilities
-            var precision = (gl.getShaderPrecisionFormat(
-                gl.FRAGMENT_SHADER,
-                gl.HIGH_FLOAT
-            ).precision < 16) ? "mediump" : "highp";
-
             // Load and create shader programs
             /* eslint-disable */
             this.primitiveShader = me.video.shader.createShader(
                 this.gl,
                 (function anonymous(ctx){var out='precision highp float;attribute vec2 aVertex;uniform mat3 uMatrix;uniform vec4 uColor;varying vec4 vColor;void main(void){gl_Position=vec4((uMatrix*vec3(aVertex,1)).xy,0,1);vColor=vec4(uColor.rgb*uColor.a,uColor.a);}';return out;})(),
                 (function anonymous(ctx){var out='precision '+(ctx.precision)+' float;varying vec4 vColor;void main(void){gl_FragColor=vColor;}';return out;})({
-                    "precision"     : precision
+                    "precision"     : me.device.getMaxShaderPrecision(this.gl)
                 })
             );
 
@@ -19633,7 +19788,7 @@ me.Error = me.Object.extend.bind(Error)({
                 this.gl,
                 (function anonymous(ctx){var out='precision highp float;attribute vec2 aVertex;attribute vec4 aColor;attribute float aTexture;attribute vec2 aRegion;uniform mat3 uMatrix;varying vec4 vColor;varying float vTexture;varying vec2 vRegion;void main(void){gl_Position=vec4((uMatrix*vec3(aVertex,1)).xy,0,1);vColor=vec4(aColor.rgb*aColor.a,aColor.a);vTexture=aTexture;vRegion=aRegion;}';return out;})(),
                 (function anonymous(ctx){var out='precision '+(ctx.precision)+' float;uniform sampler2D uSampler['+(ctx.maxTextures)+'];varying vec4 vColor;varying float vTexture;varying vec2 vRegion;void main(void){int texture=int(vTexture);if(texture==0){gl_FragColor=texture2D(uSampler[0],vRegion)*vColor;}';for(var i=1;i<ctx.maxTextures-1;i++){out+='else if(texture=='+(i)+'){gl_FragColor=texture2D(uSampler['+(i)+'],vRegion)*vColor;}';}out+='else{gl_FragColor=texture2D(uSampler['+(ctx.maxTextures-1)+'],vRegion)*vColor;}}';return out;})({
-                    "precision"     : precision,
+                    "precision"     : me.device.getMaxShaderPrecision(this.gl),
                     "maxTextures"   : this.maxTextures
                 })
             );
@@ -19731,7 +19886,7 @@ me.Error = me.Object.extend.bind(Error)({
                 me.video.shader.createTexture(
                     this.gl,
                     unit,
-                    texture.source,
+                    texture.getTexture(),
                     this.renderer.settings.antiAlias ? this.gl.LINEAR : this.gl.NEAREST,
                     texture.repeat,
                     w,
@@ -19800,7 +19955,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @see me.video.shader.createShader
          * @memberOf me.WebGLRenderer.Compositor
          * @function
-         * @param {Object} a reference to a WebGL Shader Program
+         * @param {Object} shader a reference to a WebGL Shader Program
          */
         useShader : function (shader) {
             if (this.activeShader !== shader) {
@@ -19825,10 +19980,14 @@ me.Error = me.Object.extend.bind(Error)({
          */
         addQuad : function (texture, key, x, y, w, h) {
             var color = this.color.toGL();
+            var tint = this.tint.toGL();
 
             if (color[3] < 1 / 255) {
                 // Fast path: don't send fully transparent quads
                 return;
+            } else {
+                // use the global alpha
+                tint[3] = color[3];
             }
 
             this.useShader(this.quadShader);
@@ -19873,10 +20032,10 @@ me.Error = me.Object.extend.bind(Error)({
 
             // Fill color buffer
             // FIXME: Pack color vector into single float
-            this.stream.set(color, idx0 + COLOR_ELEMENT);
-            this.stream.set(color, idx1 + COLOR_ELEMENT);
-            this.stream.set(color, idx2 + COLOR_ELEMENT);
-            this.stream.set(color, idx3 + COLOR_ELEMENT);
+            this.stream.set(tint, idx0 + COLOR_ELEMENT);
+            this.stream.set(tint, idx1 + COLOR_ELEMENT);
+            this.stream.set(tint, idx2 + COLOR_ELEMENT);
+            this.stream.set(tint, idx3 + COLOR_ELEMENT);
 
             // Fill texture index buffer
             // FIXME: Can the texture index be packed into another element?
@@ -19886,33 +20045,17 @@ me.Error = me.Object.extend.bind(Error)({
             this.stream[idx2 + TEXTURE_ELEMENT] =
             this.stream[idx3 + TEXTURE_ELEMENT] = unit;
 
-            // Get the source texture region
-            var region = texture.getRegion(key);
-            if (typeof(region) === "undefined") {
-                // TODO: Require proper atlas regions instead of caching arbitrary region keys
-                if (this.renderer.settings.verbose === true) {
-                    console.warn("Adding texture region", key, "for texture", texture);
-                }
-
-                var keys = key.split(","),
-                    sx = +keys[0],
-                    sy = +keys[1],
-                    sw = +keys[2],
-                    sh = +keys[3];
-                region = texture._insertRegion(key, sx, sy, sw, sh);
-            }
-
             // Fill texture coordinates buffer
+            var uvs = texture.getUVs(key);
             // FIXME: Pack each texture coordinate into single floats
-            var stMap = region.stMap;
-            this.stream[idx0 + REGION_ELEMENT + 0] = stMap[0];
-            this.stream[idx0 + REGION_ELEMENT + 1] = stMap[1];
-            this.stream[idx1 + REGION_ELEMENT + 0] = stMap[2];
-            this.stream[idx1 + REGION_ELEMENT + 1] = stMap[1];
-            this.stream[idx2 + REGION_ELEMENT + 0] = stMap[0];
-            this.stream[idx2 + REGION_ELEMENT + 1] = stMap[3];
-            this.stream[idx3 + REGION_ELEMENT + 0] = stMap[2];
-            this.stream[idx3 + REGION_ELEMENT + 1] = stMap[3];
+            this.stream[idx0 + REGION_ELEMENT + 0] = uvs[0];
+            this.stream[idx0 + REGION_ELEMENT + 1] = uvs[1];
+            this.stream[idx1 + REGION_ELEMENT + 0] = uvs[2];
+            this.stream[idx1 + REGION_ELEMENT + 1] = uvs[1];
+            this.stream[idx2 + REGION_ELEMENT + 0] = uvs[0];
+            this.stream[idx2 + REGION_ELEMENT + 1] = uvs[3];
+            this.stream[idx3 + REGION_ELEMENT + 0] = uvs[2];
+            this.stream[idx3 + REGION_ELEMENT + 1] = uvs[3];
 
             this.sbIndex += ELEMENT_SIZE * ELEMENTS_PER_QUAD;
             this.length++;
@@ -20139,7 +20282,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org/
  *
  */
@@ -20200,7 +20343,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org/
  *
  */
@@ -20663,7 +20806,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -20682,9 +20825,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @memberOf me
      * @constructor
      */
-    me.Pointer = me.Rect.extend(
-    /** @scope me.Pointer.prototype */
-    {
+    me.Pointer = me.Rect.extend({
         /**
          * @ignore
          */
@@ -20938,7 +21079,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org/
  *
  */
@@ -21704,7 +21845,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org/
  *
  */
@@ -22220,7 +22361,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -22301,7 +22442,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -22356,7 +22497,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -22441,7 +22582,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -22515,7 +22656,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -22562,7 +22703,7 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @function
          * @memberOf me.utils.string
-         * @name isBoolean
+         * @name isNumeric
          * @param {String} string the string to be tested
          * @return {Boolean} true if string contains only digits
          */
@@ -22611,7 +22752,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  */
 (function () {
@@ -22795,10 +22936,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @param {Number} [b=0] blue component
      * @param {Number} [alpha=1.0] alpha value
      */
-    me.Color = me.Object.extend(
-    /** @scope me.Color.prototype */
-    {
-
+    me.Color = me.Object.extend({
         /**
          * @ignore
          */
@@ -23208,6 +23346,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @name Error
      * @class
      * @memberOf me.Color
+     * @private
      * @constructor
      * @param {String} msg Error message.
      */
@@ -23224,7 +23363,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -23367,7 +23506,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  * Tile QT 0.7.x format
@@ -23755,7 +23894,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  * Tile QT 0.1.0 format
@@ -23890,7 +24029,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  * Tile QT 0.7.x format
@@ -23904,7 +24043,7 @@ me.Error = me.Object.extend.bind(Error)({
      * note : object definition are translated into the virtual `me.game.world` using `me.Entity`.
      * @see me.Entity
      * @class
-     * @extends Object
+     * @extends me.Object
      * @memberOf me
      * @constructor
      */
@@ -24216,7 +24355,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  * Tile QT 0.7.x format
@@ -24424,7 +24563,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  * Tile QT 0.7.x format
@@ -24811,6 +24950,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @name Error
      * @class
      * @memberOf me.TMXTileset
+     * @private
      * @constructor
      * @param {String} msg Error message.
      */
@@ -24828,7 +24968,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  * Tiled (0.7+) format
@@ -25274,6 +25414,7 @@ me.Error = me.Object.extend.bind(Error)({
                 }
             }
 
+            me.pool.push(columnItr);
             me.pool.push(rowItr);
             me.pool.push(tileEnd);
             me.pool.push(rectEnd);
@@ -25533,7 +25674,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -25906,7 +26047,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  * Tile QT 0.1.0 format
@@ -26481,7 +26622,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -26823,8 +26964,8 @@ me.Error = me.Object.extend.bind(Error)({
 })();
 
 /**
- * @preserve Tween JS
- * https://github.com/sole/Tween.js
+ * Tween.js - Licensed under the MIT license
+ * https://github.com/tweenjs/tween.js
  */
 
 /* eslint-disable quotes, keyword-spacing, comma-spacing, no-return-assign */
@@ -27708,6 +27849,7 @@ me.Error = me.Object.extend.bind(Error)({
      * @name Error
      * @class
      * @memberOf me.Tween
+     * @private
      * @constructor
      * @param {String} msg Error message.
      */
@@ -27724,7 +27866,7 @@ me.Error = me.Object.extend.bind(Error)({
 /* eslint-enable quotes, keyword-spacing, comma-spacing, no-return-assign */
 
 /**
- * @preserve MinPubSub
+ * MinPubSub
  * a micro publish/subscribe messaging framework
  * @see https://github.com/daniellmb/MinPubSub
  * @author Daniel Lamb <daniellmb.com>
@@ -27757,7 +27899,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @constant
          * @type String
-         * @name me.event#STATE_PAUSE
+         * @name STATE_PAUSE
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.STATE_PAUSE = "me.state.onPause";
 
@@ -27767,7 +27911,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @constant
          * @type String
-         * @name me.event#STATE_RESUME
+         * @name STATE_RESUME
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.STATE_RESUME = "me.state.onResume";
 
@@ -27777,7 +27923,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @constant
          * @type String
-         * @name me.event#STATE_STOP
+         * @name STATE_STOP
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.STATE_STOP = "me.state.onStop";
 
@@ -27787,7 +27935,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @constant
          * @type String
-         * @name me.event#STATE_RESTART
+         * @name STATE_RESTART
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.STATE_RESTART = "me.state.onRestart";
 
@@ -27797,7 +27947,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @constant
          * @type String
-         * @name me.event#GAME_INIT
+         * @name GAME_INIT
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.GAME_INIT = "me.game.onInit";
 
@@ -27807,7 +27959,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @constant
          * @type String
-         * @name me.event#GAME_RESET
+         * @name GAME_RESET
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.GAME_RESET = "me.game.onReset";
 
@@ -27817,7 +27971,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @constant
          * @type String
-         * @name me.event#LEVEL_LOADED
+         * @name LEVEL_LOADED
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.LEVEL_LOADED = "me.game.onLevelLoaded";
 
@@ -27827,7 +27983,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @constant
          * @type String
-         * @name me.event#LOADER_COMPLETE
+         * @name LOADER_COMPLETE
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.LOADER_COMPLETE = "me.loader.onload";
 
@@ -27837,7 +27995,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @constant
          * @type String
-         * @name me.event#LOADER_PROGRESS
+         * @name LOADER_PROGRESS
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.LOADER_PROGRESS = "me.loader.onProgress";
 
@@ -27852,7 +28012,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @constant
          * @type String
-         * @name me.event#KEYDOWN
+         * @name KEYDOWN
+         * @memberOf me.event
+         * @see me.event.subscribe
          * @example
          * me.input.bindKey(me.input.KEY.X, "jump", true); // Edge-triggered
          * me.input.bindKey(me.input.KEY.Z, "shoot"); // Level-triggered
@@ -27872,11 +28034,13 @@ me.Error = me.Object.extend.bind(Error)({
 
         /**
          * Channel Constant for releasing a binded key <br>
-         * Data passed : {String} user-defined action, {Number} keyCode <br>
+         * Data passed : {String} user-defined action, {Number} keyCode
          * @public
          * @constant
          * @type String
-         * @name me.event#KEYUP
+         * @name KEYUP
+         * @memberOf me.event
+         * @see me.event.subscribe
          * @example
          * me.event.subscribe(me.event.KEYUP, function (action, keyCode) {
          *   // Checking unbound keys
@@ -27898,7 +28062,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @constant
          * @type String
-         * @name me.event#GAMEPAD_CONNECTED
+         * @name GAMEPAD_CONNECTED
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.GAMEPAD_CONNECTED = "gamepad.connected";
 
@@ -27908,7 +28074,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @constant
          * @type String
-         * @name me.event#GAMEPAD_DISCONNECTED
+         * @name GAMEPAD_DISCONNECTED
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.GAMEPAD_DISCONNECTED = "gamepad.disconnected";
 
@@ -27918,11 +28086,13 @@ me.Error = me.Object.extend.bind(Error)({
          * Data passed : {String} type : "axes" or "buttons" <br>
          * Data passed : {Number} button <br>
          * Data passed : {Number} current.value <br>
-         * Data passed : {Boolean} current.pressed <br>
+         * Data passed : {Boolean} current.pressed
          * @public
          * @constant
          * @type String
-         * @name me.event#GAMEPAD_UPDATE
+         * @name GAMEPAD_UPDATE
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.GAMEPAD_UPDATE = "gamepad.update";
 
@@ -27932,7 +28102,9 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @constant
          * @type String
-         * @name me.event#POINTERMOVE
+         * @name POINTERMOVE
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.POINTERMOVE = "me.event.pointermove";
 
@@ -27940,11 +28112,13 @@ me.Error = me.Object.extend.bind(Error)({
          * Channel Constant for dragstart events on a Draggable entity <br>
          * Data passed:
          * {Object} the drag event <br>
-         * {Object} the Draggable entity <br>
+         * {Object} the Draggable entity
          * @public
          * @constant
          * @type String
-         * @name me.event#DRAGSTART
+         * @name DRAGSTART
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.DRAGSTART = "me.game.dragstart";
 
@@ -27952,21 +28126,25 @@ me.Error = me.Object.extend.bind(Error)({
          * Channel Constant for dragend events on a Draggable entity <br>
          * Data passed:
          * {Object} the drag event <br>
-         * {Object} the Draggable entity <br>
+         * {Object} the Draggable entity
          * @public
          * @constant
          * @type String
-         * @name me.event#DRAGEND
+         * @name DRAGEND
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.DRAGEND = "me.game.dragend";
 
         /**
          * Channel Constant for when the (browser) window is resized <br>
-         * Data passed : {Event} Event object <br>
+         * Data passed : {Event} Event object
          * @public
          * @constant
          * @type String
-         * @name me.event#WINDOW_ONRESIZE
+         * @name WINDOW_ONRESIZE
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.WINDOW_ONRESIZE = "window.onresize";
 
@@ -27974,11 +28152,13 @@ me.Error = me.Object.extend.bind(Error)({
          * Channel Constant for when the canvas is resized <br>
          * (this usually follows a WINDOW_ONRESIZE event).<br>
          * Data passed : {Number} canvas width <br>
-         * Data passed : {Number} canvas height <br>
+         * Data passed : {Number} canvas height
          * @public
          * @constant
          * @type String
-         * @name me.event#CANVAS_ONRESIZE
+         * @name CANVAS_ONRESIZE
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.CANVAS_ONRESIZE = "canvas.onresize";
 
@@ -27986,11 +28166,13 @@ me.Error = me.Object.extend.bind(Error)({
          * Channel Constant for when the viewport is resized <br>
          * (this usually follows a WINDOW_ONRESIZE event, when using the `flex` scaling mode is used and after the viewport was updated).<br>
          * Data passed : {Number} viewport width <br>
-         * Data passed : {Number} viewport height <br>
+         * Data passed : {Number} viewport height
          * @public
          * @constant
          * @type String
-         * @name me.event#VIEWPORT_ONRESIZE
+         * @name VIEWPORT_ONRESIZE
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.VIEWPORT_ONRESIZE = "viewport.onresize";
 
@@ -28000,33 +28182,40 @@ me.Error = me.Object.extend.bind(Error)({
          * @public
          * @constant
          * @type String
-         * @name me.event#WINDOW_ONORIENTATION_CHANGE
+         * @name WINDOW_ONORIENTATION_CHANGE
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.WINDOW_ONORIENTATION_CHANGE = "window.orientationchange";
 
         /**
          * Channel Constant for when the (browser) window is scrolled <br>
-         * Data passed : {Event} Event object <br>
+         * Data passed : {Event} Event object
          * @public
          * @constant
          * @type String
-         * @name me.event#WINDOW_ONSCROLL
+         * @name WINDOW_ONSCROLL
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.WINDOW_ONSCROLL = "window.onscroll";
 
         /**
          * Channel Constant for when the viewport position is updated <br>
-         * Data passed : {me.Vector2d} viewport position vector <br>
+         * Data passed : {me.Vector2d} viewport position vector
          * @public
          * @constant
          * @type String
-         * @name me.event#VIEWPORT_ONCHANGE
+         * @name VIEWPORT_ONCHANGE
+         * @memberOf me.event
+         * @see me.event.subscribe
          */
         api.VIEWPORT_ONCHANGE = "viewport.onchange";
 
         /**
          * Publish some data on a channel
-         * @name me.event#publish
+         * @name publish
+         * @memberOf me.event
          * @public
          * @function
          * @param {String} channel The channel to publish on
@@ -28051,7 +28240,8 @@ me.Error = me.Object.extend.bind(Error)({
 
         /**
          * Register a callback on a named channel.
-         * @name me.event#subscribe
+         * @name subscribe
+         * @memberOf me.event
          * @public
          * @function
          * @param {String} channel The channel to subscribe to
@@ -28074,7 +28264,9 @@ me.Error = me.Object.extend.bind(Error)({
 
         /**
          * Disconnect a subscribed function for a channel.
-         * @name me.event#unsubscribe
+         * @name unsubscribe
+         * @memberOf me.event
+         * @see me.event.subscribe
          * @public
          * @function
          * @param {Array|String} handle The return value from a subscribe call or the
@@ -31250,7 +31442,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  */
 (function () {
@@ -31282,14 +31474,12 @@ me.Error = me.Object.extend.bind(Error)({
         * plugin must be installed using the register function
         * @see me.plugin
         * @class
-        * @extends Object
+        * @extends me.Object
         * @name plugin.Base
         * @memberOf me
         * @constructor
         */
-        singleton.Base = me.Object.extend(
-        /** @scope me.plugin.Base.prototype */
-        {
+        singleton.Base = me.Object.extend({
             /** @ignore */
             init : function () {
                 /**
@@ -31297,10 +31487,10 @@ me.Error = me.Object.extend.bind(Error)({
                  * this can be overridden by the plugin
                  * @public
                  * @type String
-                 * @default "6.3.0"
+                 * @default "6.4.0"
                  * @name me.plugin.Base#version
                  */
-                this.version = "6.3.0";
+                this.version = "6.4.0";
             }
         });
 
@@ -31404,7 +31594,7 @@ me.Error = me.Object.extend.bind(Error)({
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  */
 
@@ -31419,11 +31609,7 @@ me.Error = me.Object.extend.bind(Error)({
  * @param {Object} settings Entity properties (see {@link me.Entity})
  */
 me.DraggableEntity = (function (Entity, Input, Event, Vector) {
-    "use strict";
-
-    return Entity.extend(
-    /** @scope me.DraggableEntity.prototype */
-    {
+    return Entity.extend({
         /**
          * Constructor
          * @name init
@@ -31558,7 +31744,7 @@ me.DraggableEntity = (function (Entity, Input, Event, Vector) {
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  */
 
@@ -31573,11 +31759,7 @@ me.DraggableEntity = (function (Entity, Input, Event, Vector) {
  * @param {Object} settings Entity properties (see {@link me.Entity})
  */
 me.DroptargetEntity = (function (Entity, Event) {
-    "use strict";
-
-    return Entity.extend(
-    /** @scope me.DroptargetEntity.prototype */
-    {
+    return Entity.extend({
         /**
          * Constructor
          * @name init
@@ -31672,7 +31854,7 @@ me.DroptargetEntity = (function (Entity, Event) {
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -31688,10 +31870,10 @@ me.DroptargetEntity = (function (Entity, Event) {
      * @param {Number} y the y coordinates of the entity object
      * @param {Object} settings See {@link me.Entity}
      */
-    me.CollectableEntity = me.Entity.extend(
-    /** @scope me.CollectableEntity.prototype */
-    {
-        /** @ignore */
+    me.CollectableEntity = me.Entity.extend({
+        /**
+         * @ignore
+         */
         init : function (x, y, settings) {
             // call the super constructor
             me.Entity.prototype.init.apply(this, [x, y, settings]);
@@ -31702,7 +31884,7 @@ me.DroptargetEntity = (function (Entity, Event) {
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -31733,10 +31915,10 @@ me.DroptargetEntity = (function (Entity, Event) {
      *     }
      * ));
      */
-    me.LevelEntity = me.Entity.extend(
-    /** @scope me.LevelEntity.prototype */
-    {
-        /** @ignore */
+    me.LevelEntity = me.Entity.extend({
+        /**
+         * @ignore
+         */
         init : function (x, y, settings) {
             me.Entity.prototype.init.apply(this, [x, y, settings]);
 
@@ -31817,7 +31999,7 @@ me.DroptargetEntity = (function (Entity, Event) {
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -32143,9 +32325,7 @@ me.DroptargetEntity = (function (Entity, Event) {
      * me.game.world.removeChild(emitter);
      *
      */
-    me.ParticleEmitter = me.Rect.extend(
-    /** @scope me.ParticleEmitter.prototype */
-    {
+    me.ParticleEmitter = me.Rect.extend({
         /**
          * @ignore
          */
@@ -32391,7 +32571,7 @@ me.DroptargetEntity = (function (Entity, Event) {
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -32404,9 +32584,7 @@ me.DroptargetEntity = (function (Entity, Event) {
      * @constructor
      * @param {me.ParticleEmitter} emitter the emitter which owns this container
      */
-    me.ParticleContainer = me.Container.extend(
-    /** @scope ParticleContainer */
-    {
+    me.ParticleContainer = me.Container.extend({
         /**
          * @ignore
          */
@@ -32493,7 +32671,7 @@ me.DroptargetEntity = (function (Entity, Event) {
 
 /*
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  *
  */
@@ -32506,9 +32684,7 @@ me.DroptargetEntity = (function (Entity, Event) {
      * @constructor
      * @param {me.ParticleEmitter} particle emitter
      */
-    me.Particle = me.Renderable.extend(
-    /** @scope me.Particle.prototype */
-    {
+    me.Particle = me.Renderable.extend({
         /**
          * @ignore
          */
@@ -32662,7 +32838,7 @@ me.DroptargetEntity = (function (Entity, Event) {
 
 /**
  * MelonJS Game Engine
- * Copyright (C) 2011 - 2018 Olivier Biot
+ * Copyright (C) 2011 - 2019 Olivier Biot
  * http://www.melonjs.org
  */
 
@@ -32670,7 +32846,9 @@ me.DroptargetEntity = (function (Entity, Event) {
 // and corresponding alias for backward compatibility
 
 /**
- * @ignore
+ * @class me.ScreenObject
+ * @deprecated since 6.2.0
+ * @see me.Stage
  */
 me.ScreenObject = me.Stage.extend({
     /** @ignore */
@@ -32683,7 +32861,9 @@ me.ScreenObject = me.Stage.extend({
 });
 
 /**
- * @ignore
+ * @class me.Font
+ * @deprecated since 6.1.0
+ * @see me.Text
  */
 me.Font = me.Text.extend({
     /** @ignore */
@@ -32721,9 +32901,10 @@ me.Font = me.Text.extend({
 me.BitmapFontData = me.BitmapTextData;
 
 /**
- * @ignore
+ * @class me.BitmapFont
+ * @deprecated since 6.1.0
+ * @see me.BitmapText
  */
-
 me.BitmapFont = me.BitmapText.extend({
     /** @ignore */
     init: function (data, fontImage, scale, textAlign, textBaseline) {
@@ -32742,9 +32923,21 @@ me.BitmapFont = me.BitmapText.extend({
 });
 
 /**
- * @ignore
+ * @function me.Renderer.drawShape
+ * @deprecated since 6.3.0
+ * @see me.Renderer.stroke
  */
 me.Renderer.prototype.drawShape = function () {
     console.log("drawShape() is deprecated, please use the stroke() or fill() function");
     me.Renderer.prototype.stroke.apply(this, arguments);
 }
+
+/**
+ * @ignore
+ */
+me.CanvasRenderer.prototype.Texture = me.Renderer.prototype.Texture;
+
+/**
+ * @ignore
+ */
+me.WebGLRenderer.prototype.Texture = me.Renderer.prototype.Texture;
