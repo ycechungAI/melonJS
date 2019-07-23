@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Class: Tween | melonJS API documentation</title>
+    <title>Class: TMXStaggeredRenderer | melonJS API documentation</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -52,7 +52,7 @@
 <header>
     
         <h2><span class="attribs"><span class="type-signature"></span></span>
-            <span class="ancestors"><a href="me.html">me</a>.</span>Tween<span class="signature">(object)</span><span class="type-signature"></span></h2>
+            <span class="ancestors"><a href="me.html">me</a>.</span>TMXStaggeredRenderer<span class="signature">(map)</span><span class="type-signature"></span></h2>
         
     
 </header>
@@ -65,9 +65,9 @@
 
 <dt>
     
-        <h4 class="name" id="Tween">
+        <h4 class="name" id="TMXStaggeredRenderer">
             
-                new <span class="type-signature"></span>Tween<span class="signature">(object)</span><span class="type-signature"></span>
+                new <span class="type-signature"></span>TMXStaggeredRenderer<span class="signature">(map)</span><span class="type-signature"></span>
                 
             
         </h4>
@@ -79,17 +79,7 @@
 
     
     <div class="description">
-        <p>Javascript Tweening Engine<p>
-Super simple, fast and easy to use tweening engine which incorporates optimised Robert Penner's equation<p>
-<a href="https://github.com/sole/Tween.js">https://github.com/sole/Tween.js</a><p>
-author sole / http://soledadpenades.com<br>
-author mr.doob / http://mrdoob.com<br>
-author Robert Eisele / http://www.xarg.org<br>
-author Philippe / http://philippe.elsass.me<br>
-author Robert Penner / http://www.robertpenner.com/easing_terms_of_use.html<br>
-author Paul Lewis / http://www.aerotwist.com/<br>
-author lechecacharro<br>
-author Josh Faul / http://jocafa.com/</p>
+        <p>a Staggered Map Renderder</p>
     </div>
     
 
@@ -125,13 +115,13 @@ author Josh Faul / http://jocafa.com/</p>
 
         <tr>
             
-                <td class="name"><code>object</code></td>
+                <td class="name"><code>map</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">Object</span>
+<span class="param-type"><a href="me.TMXTileMap.html">me.TMXTileMap</a></span>
 
 
             
@@ -141,7 +131,7 @@ author Josh Faul / http://jocafa.com/</p>
 
             
 
-            <td class="description last"><p>object on which to apply the tween</p></td>
+            <td class="description last"><p>the TMX map</p></td>
         </tr>
 
     
@@ -199,14 +189,6 @@ author Josh Faul / http://jocafa.com/</p>
     
 </dl>
 
-
-    
-        <h5>Example</h5>
-        
-    <pre class="prettyprint"><code>// add a tween to change the object pos.y variable to 200 in 3 seconds
-tween = new me.Tween(myObject.pos).to({y: 200}, 3000).onComplete(myFunc);
-tween.easing(me.Tween.Easing.Bounce.Out);
-tween.start();</code></pre>
 
     
 
@@ -217,168 +199,15 @@ tween.start();</code></pre>
     
 
     
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-        <h3 class="subsection-title">Members</h3>
-
-        <dl>
-            
-
-<dt>
-<h4 class="name" id=".Easing">
-    <span class="type-signature"><span class="icon green">static</span>, <span class="icon green">constant</span> </span>Easing<span class="type-signature"> :enum</span>
-    
-</h4>
-
-
-</dt>
-<dd>
-    
-    <div class="description">
-        <p>Easing Function :<br></p>
-<p>
-me.Tween.Easing.Linear.None<br>
-me.Tween.Easing.Quadratic.In<br>
-me.Tween.Easing.Quadratic.Out<br>
-me.Tween.Easing.Quadratic.InOut<br>
-me.Tween.Easing.Cubic.In<br>
-me.Tween.Easing.Cubic.Out<br>
-me.Tween.Easing.Cubic.InOut<br>
-me.Tween.Easing.Quartic.In<br>
-me.Tween.Easing.Quartic.Out<br>
-me.Tween.Easing.Quartic.InOut<br>
-me.Tween.Easing.Quintic.In<br>
-me.Tween.Easing.Quintic.Out<br>
-me.Tween.Easing.Quintic.InOut<br>
-me.Tween.Easing.Sinusoidal.In<br>
-me.Tween.Easing.Sinusoidal.Out<br>
-me.Tween.Easing.Sinusoidal.InOut<br>
-me.Tween.Easing.Exponential.In<br>
-me.Tween.Easing.Exponential.Out<br>
-me.Tween.Easing.Exponential.InOut<br>
-me.Tween.Easing.Circular.In<br>
-me.Tween.Easing.Circular.Out<br>
-me.Tween.Easing.Circular.InOut<br>
-me.Tween.Easing.Elastic.In<br>
-me.Tween.Easing.Elastic.Out<br>
-me.Tween.Easing.Elastic.InOut<br>
-me.Tween.Easing.Back.In<br>
-me.Tween.Easing.Back.Out<br>
-me.Tween.Easing.Back.InOut<br>
-me.Tween.Easing.Bounce.In<br>
-me.Tween.Easing.Bounce.Out<br>
-me.Tween.Easing.Bounce.InOut
-</p>
-    </div>
-    
-
-    <!--
-    
-        <h5>Type:</h5>
-        <ul>
-            <li>
-                
-<span class="param-type">enum</span>
-
-
-            </li>
-        </ul>
-    
-    -->
-
-    
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-    
-
-    
-</dd>
+        <h3 class="subsection-title">Extends</h3>
 
         
-            
-
-<dt>
-<h4 class="name" id=".Interpolation">
-    <span class="type-signature"><span class="icon green">static</span>, <span class="icon green">constant</span> </span>Interpolation<span class="type-signature"> :enum</span>
-    
-</h4>
 
 
-</dt>
-<dd>
-    
-    <div class="description">
-        <p>Interpolation Function :<br></p>
-<p>
-me.Tween.Interpolation.Linear<br>
-me.Tween.Interpolation.Bezier<br>
-me.Tween.Interpolation.CatmullRom
-</p>
-    </div>
-    
+    <ul>
+        <li><a href="me.TMXRenderer.html">me.TMXRenderer</a></li>
+    </ul>
 
-    <!--
-    
-        <h5>Type:</h5>
-        <ul>
-            <li>
-                
-<span class="param-type">enum</span>
-
-
-            </li>
-        </ul>
-    
-    -->
-
-    
-
-
-<dl class="details">
 
     
 
@@ -392,32 +221,6 @@ me.Tween.Interpolation.CatmullRom
 
     
 
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-    
-
-    
-</dd>
-
-        </dl>
     
 
     
@@ -428,9 +231,9 @@ me.Tween.Interpolation.CatmullRom
 
 <dt>
     
-        <h4 class="name" id="chain">
+        <h4 class="name" id="canRender">
             
-                <span class="type-signature"></span>chain<span class="signature">(chainedTween)</span><span class="type-signature"></span>
+                <span class="type-signature"></span>canRender<span class="signature">(component)</span><span class="type-signature"> &rarr; {boolean}</span>
                 
             
         </h4>
@@ -442,7 +245,7 @@ me.Tween.Interpolation.CatmullRom
 
     
     <div class="description">
-        <p>chain the tween</p>
+        <p>return true if the renderer can render the specified map or layer</p>
     </div>
     
 
@@ -478,13 +281,16 @@ me.Tween.Interpolation.CatmullRom
 
         <tr>
             
-                <td class="name"><code>chainedTween</code></td>
+                <td class="name"><code>component</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type"><a href="me.Tween.html">me.Tween</a></span>
+<span class="param-type"><a href="me.TMXTileMap.html">me.TMXTileMap</a></span>
+|
+
+<span class="param-type"><a href="me.TMXLayer.html">me.TMXLayer</a></span>
 
 
             
@@ -494,7 +300,7 @@ me.Tween.Interpolation.CatmullRom
 
             
 
-            <td class="description last"><p>Tween to be chained</p></td>
+            <td class="description last"><p>TMX Map or Layer</p></td>
         </tr>
 
     
@@ -515,6 +321,25 @@ me.Tween.Interpolation.CatmullRom
     
 
     
+    <div class="container-returns">
+        <h5>Returns:</h5>
+        
+                
+
+
+
+<span class="param-type">boolean</span>
+
+
+
+
+
+
+
+
+            
+    </div>
+    
 
     
 
@@ -525,6 +350,11 @@ me.Tween.Interpolation.CatmullRom
 
     
 
+    
+    <dt class="inherited-from">Inherited From:</dt>
+    <dd class="inherited-from"><ul class="dummy"><li>
+        <a href="me.TMXRenderer.html#canRender">me.TMXRenderer#canRender</a>
+    </li></ul></dd>
     
 
     
@@ -562,9 +392,9 @@ me.Tween.Interpolation.CatmullRom
 
 <dt>
     
-        <h4 class="name" id="delay">
+        <h4 class="name" id="drawTile">
             
-                <span class="type-signature"></span>delay<span class="signature">(amount)</span><span class="type-signature"></span>
+                <span class="type-signature"></span>drawTile<span class="signature">(renderer, x, y, tile)</span><span class="type-signature"></span>
                 
             
         </h4>
@@ -576,7 +406,7 @@ me.Tween.Interpolation.CatmullRom
 
     
     <div class="description">
-        <p>delay the tween</p>
+        <p>draw the given tile at the specified layer</p>
     </div>
     
 
@@ -612,13 +442,16 @@ me.Tween.Interpolation.CatmullRom
 
         <tr>
             
-                <td class="name"><code>amount</code></td>
+                <td class="name"><code>renderer</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">Number</span>
+<span class="param-type"><a href="me.CanvasRenderer.html">me.CanvasRenderer</a></span>
+|
+
+<span class="param-type"><a href="me.WebGLRenderer.html">me.WebGLRenderer</a></span>
 
 
             
@@ -628,795 +461,14 @@ me.Tween.Interpolation.CatmullRom
 
             
 
-            <td class="description last"><p>delay amount expressed in milliseconds</p></td>
+            <td class="description last"><p>a renderer object</p></td>
         </tr>
 
-    
-    </tbody>
-</table>
-
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-    
-
-</dd>
-
-            
-                
-
-<dt>
-    
-        <h4 class="name" id="easing">
-            
-                <span class="type-signature"></span>easing<span class="signature">(fn)</span><span class="type-signature"></span>
-                
-            
-        </h4>
-
-        
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        <p>set the easing function</p>
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-    <div class="container-params">
-        <h5>Parameters:</h5>
-        
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
     
 
         <tr>
             
-                <td class="name"><code>fn</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="me.Tween.html#.Easing">me.Tween.Easing</a></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>easing function</p></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-    
-
-</dd>
-
-            
-                
-
-<dt>
-    
-        <h4 class="name" id="interpolation">
-            
-                <span class="type-signature"></span>interpolation<span class="signature">(fn)</span><span class="type-signature"></span>
-                
-            
-        </h4>
-
-        
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        <p>set the interpolation function</p>
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-    <div class="container-params">
-        <h5>Parameters:</h5>
-        
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>fn</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="me.Tween.html#.Interpolation">me.Tween.Interpolation</a></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>interpolation function</p></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-    
-
-</dd>
-
-            
-                
-
-<dt>
-    
-        <h4 class="name" id="onComplete">
-            
-                <span class="type-signature"></span>onComplete<span class="signature">(onCompleteCallback)</span><span class="type-signature"></span>
-                
-            
-        </h4>
-
-        
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        <p>onComplete callback</p>
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-    <div class="container-params">
-        <h5>Parameters:</h5>
-        
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>onCompleteCallback</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">function</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>callback</p></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-    
-
-</dd>
-
-            
-                
-
-<dt>
-    
-        <h4 class="name" id="onStart">
-            
-                <span class="type-signature"></span>onStart<span class="signature">(onStartCallback)</span><span class="type-signature"></span>
-                
-            
-        </h4>
-
-        
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        <p>onStart callback</p>
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-    <div class="container-params">
-        <h5>Parameters:</h5>
-        
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>onStartCallback</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">function</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>callback</p></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-    
-
-</dd>
-
-            
-                
-
-<dt>
-    
-        <h4 class="name" id="onUpdate">
-            
-                <span class="type-signature"></span>onUpdate<span class="signature">(onUpdateCallback)</span><span class="type-signature"></span>
-                
-            
-        </h4>
-
-        
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        <p>onUpdate callback</p>
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-    <div class="container-params">
-        <h5>Parameters:</h5>
-        
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>onUpdateCallback</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">function</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>callback</p></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-    
-
-</dd>
-
-            
-                
-
-<dt>
-    
-        <h4 class="name" id="repeat">
-            
-                <span class="type-signature"></span>repeat<span class="signature">(times)</span><span class="type-signature"></span>
-                
-            
-        </h4>
-
-        
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        <p>Repeat the tween</p>
-    </div>
-    
-
-    
-
-    
-
-    
-
-    
-    <div class="container-params">
-        <h5>Parameters:</h5>
-        
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>times</code></td>
+                <td class="name"><code>x</code></td>
             
 
             <td class="type">
@@ -1432,7 +484,53 @@ me.Tween.Interpolation.CatmullRom
 
             
 
-            <td class="description last"><p>amount of times the tween should be repeated</p></td>
+            <td class="description last"><p>X coordinate where to draw the tile</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>y</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Y coordinate where to draw the tile</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>tile</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="me.Tile.html">me.Tile</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>the tile object to draw</p></td>
         </tr>
 
     
@@ -1464,6 +562,11 @@ me.Tween.Interpolation.CatmullRom
     
 
     
+    <dt class="inherited-from">Inherited From:</dt>
+    <dd class="inherited-from"><ul class="dummy"><li>
+        <a href="me.TMXRenderer.html#drawTile">me.TMXRenderer#drawTile</a>
+    </li></ul></dd>
+    
 
     
 
@@ -1500,9 +603,9 @@ me.Tween.Interpolation.CatmullRom
 
 <dt>
     
-        <h4 class="name" id="start">
+        <h4 class="name" id="drawTileLayer">
             
-                <span class="type-signature"></span>start<span class="signature">()</span><span class="type-signature"></span>
+                <span class="type-signature"></span>drawTileLayer<span class="signature">(renderer, layer, rect)</span><span class="type-signature"></span>
                 
             
         </h4>
@@ -1514,7 +617,7 @@ me.Tween.Interpolation.CatmullRom
 
     
     <div class="description">
-        <p>start the tween</p>
+        <p>draw the given TMX Layer for the given area</p>
     </div>
     
 
@@ -1524,6 +627,105 @@ me.Tween.Interpolation.CatmullRom
 
     
 
+    
+    <div class="container-params">
+        <h5>Parameters:</h5>
+        
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>renderer</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="me.CanvasRenderer.html">me.CanvasRenderer</a></span>
+|
+
+<span class="param-type"><a href="me.WebGLRenderer.html">me.WebGLRenderer</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>a renderer object</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>layer</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="me.TMXLayer.html">me.TMXLayer</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>a TMX Layer object</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>rect</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="me.Rect.html">me.Rect</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>the area of the layer to draw</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+    </div>
     
 
     
@@ -1548,6 +750,11 @@ me.Tween.Interpolation.CatmullRom
     
 
     
+    <dt class="inherited-from">Inherited From:</dt>
+    <dd class="inherited-from"><ul class="dummy"><li>
+        <a href="me.TMXRenderer.html#drawTileLayer">me.TMXRenderer#drawTileLayer</a>
+    </li></ul></dd>
+    
 
     
 
@@ -1584,9 +791,9 @@ me.Tween.Interpolation.CatmullRom
 
 <dt>
     
-        <h4 class="name" id="stop">
+        <h4 class="name" id="getBounds">
             
-                <span class="type-signature"></span>stop<span class="signature">()</span><span class="type-signature"></span>
+                <span class="type-signature"></span>getBounds<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="me.Rect.html">me.Rect</a>}</span>
                 
             
         </h4>
@@ -1598,7 +805,7 @@ me.Tween.Interpolation.CatmullRom
 
     
     <div class="description">
-        <p>stop the tween</p>
+        <p>return the map bounding rect</p>
     </div>
     
 
@@ -1621,6 +828,25 @@ me.Tween.Interpolation.CatmullRom
     
 
     
+    <div class="container-returns">
+        <h5>Returns:</h5>
+        
+                
+
+
+
+<span class="param-type"><a href="me.Rect.html">me.Rect</a></span>
+
+
+
+
+
+
+
+
+            
+    </div>
+    
 
     
 
@@ -1633,6 +859,11 @@ me.Tween.Interpolation.CatmullRom
 
     
 
+    
+    <dt class="tag-overrides">Overrides:</dt>
+    <dd class="tag-overrides"><ul class="dummy"><li>
+        <a href="me.TMXRenderer.html#getBounds">me.TMXRenderer#getBounds</a>
+    </li></ul></dd>
     
 
     
@@ -1668,9 +899,9 @@ me.Tween.Interpolation.CatmullRom
 
 <dt>
     
-        <h4 class="name" id="to">
+        <h4 class="name" id="pixelToTileCoords">
             
-                <span class="type-signature"></span>to<span class="signature">(properties, duration<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span>
+                <span class="type-signature"></span>pixelToTileCoords<span class="signature">(x, y, vector<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {<a href="me.Vector2d.html">me.Vector2d</a>}</span>
                 
             
         </h4>
@@ -1682,7 +913,7 @@ me.Tween.Interpolation.CatmullRom
 
     
     <div class="description">
-        <p>object properties to be updated and duration</p>
+        <p>return the tile position corresponding to the specified pixel</p>
     </div>
     
 
@@ -1710,8 +941,6 @@ me.Tween.Interpolation.CatmullRom
         
 
         
-        <th>Default</th>
-        
 
         <th class="last">Description</th>
     </tr>
@@ -1722,13 +951,13 @@ me.Tween.Interpolation.CatmullRom
 
         <tr>
             
-                <td class="name"><code>properties</code></td>
+                <td class="name"><code>x</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">Object</span>
+<span class="param-type">Number</span>
 
 
             
@@ -1745,25 +974,52 @@ me.Tween.Interpolation.CatmullRom
             
 
             
-                <td class="default">
-                
-                </td>
-            
 
-            <td class="description last"><p>hash of properties</p></td>
+            <td class="description last"><p>X coordinate</p></td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>duration</code></td>
+                <td class="name"><code>y</code></td>
             
 
             <td class="type">
             
                 
 <span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>Y coordinate</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>vector</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="me.Vector2d.html">me.Vector2d</a></span>
 
 
             
@@ -1782,14 +1038,8 @@ me.Tween.Interpolation.CatmullRom
             
 
             
-                <td class="default">
-                
-                    1000
-                
-                </td>
-            
 
-            <td class="description last"><p>tween duration</p></td>
+            <td class="description last"><p>an optional vector object where to put the return values</p></td>
         </tr>
 
     
@@ -1810,6 +1060,25 @@ me.Tween.Interpolation.CatmullRom
     
 
     
+    <div class="container-returns">
+        <h5>Returns:</h5>
+        
+                
+
+
+
+<span class="param-type"><a href="me.Vector2d.html">me.Vector2d</a></span>
+
+
+
+
+
+
+
+
+            
+    </div>
+    
 
     
 
@@ -1820,6 +1089,11 @@ me.Tween.Interpolation.CatmullRom
 
     
 
+    
+    <dt class="inherited-from">Inherited From:</dt>
+    <dd class="inherited-from"><ul class="dummy"><li>
+        <a href="me.TMXRenderer.html#pixelToTileCoords">me.TMXRenderer#pixelToTileCoords</a>
+    </li></ul></dd>
     
 
     
@@ -1857,9 +1131,9 @@ me.Tween.Interpolation.CatmullRom
 
 <dt>
     
-        <h4 class="name" id="yoyo">
+        <h4 class="name" id="tileToPixelCoords">
             
-                <span class="type-signature"></span>yoyo<span class="signature">(yoyo)</span><span class="type-signature"></span>
+                <span class="type-signature"></span>tileToPixelCoords<span class="signature">(col, row, vector<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {<a href="me.Vector2d.html">me.Vector2d</a>}</span>
                 
             
         </h4>
@@ -1871,8 +1145,7 @@ me.Tween.Interpolation.CatmullRom
 
     
     <div class="description">
-        <p>Allows the tween to bounce back to their original value when finished.
-To be used together with repeat to create endless loops.</p>
+        <p>return the pixel position corresponding of the specified tile</p>
     </div>
     
 
@@ -1896,6 +1169,8 @@ To be used together with repeat to create endless loops.</p>
         <th>Type</th>
 
         
+        <th>Attributes</th>
+        
 
         
 
@@ -1908,23 +1183,95 @@ To be used together with repeat to create endless loops.</p>
 
         <tr>
             
-                <td class="name"><code>yoyo</code></td>
+                <td class="name"><code>col</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">Boolean</span>
+<span class="param-type">Number</span>
 
 
             
             </td>
 
             
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
 
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>tile horizontal position</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>row</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>tile vertical position</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>vector</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="me.Vector2d.html">me.Vector2d</a></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>an optional vector object where to put the return values</p></td>
         </tr>
 
     
@@ -1945,6 +1292,25 @@ To be used together with repeat to create endless loops.</p>
     
 
     
+    <div class="container-returns">
+        <h5>Returns:</h5>
+        
+                
+
+
+
+<span class="param-type"><a href="me.Vector2d.html">me.Vector2d</a></span>
+
+
+
+
+
+
+
+
+            
+    </div>
+    
 
     
 
@@ -1956,7 +1322,10 @@ To be used together with repeat to create endless loops.</p>
     
 
     
-
+    <dt class="inherited-from">Inherited From:</dt>
+    <dd class="inherited-from"><ul class="dummy"><li>
+        <a href="me.TMXRenderer.html#tileToPixelCoords">me.TMXRenderer#tileToPixelCoords</a>
+    </li></ul></dd>
     
 
     
@@ -1978,12 +1347,7 @@ To be used together with repeat to create endless loops.</p>
     
 
     
-    <dt class="tag-see">See:</dt>
-    <dd class="tag-see">
-        <ul>
-            <li><a href="me.Tween.html#repeat">me.Tween#repeat</a></li>
-        </ul>
-    </dd>
+
     
 
     
@@ -2024,7 +1388,7 @@ To be used together with repeat to create endless loops.</p>
 <script src="scripts/linenumber.js"></script>
 
     <script>
-        var id = 'me.Tween_sub'.replace(/"/g, '_');
+        var id = 'me.TMXStaggeredRenderer_sub'.replace(/"/g, '_');
         var selectedApi = document.getElementById(id); // do not use jquery selector
         var $selectedApi = $(selectedApi);
 
