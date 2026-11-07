@@ -21,6 +21,7 @@ import {
 	TextureAtlas,
 	video,
 } from "melonjs";
+import { addBackgroundSway } from "./backgroundSway.js";
 import { CoinEntity } from "./entities/coin.js";
 import { FlyEnemyEntity, SlimeEnemyEntity } from "./entities/enemies.js";
 import { LevelTrigger } from "./entities/leveltrigger.js";
@@ -91,9 +92,6 @@ export const createGame = async () => {
 	// initialize the sound engine
 	audio.init("mp3,ogg");
 
-	// allow cross-origin for image/texture loading
-	loader.setOptions({ crossOrigin: "anonymous" });
-
 	// preload all resources
 	loader.preload(resources, () => {
 		// set the Play screen
@@ -109,6 +107,9 @@ export const createGame = async () => {
 		registerTiledObjectClass("CoinEntity", CoinEntity);
 		// override the built-in trigger with star mask transition
 		registerTiledObjectClass("me.Trigger", LevelTrigger);
+
+		// sway the background hills in every level, from the first one on
+		addBackgroundSway(_app);
 
 		// load the texture atlas
 		gameState.texture = new TextureAtlas(

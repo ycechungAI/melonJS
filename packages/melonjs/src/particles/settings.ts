@@ -7,10 +7,12 @@ import type ParticleEmitter from "./emitter.ts";
  * to the constructor or {@link ParticleEmitter#reset}.
  * @category Particles
  * @see {@link ParticleEmitter}
+ * @see [Particle Editor](https://melonjs.github.io/melonJS/examples/#/particle-editor) — every setting on a slider, with the code or JSON to copy
  */
 export interface ParticleEmitterSettings {
 	/**
-	 * Width of the particle spawn area.
+	 * Width of the particle spawn area. The constructor centres the area on
+	 * the point it is given; `pos` is then its top left corner.
 	 * @default 1
 	 */
 	width: number;
@@ -22,8 +24,24 @@ export interface ParticleEmitterSettings {
 	height: number;
 
 	/**
-	 * Image used for particles texture (by default melonJS will create a white
-	 * 8x8 texture image).
+	 * Depth of the particle spawn area, along Z: each particle is born at a
+	 * random depth within it, centered on the emitter. With
+	 * {@link ParticleEmitterSettings.width} and
+	 * {@link ParticleEmitterSettings.height} it makes the area a box, so under
+	 * a {@link Camera3d} rain falls through a volume instead of a sheet facing
+	 * the viewer. A 2D camera does not show the depth itself; with an order
+	 * dependent blend mode, the particles are then sorted by it.
+	 * <br><br>
+	 * Not {@link Renderable#depth}, the emitter's own position along Z.
+	 * @default 0
+	 */
+	depth: number;
+
+	/**
+	 * Image used for particles texture. Without one, particles are white
+	 * squares of {@link textureSize} pixels, colored by `tint`: every such
+	 * emitter draws the renderer's one shared white pixel, stretched, so none
+	 * makes a texture of its own.
 	 * @default undefined
 	 * @see {@link textureSize}
 	 */
@@ -69,8 +87,8 @@ export interface ParticleEmitterSettings {
 	randomFrame?: boolean;
 
 	/**
-	 * Default texture size used for particles if no image is specified
-	 * (by default melonJS will create a white 8x8 texture image).
+	 * Size, in pixels, of the white square particles are drawn as when the
+	 * emitter has no {@link image}.
 	 * @default 8
 	 * @see {@link image}
 	 */
@@ -79,8 +97,34 @@ export interface ParticleEmitterSettings {
 	/**
 	 * Tint to be applied to particles.
 	 * @default "#fff"
+	 * @see {@link tintOverLife} for a tint that changes over each particle's life
 	 */
 	tint: string;
+
+	/**
+	 * The tints a particle takes over its life: the first at birth, the last
+	 * at the end, evenly spaced and blended in between, such as a flame that
+	 * starts white hot and dies deep red. Give as many CSS colors as you like
+	 * (one is a plain tint), and repeat a color to hold it longer. When set,
+	 * it replaces {@link tint}.
+	 * <br><br>
+	 * It changes the color only: a particle still fades out over its life,
+	 * and the alpha of a color given here is ignored. However many colors
+	 * there are, the blend is taken in 32 steps, the same on every renderer,
+	 * so a particle changes color at most 32 times; on the Canvas renderer,
+	 * which keeps a tinted copy of the texture per color, that bounds the
+	 * copies to 32.
+	 * <br><br>
+	 * Set it through the constructor or {@link ParticleEmitter#reset}.
+	 * @default undefined
+	 * @throws {TypeError} from the emitter, if not a non-empty array of strings
+	 * @example
+	 * new ParticleEmitter(x, y, {
+	 *     image: spark,
+	 *     tintOverLife: ["#fff3b0", "#ffb04a", "#e45414", "#501408"],
+	 * });
+	 */
+	tintOverLife?: readonly string[] | undefined;
 
 	/**
 	 * Total number of particles in the emitter.
@@ -391,6 +435,7 @@ export interface ParticleEmitterSettings {
 const defaultParticleEmitterSettings: ParticleEmitterSettings = {
 	width: 1,
 	height: 1,
+	depth: 0,
 	image: undefined,
 	framewidth: undefined,
 	frameheight: undefined,
@@ -398,6 +443,7 @@ const defaultParticleEmitterSettings: ParticleEmitterSettings = {
 	randomFrame: false,
 	textureSize: 8,
 	tint: "#fff",
+	tintOverLife: undefined,
 	totalParticles: 50,
 	angle: Math.PI / 2,
 	angleVariation: 0,

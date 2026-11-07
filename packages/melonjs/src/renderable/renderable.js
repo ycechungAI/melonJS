@@ -236,6 +236,14 @@ export default class Renderable extends Rect {
 		this.onVisibilityChange = undefined;
 
 		/**
+		 * backing value of {@link Renderable#sortOffset}
+		 * @type {number}
+		 * @ignore
+		 * @internal
+		 */
+		this._sortOffset = 0;
+
+		/**
 		 * Whether the renderable object will always update, even when outside of the viewport<br>
 		 * @type {boolean}
 		 * @default false
@@ -271,12 +279,43 @@ export default class Renderable extends Rect {
 		/**
 		 * If true, this floating renderable will be rendered by all cameras
 		 * (e.g. background image layers). If false (default), floating elements
-		 * are only rendered by the default camera (e.g. UI/HUD elements).
+		 * are only rendered by the default camera (e.g. UI/HUD elements),
+		 * zoomed or not.
 		 * Only applies to floating renderables in multi-camera setups.
 		 * @type {boolean}
 		 * @default false
 		 */
 		this.visibleInAllCameras = false;
+
+		/**
+		 * The layers this renderable belongs to, as bits (1, 2, 4, 8... up to
+		 * 32 of them). A camera draws it only if it shares a bit with the
+		 * camera's {@link Camera2d#cullMask}: by default every renderable is on
+		 * layer 1 and every camera draws every layer, so it shows in all of
+		 * them. Put something on a layer a camera leaves out to keep it off that
+		 * camera only, such as the particles off a minimap. A container left
+		 * out is left out with everything inside it (the world included), and
+		 * a renderable on no layer, `0`, is drawn by no camera.
+		 * <br><br>
+		 * It decides what a camera draws, and nothing else: the renderable
+		 * still updates, collides and receives pointer events. A
+		 * {@link Light2d} a camera leaves out, itself or a container it is in,
+		 * neither glows, nor cuts its hole in the darkness, nor lights
+		 * normal-mapped sprites in that camera (a `Light3d` lights the meshes
+		 * of every camera). A
+		 * floating renderable must also pass the camera's floating rule (see
+		 * {@link Renderable#visibleInAllCameras}). On an object of a Tiled map
+		 * it can be set as an `int` custom property of the object.
+		 * @type {number}
+		 * @default 1
+		 * @see Camera2d#cullMask
+		 * @example
+		 * // particles on their own layer, and a minimap that leaves it out
+		 * const PARTICLES = 2;
+		 * emitter.visibilityLayer = PARTICLES;
+		 * minimap.cullMask = ~PARTICLES;
+		 */
+		this.visibilityLayer = 1;
 
 		/**
 		 * When enabled, an object container will automatically apply
@@ -399,6 +438,15 @@ export default class Renderable extends Rect {
 		 * @internal
 		 */
 		this._postEffectManaged = false;
+
+		/**
+		 * whether this camera's post-effect pass goes OVER what is already
+		 * drawn in the frame (another camera drew first), rather than
+		 * starting the frame (see {@link Camera2d#draw})
+		 * @ignore
+		 * @internal
+		 */
+		this._postEffectOver = false;
 
 		/**
 		 * the blend mode to be applied to this renderable — any of the modes
@@ -603,6 +651,59 @@ export default class Renderable extends Rect {
 	}
 
 	/**
+	 * An offset, in pixels, added to this renderable's position when its
+	 * parent container sorts its children on `"y"` (or `"x"`), and used for
+	 * nothing else. It **never moves the renderable** and never changes where
+	 * or how it is drawn: it only decides whether it is drawn before or after
+	 * its siblings, and so which one is on top, and which one a pointer hits.
+	 * <br><br>
+	 * A container sorted on `"y"` draws its children from the smallest
+	 * `pos.y` to the largest, the last one on top. A child with a
+	 * `sortOffset` is lined up as if it stood that many pixels lower
+	 * (positive) or higher (negative), while staying where it is. Use it when
+	 * `pos` is not the point a renderable should be sorted by: the top of a
+	 * Tiled tile object's image, the top left corner of a container, or the
+	 * top of a particle emitter's spawn area.
+	 * <br><br>
+	 * - A container that keeps itself sorted (`autoSort`, the default) picks a
+	 *   change up at its next update; with `autoSort` off, call its `sort()`.
+	 * - Containers sorted on `"z"` or `"depth"` ignore it, and on `"x"` and
+	 *   `"y"` a different `pos.z` still decides first.
+	 * - Two children that come out equal keep their order, which draws the one
+	 *   added last BEHIND the other: an offset of `1` settles such a tie on
+	 *   purpose.
+	 * - A renderable taken from a pool starts again at `0`.
+	 * @type {number}
+	 * @default 0
+	 * @throws {TypeError} if set to anything but a finite number
+	 * @example
+	 * // a torch hung on a wall at the wall's own position: line it up
+	 * // 1 px lower, so that it is drawn over the wall
+	 * torch.sortOffset = 1;
+	 * @example
+	 * // a particle emitter's pos is the top of its spawn area. Dust rising at
+	 * // the foot of a door sits far below the door's pos, and would be drawn
+	 * // over everything between the two: line it up with the door instead
+	 * dust.sortOffset = door.pos.y - dust.pos.y;
+	 */
+	get sortOffset() {
+		return this._sortOffset;
+	}
+	set sortOffset(value) {
+		// a NaN or a string would quietly scramble the order of every sibling
+		// (`pos.y + "5"` is "1005"), so refuse it where it is set
+		if (typeof value !== "number" || !Number.isFinite(value)) {
+			throw new TypeError(
+				`sortOffset must be a finite number, not ${String(value)}`,
+			);
+		}
+		if (value === this._sortOffset) {
+			return;
+		}
+		this._sortOffset = value;
+	}
+
+	/**
 	 * the depth of this renderable on the z axis
 	 * @type {number}
 	 */
@@ -695,11 +796,18 @@ export default class Renderable extends Rect {
 			this.postEffects.length = 0;
 		} else {
 			this.postEffects = [value];
+			value._renderer?._queueWarm?.(this);
 		}
 	}
 
 	/**
 	 * Add a post-processing shader effect to this renderable.
+	 *
+	 * With the `prewarm` application setting on (the default), what the
+	 * effect will need to draw here is compiled from this call, off the
+	 * frame, rather than on the frame the renderable first draws with it.
+	 * That takes a moment to finish, so attach effects when the renderable
+	 * is built (a pool, a stage starting) rather than when it is shown.
 	 * @param {GLShader|ShaderEffect} effect - the effect to add
 	 * @returns {GLShader|ShaderEffect} the added effect
 	 * @example
@@ -707,6 +815,9 @@ export default class Renderable extends Rect {
 	 */
 	addPostEffect(effect) {
 		this.postEffects.push(effect);
+		// compile what this effect will need now rather than on the frame the
+		// renderable first draws with it (honours the `prewarm` setting)
+		effect?._renderer?._queueWarm?.(this);
 		return effect;
 	}
 
@@ -1288,6 +1399,13 @@ export default class Renderable extends Rect {
 			renderer.translate(-ax, -ay);
 		}
 
+		// its own transform applied: its effects learn where it is, for the
+		// ones that place a pattern on it (a sway's planted row, a shine's
+		// sweep). Optional, for a renderer that is not a `Renderer`
+		if (!this._postEffectManaged && this.postEffects.length > 0) {
+			renderer._setEffectSpace?.(this);
+		}
+
 		// Apply the current tint and opacity.
 		//
 		// Multiplied by the alpha already on the renderer, so opacity
@@ -1601,6 +1719,7 @@ export function resetRenderableState(renderable) {
 	renderable.isRenderable = true;
 	renderable.isKinematic = true;
 	renderable.visibleInAllCameras = false;
+	renderable.visibilityLayer = 1;
 	renderable.alwaysUpdate = false;
 	renderable.updateWhenPaused = false;
 	renderable.isPersistent = false;
@@ -1608,6 +1727,7 @@ export function resetRenderableState(renderable) {
 	renderable.applyAnchorTransform = true;
 	renderable.postEffectNeedsCapture = false;
 	renderable.anchorPoint.set(0.5, 0.5);
+	renderable.sortOffset = 0;
 	renderable.currentTransform.identity();
 	renderable._flip.x = false;
 	renderable._flip.y = false;

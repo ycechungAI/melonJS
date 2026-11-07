@@ -27,6 +27,18 @@ export * from "../../src/index.ts";
 export { CapacitorPlugin } from "../../../capacitor-plugin/src/index.ts";
 export { DebugPanelPlugin } from "../../../debug-plugin/src/index.js";
 export {
+	type ButtonOptions,
+	type ControlArea,
+	GamepadPlugin,
+	type GamepadPluginOptions,
+	type Placement,
+	type StickKeys,
+	type StickOptions,
+	type StickTap,
+	type VirtualButton,
+	type VirtualStick,
+} from "../../../gamepad-plugin/src/index.ts";
+export {
 	MatterAdapter,
 	type MatterAdapterOptions,
 } from "../../../matter-adapter/src/index.ts";

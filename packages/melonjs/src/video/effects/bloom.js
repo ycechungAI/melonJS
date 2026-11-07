@@ -1,3 +1,4 @@
+import { FRAME_GLSL, FRAME_WGSL, FRAME_WGSL_MEMBERS } from "./frame.js";
 import ShaderEffect from "./shadereffect.js";
 
 /**
@@ -81,7 +82,7 @@ uniform float uThreshold;
 uniform float uIntensity;
 uniform float uRadius;
 uniform vec2 uTextureSize;
-
+${FRAME_GLSL}
 vec3 overBright(vec4 c) {
 	float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
 	// soft quadratic knee over the eighth of a unit above the threshold
@@ -93,7 +94,7 @@ vec4 apply(vec4 color, vec2 uv) {
 	vec2 texel = uRadius / uTextureSize;
 	vec3 sum = overBright(color) * 0.16;
 ${tapList("vec2", (at) => {
-	return `texture2D(uSampler, ${at})`;
+	return `frameTexel(${at})`;
 })}
 	return vec4(color.rgb + sum * uIntensity, color.a);
 }
@@ -104,10 +105,10 @@ struct BloomUniforms {
 	uThreshold : f32,
 	uIntensity : f32,
 	uRadius : f32,
-	uTextureSize : vec2f,
+	uTextureSize : vec2f,${FRAME_WGSL_MEMBERS}
 };
 @group(3) @binding(0) var<uniform> fx : BloomUniforms;
-
+${FRAME_WGSL}
 fn overBright(c : vec4f) -> vec3f {
 	let l = dot(c.rgb, vec3f(0.2126, 0.7152, 0.0722));
 	let knee = clamp((l - fx.uThreshold) / 0.125, 0.0, 1.0);
@@ -118,7 +119,7 @@ fn apply(color : vec4f, uv : vec2f) -> vec4f {
 	let texel = fx.uRadius / fx.uTextureSize;
 	var sum = overBright(color) * 0.16;
 ${tapList("vec2f", (at) => {
-	return `textureSample(uTexture, uSampler, ${at})`;
+	return `frameTexel(${at})`;
 })}
 	return vec4f(color.rgb + sum * fx.uIntensity, color.a);
 }
@@ -136,10 +137,9 @@ ${tapList("vec2f", (at) => {
  * Not to be confused with {@link GlowEffect}, which draws an outline OUTSIDE a
  * sprite's silhouette and does nothing at all on an opaque frame.
  *
- * `textureSize` must match what is being filtered, since the tap offsets are
- * in texels; it defaults to the renderer's own size, which is what a camera
- * effect wants. Call {@link BloomEffect#setTextureSize} from an
- * {@link event.ONRESIZE} handler, or after applying it to something smaller.
+ * Its reach is in texels of what it filters: the screen for a camera's
+ * effect, the sprite's texture on a sprite (alone or with other effects, at
+ * any scale or zoom), so it follows a resize by itself.
  * @category Effects
  * @see {@link Renderable#addPostEffect} for usage
  * @example
@@ -159,7 +159,7 @@ export default class BloomEffect extends ShaderEffect {
 	 * @param {number} [options.threshold=0.75] - luminance a pixel must pass before it blooms, `0` (everything blooms) to `1` (only white does)
 	 * @param {number} [options.intensity=1.0] - how much of the gathered light is added back
 	 * @param {number} [options.radius=2.0] - halo reach, in texels
-	 * @param {number[]} [options.textureSize] - dimensions of what is being filtered, `[width, height]`; defaults to the renderer's size
+	 * @param {number[]} [options.textureSize] - the size, `[width, height]`, of the texture its reach is measured in; by default the texture it draws: a sprite's own, alone or with other effects and at any scale or zoom, the screen for a camera's effect
 	 */
 	constructor(renderer, options = {}) {
 		super(renderer, { glsl: glslFragment, wgsl: wgslFragment });
@@ -167,18 +167,15 @@ export default class BloomEffect extends ShaderEffect {
 		this.threshold = options.threshold ?? 0.75;
 		this.intensity = options.intensity ?? 1.0;
 		this.radius = options.radius ?? 2.0;
-		// A camera effect filters the frame, so the frame's size is the useful
-		// default. `BlurEffect` predates this and defaults to 256x256, which
-		// is why its own docs have to tell you to set it.
-		const texSize = options.textureSize ?? [
-			renderer?.width ?? 256,
-			renderer?.height ?? 256,
-		];
 
 		this.setUniform("uThreshold", this.threshold);
 		this.setUniform("uIntensity", this.intensity);
 		this.setUniform("uRadius", this.radius);
-		this.setUniform("uTextureSize", new Float32Array(texSize));
+		// its reach is in texels: of the texture it draws, unless given one
+		this._initTextureSize(options.textureSize, [
+			renderer?.width ?? 256,
+			renderer?.height ?? 256,
+		]);
 	}
 
 	/**
@@ -209,10 +206,10 @@ export default class BloomEffect extends ShaderEffect {
 	}
 
 	/**
-	 * set the dimensions of what is being filtered. The tap offsets are in
-	 * texels, so a stale size makes the halo the wrong width after a resize.
-	 * @param {number} width - width in pixels
-	 * @param {number} height - height in pixels
+	 * Measure the effect's reach in the texels of a texture of this size,
+	 * rather than of the texture it draws (the default)
+	 * @param {number} width - texture width in pixels
+	 * @param {number} height - texture height in pixels
 	 */
 	setTextureSize(width, height) {
 		this.setUniform("uTextureSize", new Float32Array([width, height]));

@@ -14,6 +14,7 @@ import { remove } from "../../utils/array.ts";
 import { Bounds, boundsPool } from "../bounds.ts";
 import { collision } from "../collision.js";
 import { isShapeEntry } from "../physicseditor.js";
+import { anchorOffsetX, anchorOffsetY } from "./sat.js";
 
 /**
  * Direction bits for {@link Body#immovableBlock}. One per cardinal direction a
@@ -401,6 +402,10 @@ export default class Body {
 		 * falling state of the body<br>
 		 * true if the object is falling<br>
 		 * false if the object is standing on something<br>
+		 * Set from the velocity by each step, then by the collisions resolved
+		 * in it: pushed up out of something below while not rising clears it
+		 * (and `jumping`), pushed down by something above while rising sets
+		 * it (and clears `jumping`), however far the body was pushed.
 		 * @readonly
 		 * @public
 		 * @type {boolean}
@@ -499,8 +504,10 @@ export default class Body {
 	 * `force/mass·dt²`, typically ~100× smaller than builtin).
 	 * @param {number} x - force along the X axis
 	 * @param {number} y - force along the Y axis
-	 * @param {number} [pointX] - world X of the application point; when
-	 *   present (along with `pointY`) and different from the body centroid,
+	 * @param {number} [pointX] - world X of the application point, as on
+	 *   the matter and planck adapters (inside an offset container, that
+	 *   includes the container's position). When present (along with
+	 *   `pointY`) and different from the body centroid,
 	 *   the resulting lever arm generates a torque
 	 *   `τ = (r.x · F.y) − (r.y · F.x)` that bumps {@link Body#angularVelocity}
 	 *   by `τ / pseudoInertia`. Omit both `pointX` and `pointY` for the
@@ -513,7 +520,9 @@ export default class Body {
 	 *
 	 * // off-centre push on a crate: the contact point at the top of the
 	 * // crate is above its centroid, so the same horizontal force now
-	 * // both translates AND tips the crate forward.
+	 * // both translates AND tips the crate forward. (`pos` is the top-left
+	 * // corner here because the crate's anchorPoint is (0, 0), as for a
+	 * // Tiled object; with the default (0.5, 0.5) anchor, `pos` is its centre.)
 	 * const topX = crate.pos.x + crate.width / 2;
 	 * const topY = crate.pos.y;
 	 * crate.body.applyForce(1.5, 0, topX, topY);
@@ -526,11 +535,35 @@ export default class Body {
 		this.force.x += x;
 		this.force.y += y;
 		if (typeof pointX === "number" && typeof pointY === "number") {
-			// Lever arm r = point - centroid. Centroid is the geometric
-			// center of the body's bounds.
+			// Lever arm r = point - centroid. The centroid is the geometric
+			// center of the body's bounds, but `body.bounds` is
+			// renderable-local while the point is a WORLD coordinate, as on
+			// matter and planck. Subtracting the local centre straight from
+			// the world point offset the lever arm by the renderable's
+			// position, so any body away from the origin got the wrong
+			// torque, often of the wrong sign. Bring the centroid into world
+			// space exactly as SAT and raycast place a body's shapes: the
+			// renderable's pos, less its anchor offset, plus its parent's
+			// absolute position.
+			const renderable = this.ancestor;
+			const parent = renderable.ancestor;
+			const parentAbs =
+				parent && typeof parent.getAbsolutePosition === "function"
+					? parent.getAbsolutePosition()
+					: undefined;
 			const bounds = this.bounds;
-			const rx = pointX - bounds.centerX;
-			const ry = pointY - bounds.centerY;
+			const cx =
+				renderable.pos.x -
+				anchorOffsetX(renderable) +
+				(parentAbs ? parentAbs.x : 0) +
+				bounds.centerX;
+			const cy =
+				renderable.pos.y -
+				anchorOffsetY(renderable) +
+				(parentAbs ? parentAbs.y : 0) +
+				bounds.centerY;
+			const rx = pointX - cx;
+			const ry = pointY - cy;
 			// Z-component of r × F.
 			const torque = rx * y - ry * x;
 			// Guard against division by zero / negative inertia
@@ -596,7 +629,9 @@ export default class Body {
 	 * Set absolute rotation angle (radians). Updates the body's `angle`
 	 * field and re-syncs the renderable's `currentTransform` immediately
 	 * so the visual rotation reflects the new value without waiting for
-	 * the next integration step.
+	 * the next integration step. The renderable turns about the centre of
+	 * the body's shapes, whatever its `anchorPoint`; the shapes themselves
+	 * are not rotated (see {@link Body#rotate} for that).
 	 * @param {number} rad - target angle in radians
 	 * @example
 	 * // turret aims at the player every frame:
@@ -625,9 +660,11 @@ export default class Body {
 
 	/**
 	 * Sync `this.angle` to the renderable's `currentTransform`. Pivot is
-	 * the body's bounds center (matches the matter adapter's rotation
-	 * pivot — see `MatterAdapter.syncFromPhysics`). Internal helper used
-	 * by both the per-step integrator and {@link Body#setAngle}.
+	 * the centre of the body's shapes where they are drawn and collide —
+	 * the bounds centre, in the renderable's anchored frame (matches the
+	 * matter adapter's rotation pivot — see `MatterAdapter.syncFromPhysics`).
+	 * Internal helper used by both the per-step integrator and
+	 * {@link Body#setAngle}.
 	 * @ignore
 	 * @internal
 	 */
@@ -644,8 +681,18 @@ export default class Body {
 		// renderable at (100, 50) rotated about (-80, -30) rather than its
 		// own centre. Invisible at the origin, which is where the spec that
 		// covers this used to build its renderable.
-		const cx = bounds.centerX;
-		const cy = bounds.centerY;
+		//
+		// `currentTransform` is applied about the renderable's `pos` (see
+		// `Renderable#preDraw` and `updateBounds`), BEFORE the drawn frame is
+		// shifted by `-size * anchorPoint`, while the shapes are measured from
+		// that shifted frame's top-left corner. So the shapes' centre, in the
+		// space the transform works in, is `bounds.center` less the anchor
+		// offset. Without that a centre-anchored renderable rotated about its
+		// bottom-right corner and swung away from where it stood.
+		const ancestor = this.ancestor;
+		const anchored = ancestor.anchorPoint !== undefined;
+		const cx = bounds.centerX - (anchored ? anchorOffsetX(ancestor) : 0);
+		const cy = bounds.centerY - (anchored ? anchorOffsetY(ancestor) : 0);
 		t.identity();
 		if (this.angle !== 0) {
 			if (cx !== 0 || cy !== 0) {
@@ -850,9 +897,10 @@ export default class Body {
 			const poly = shape.toPolygon();
 			stored = poly;
 			this.shapes.push(poly);
-			// update the body bounds
-			this.bounds.add(poly.points);
-			this.bounds.translate(poly.pos);
+			// update the body bounds with the shape's own bounds, which already
+			// include its position. Translating the body bounds by the shape
+			// position instead would also move every shape added before it.
+			this.bounds.addBounds(poly.getBounds());
 		} else if (shape instanceof Bounds) {
 			// Bounds doesn't carry a `toPolygon` method — it's a primitive
 			// AABB that polygon.ts already depends on, so we keep the
@@ -867,25 +915,24 @@ export default class Body {
 			]);
 			stored = poly;
 			this.shapes.push(poly);
-			this.bounds.add(poly.points);
-			this.bounds.translate(poly.pos);
+			this.bounds.addBounds(poly.getBounds());
 		} else if (shape instanceof Ellipse) {
 			if (!this.shapes.includes(shape)) {
 				// see removeShape
 				this.shapes.push(shape);
 			}
-			// update the body bounds
-			this.bounds.addBounds(shape.getBounds());
-			// use bounds position as ellipse position is center
-			this.bounds.translate(shape.getBounds().x, shape.getBounds().y);
+			// update the body bounds (they already sit around the center),
+			// refreshing the shape's own first in case its `pos` was edited
+			// directly
+			this.bounds.addBounds(shape.updateBounds());
 		} else if (shape instanceof Polygon) {
 			if (!this.shapes.includes(shape)) {
 				// see removeShape
 				this.shapes.push(shape);
 			}
-			// update the body bounds
-			this.bounds.add(shape.points);
-			this.bounds.translate(shape.pos);
+			// update the body bounds, refreshing the shape's own first in case
+			// its `pos` or `points` were edited directly
+			this.bounds.addBounds(shape.updateBounds());
 		} else if (shape instanceof Point) {
 			if (!this.shapes.includes(shape)) {
 				// see removeShape
@@ -973,8 +1020,17 @@ export default class Body {
 	 * @param {Vector2d[]} vertices - an array of me.Vector2d points defining a convex hull
 	 * @param {number} [index=0] - the shape object for which to set the vertices
 	 * @param {boolean} [clear=true] - either to reset the body definition before adding the new vertices
+	 * @throws {RangeError} if `index` is past the end of the shape list
 	 */
 	setVertices(vertices, index = 0, clear = true) {
+		// `index === shapes.length` appends a shape. Anything further would
+		// leave a gap in `shapes`, and the collision loops stop at the first
+		// missing shape, so the shapes below it would silently stop colliding.
+		if (index > this.shapes.length) {
+			throw new RangeError(
+				`Body#setVertices: index ${index} is past the end of the shape list (${this.shapes.length} shapes)`,
+			);
+		}
 		const polygon = this.getShape(index);
 		if (polygon instanceof Polygon) {
 			polygon.setShape(0, 0, vertices);
@@ -988,7 +1044,17 @@ export default class Body {
 		}
 
 		// update the body bounds to take in account the new vertices
-		this.bounds.add(this.shapes[index].points, clear);
+		if (clear) {
+			// rebuild them from every shape, as `removeShape` does, so the other
+			// shapes of a multi-shape body stay inside them
+			this.bounds.clear();
+			this.hasDepth = false;
+			for (const shape of this.shapes) {
+				this.addShape(shape);
+			}
+		} else {
+			this.bounds.add(this.shapes[index].points);
+		}
 
 		if (typeof this.onBodyUpdate === "function") {
 			this.onBodyUpdate(this);
@@ -1266,6 +1332,10 @@ export default class Body {
 			}
 		}
 
+		// vertical velocity this body arrived with, before the cancellation
+		// below — read by the falling/jumping update at the end
+		const arrivingVelY = this.vel.y;
+
 		// Move out of the other object shape
 		this.ancestor.pos.set(
 			this.ancestor.pos.x - mtvX * ratio,
@@ -1300,16 +1370,39 @@ export default class Body {
 		// unqualified `mtvY !== 0` read that sliver as a floor or a ceiling.
 		// A body resting on a surface then reported itself airborne, since
 		// `isGrounded()` is `!falling && !jumping`.
+		//
+		// The body escapes along `-mtv`, so `mtvY > 0` pushes it UP out of
+		// something below it (a floor) and `mtvY < 0` pushes it DOWN out of
+		// something above it (a ceiling). The direction decides, never the
+		// size: the floor push-out of a resting body equals what it sank this
+		// step (`mass * gravity * gravityScale * timer.tick`), and the former
+		// `mtvY >= 1` test kept any body sinking a pixel or more per step —
+		// heavier gravity or mass, or a low frame rate — `falling` forever.
 		if (
 			Math.abs(mtvY) >= Math.abs(mtvZ) &&
 			mtvY !== 0 &&
 			!this.ignoreGravity &&
 			this.gravityScale !== 0
 		) {
-			// cancel the falling an jumping flags if necessary
-			const dir = this.falling === true ? 1 : this.jumping === true ? -1 : 0;
-			this.falling = mtvY >= dir;
-			this.jumping = mtvY <= -dir;
+			const rising = arrivingVelY < 0;
+			if (mtvY > 0) {
+				if (!rising) {
+					// pushed up out of a floor while not moving away from it:
+					// landed
+					this.falling = false;
+					this.jumping = false;
+				} else if (!this.jumping) {
+					// still on its way up (a jump grazing a ledge or a slope
+					// it is leaving): not a landing, so it stays airborne
+					this.falling = true;
+				}
+			} else if (rising || this.jumping) {
+				// pushed down by a ceiling on the way up: the jump ends and
+				// the body falls. A body that is not rising (standing on a
+				// floor and touched from above) keeps its ground state.
+				this.falling = true;
+				this.jumping = false;
+			}
 		}
 	}
 

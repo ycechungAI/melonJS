@@ -1,6 +1,34 @@
+import { warnOnce } from "../../lang/console.js";
+import { ME_LAYOUT } from "./local_space.js";
 import { shiftGroup3, spliceEffect } from "./mesh_splice.js";
 import { parseWGSLBody } from "./wgsl/parse.js";
 import { buildWGSLModule } from "./wgsl/scaffold.js";
+
+/**
+ * whether a uniform's new value is the one it already has: numbers by
+ * value, vectors and matrices element by element (callers reuse arrays)
+ * @param {number|number[]|ArrayLike<number>|undefined} previous - the value recorded
+ * @param {number|ArrayLike<number>} value - the incoming value
+ * @returns {boolean} true when nothing changes
+ * @ignore
+ */
+function sameValue(previous, value) {
+	if (previous === undefined) {
+		return false;
+	}
+	if (typeof value === "number" || typeof previous === "number") {
+		return previous === value;
+	}
+	if (previous.length !== value.length) {
+		return false;
+	}
+	for (let i = 0; i < value.length; i++) {
+		if (previous[i] !== value[i]) {
+			return false;
+		}
+	}
+	return true;
+}
 
 /**
  * The WGSL realization of a ShaderEffect — the WebGPU counterpart of the
@@ -76,9 +104,10 @@ export default class WGSLEffectRealization {
 		this.i32 = new Int32Array(this.cpu);
 		this.u32 = new Uint32Array(this.cpu);
 
-		// CPU mirror of the engine `MEBuiltins` struct (noise_uv): size_obj
-		// at float 0, size_img at 2, offset at 4; 32 bytes with tail padding
-		this.meMirror = new Float32Array(8);
+		// CPU mirror of the engine `MEBuiltins` struct: the noise_uv rect
+		// (size_obj at float 0, size_img at 2, offset at 4) and the local
+		// space after it (see local_space.js for the layout)
+		this.meMirror = new Float32Array(ME_LAYOUT.length);
 
 		/**
 		 * last user-set value per uniform name — the clone-replay source
@@ -87,16 +116,25 @@ export default class WGSLEffectRealization {
 		 */
 		this.values = new Map();
 
-		// names already warned about, so a per-frame setUniform on an
-		// unknown name doesn't flood the console
-		this.warned = new Set();
-
 		/**
 		 * device-scoped GPU state, built lazily by the renderer's effect
 		 * path and invalidated via the pipeline-cache epoch (device loss)
 		 * @type {object|null}
 		 */
 		this.gpu = null;
+
+		/**
+		 * set by the quad batcher drawing with this effect: called before a
+		 * uniform (or the `noise_uv` rect) takes a new value, so the quads
+		 * queued under the old one draw first. The mirror is uploaded when
+		 * the queued quads draw, so without it they would all draw with the
+		 * last value set. The same value again calls nothing, so sprites
+		 * sharing the effect keep sharing a draw
+		 * @type {(() => void)|null}
+		 * @ignore
+		 * @internal
+		 */
+		this.onUniformChange = null;
 	}
 
 	/**
@@ -109,12 +147,9 @@ export default class WGSLEffectRealization {
 	setUniform(name, value) {
 		const placement = this.layout.get(name);
 		if (typeof placement === "undefined") {
-			if (!this.warned.has(name)) {
-				this.warned.add(name);
-				console.warn(
-					`ShaderEffect: unknown WGSL uniform "${name}" (not a member of the effect's uniform struct)`,
-				);
-			}
+			warnOnce(
+				`ShaderEffect: unknown WGSL uniform "${name}" (not a member of the effect's uniform struct)`,
+			);
 			return false;
 		}
 		// unwrap matrix-like objects the GLSL path also accepts
@@ -130,6 +165,12 @@ export default class WGSLEffectRealization {
 		// GLSL accepts booleans for bool/int uniforms — normalize
 		if (typeof value === "boolean") {
 			value = value ? 1 : 0;
+		}
+		if (
+			this.onUniformChange !== null &&
+			!sameValue(this.values.get(name), value)
+		) {
+			this.onUniformChange();
 		}
 		const index = placement.offset >> 2;
 		if (typeof value === "number") {

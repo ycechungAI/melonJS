@@ -1,9 +1,17 @@
-import { transformQuadCorners } from "../../gpu/quadcorners.ts";
+import { Color } from "../../../math/color.ts";
+import { FRAME_UNBOUNDED, frameClampMode, isFramed } from "../../gpu/frame.js";
+import { scaleQuad, transformQuadCorners } from "../../gpu/quadcorners.ts";
 import IndexBuffer from "../buffer/index.js";
 import { buildMultiTextureFragment } from "./../shaders/multitexture.js";
 import quadMultiVertex from "./../shaders/quad-multi.vert";
 import { resolveTopology } from "../utils/topology.js";
 import { MaterialBatcher } from "./material_batcher.js";
+
+/**
+ * the blit's tint: white, at the opacity the blit composites at
+ * @ignore
+ */
+const blitTint = new Color(255, 255, 255);
 
 /**
  * additional import for TypeScript
@@ -41,7 +49,7 @@ export default class QuadBatcher extends MaterialBatcher {
 			attributes: [
 				{
 					// vec3: (x, y, z). z carries `renderable.depth` for
-					// perspective projection (Camera3d). Stride = 28 bytes.
+					// perspective projection (Camera3d). Stride = 36 bytes.
 					name: "aVertex",
 					format: "float32x3",
 					offset: 0 * Float32Array.BYTES_PER_ELEMENT,
@@ -61,6 +69,16 @@ export default class QuadBatcher extends MaterialBatcher {
 					format: "float32",
 					offset: 6 * Float32Array.BYTES_PER_ELEMENT,
 				},
+				{
+					// the UV of the quad's opposite corner, which with the
+					// vertex's own makes the frame the quad draws (see
+					// shaders/frameclamp.js). After the attributes a custom
+					// shader declares, so those keep their locations; the
+					// lit layout keeps it here too, its extras after it
+					name: "aFrame",
+					format: "float32x2",
+					offset: 7 * Float32Array.BYTES_PER_ELEMENT,
+				},
 			],
 			shader: {
 				vertex: quadMultiVertex,
@@ -69,6 +87,7 @@ export default class QuadBatcher extends MaterialBatcher {
 		});
 
 		this.bindColorSamplers();
+		this.syncFrameClamp();
 
 		/**
 		 * whether multi-texture batching is currently active
@@ -119,6 +138,41 @@ export default class QuadBatcher extends MaterialBatcher {
 		for (let i = 0; i < this.maxBatchTextures; i++) {
 			this.defaultShader.setUniform("uSampler" + i, i);
 		}
+	}
+
+	/**
+	 * Point the default shader's frame clamp at the renderer's texture
+	 * filter: on under `"linear-mipmap"`, where a sprite drawn small reads a
+	 * mipmap level wide enough to reach into the next frame of its atlas,
+	 * off otherwise (see `shaders/frameclamp.js`). Called at init and when
+	 * the filter changes; the quads already queued draw under the mode they
+	 * were queued with.
+	 * @ignore
+	 * @internal
+	 */
+	syncFrameClamp() {
+		const shader = this.defaultShader;
+		const mode = frameClampMode(this.renderer);
+		// keyed to the shader too: a rebuilt default shader starts unset
+		if (this._frameClampShader === shader && this._frameClamp === mode) {
+			return;
+		}
+		this.flush();
+		// binds the default program: keep the renderer's record of the bound
+		// program true, so the next draw re-binds whichever shader it needs
+		shader.setUniform("uFrameClamp", mode);
+		this.renderer.currentProgram = shader.program;
+		/**
+		 * the frame clamp mode last written to `_frameClampShader`
+		 * @ignore
+		 * @internal
+		 */
+		this._frameClamp = mode;
+		/**
+		 * @ignore
+		 * @internal
+		 */
+		this._frameClampShader = shader;
 	}
 
 	/**
@@ -199,8 +253,9 @@ export default class QuadBatcher extends MaterialBatcher {
 	 * @param {number} width - destination width
 	 * @param {number} height - destination height
 	 * @param {GLShader|ShaderEffect} shader - the shader effect to apply
+	 * @param {number} [alpha=1] - the opacity to composite at (0.0 to 1.0)
 	 */
-	blitTexture(source, x, y, width, height, shader) {
+	blitTexture(source, x, y, width, height, shader, alpha = 1) {
 		const gl = this.gl;
 
 		this.useShader(shader);
@@ -213,15 +268,26 @@ export default class QuadBatcher extends MaterialBatcher {
 		gl.bindTexture(gl.TEXTURE_2D, source);
 		this.currentTextureUnit = 0;
 		this.boundTextures[0] = source;
+		// read at the game's texture filter, as a sprite reads its own
+		// texture, not through the sampler the last draw left on the unit
+		const samplers = this.renderer.samplerCache;
+		samplers.bind(0, samplers.get(this.renderer._glTextureFilter()));
 		shader.setUniform("uSampler", 0);
 
 		// `noise_uv` builtin: a blit is a full-frame quad — identity rect
 		shader._setNoiseUVRect?.(width, height, width, height, 0, 0);
+		// and the whole texture is the frame: sampling stays unbounded. The
+		// texture is the pass's render target, the size of the quad, and a
+		// renderable's chain measures in the renderable's own pixels
+		shader._clearFrameRect?.(width, height, this.renderer._chainScale);
 
 		// the blit samples a bottom-up capture FBO (the Y-flipped UVs
 		// below): uv.y grows UPWARD inside apply(), so directional bodies
 		// (DropShadow) flip their y arithmetic to keep "down" down
 		shader._setUVYDir?.(-1);
+		// a pass of a renderable's chain: where the renderable is, for the
+		// effects that place a pattern on it (local_space.js)
+		shader._setLocalSpace?.(this.renderer._chainSpace);
 
 		// (re)bind any extra textures a ShaderEffect declared via setTexture,
 		// to their reserved high units — after the source claims unit 0
@@ -246,14 +312,18 @@ export default class QuadBatcher extends MaterialBatcher {
 		);
 
 		// blits stay at z = 0 (screen-space, ortho); pre-PR behavior
-		// preserved unchanged
-		const tint = 0xffffffff;
-		this.vertexData.push(vec0.x, vec0.y, 0, 0, 1, tint, 0);
-		this.vertexData.push(vec1.x, vec1.y, 0, 1, 1, tint, 0);
-		this.vertexData.push(vec2.x, vec2.y, 0, 0, 0, tint, 0);
-		this.vertexData.push(vec3.x, vec3.y, 0, 1, 0, tint, 0);
+		// preserved unchanged. A blit draws the whole target: no frame
+		const tint = blitTint.toUint32(alpha);
+		const open = FRAME_UNBOUNDED;
+		const vertexData = this.vertexData;
+		vertexData.pushSprite(vec0.x, vec0.y, 0, 0, 1, tint, 0, open, open);
+		vertexData.pushSprite(vec1.x, vec1.y, 0, 1, 1, tint, 0, open, open);
+		vertexData.pushSprite(vec2.x, vec2.y, 0, 0, 0, tint, 0, open, open);
+		vertexData.pushSprite(vec3.x, vec3.y, 0, 1, 0, tint, 0, open, open);
 
 		this.flush();
+		// and back to the space `uv` always was, for whatever draws next
+		shader._setLocalSpace?.(null);
 
 		// unbind the texture to prevent feedback loop on next frame, and drop
 		// EVERY batcher's unit-0 slot — unit 0's GL binding is now null, and a
@@ -315,18 +385,34 @@ export default class QuadBatcher extends MaterialBatcher {
 			// quad's frame rect — min() normalizes flipped (swapped) UVs
 			if (typeof this.currentShader._setNoiseUVRect === "function") {
 				const source = texture.getTexture();
+				const sourceWidth = source.width || source.videoWidth || 1;
+				const sourceHeight = source.height || source.videoHeight || 1;
 				this.currentShader._setNoiseUVRect(
-					source.width || source.videoWidth || 1,
-					source.height || source.videoHeight || 1,
+					sourceWidth,
+					sourceHeight,
 					w,
 					h,
 					Math.min(u0, u1),
 					Math.min(v0, v1),
 				);
+				// and keep its samples inside that frame (on an atlas, the
+				// texture goes on into the neighbouring frames): the frame
+				// comes with the quad, the half texel with the texture
+				this.currentShader._setFrameTexel?.(sourceWidth, sourceHeight);
 			}
 			// direct atlas sampling: uv.y grows downward (directional bodies
 			// compensate on the pooled path, where captures are bottom-up)
 			this.currentShader._setUVYDir?.(1);
+			// the effect's vertex stage, AFTER the frame rect above, which
+			// must stay the sprite's own
+			const scale = this.currentShader._vertexScale;
+			if (scale !== undefined && (scale.x !== 1 || scale.y !== 1)) {
+				const q = scaleQuad(x, y, w, h, scale.x, scale.y);
+				x = q[0];
+				y = q[1];
+				w = q[2];
+				h = q[3];
+			}
 		}
 
 		// Transform vertices. Stamp per-sprite depth onto z BEFORE
@@ -345,11 +431,21 @@ export default class QuadBatcher extends MaterialBatcher {
 
 		// 4 vertices per quad; the index buffer provides the 6 indices.
 		// textureId is the unit index for multi-texture, or 0 for
-		// single-texture fallback.
+		// single-texture fallback. A repeating texture (a pattern) samples
+		// past its UVs on purpose, so it has no frame to keep to
 		const textureId = this.useMultiTexture ? unit : 0;
-		vertexData.push(vec0.x, vec0.y, vec0.z, u0, v0, tint, textureId);
-		vertexData.push(vec1.x, vec1.y, vec1.z, u1, v0, tint, textureId);
-		vertexData.push(vec2.x, vec2.y, vec2.z, u0, v1, tint, textureId);
-		vertexData.push(vec3.x, vec3.y, vec3.z, u1, v1, tint, textureId);
+		vertexData.pushSpriteQuad(
+			vec0,
+			vec1,
+			vec2,
+			vec3,
+			u0,
+			v0,
+			u1,
+			v1,
+			tint,
+			textureId,
+			isFramed(texture),
+		);
 	}
 }

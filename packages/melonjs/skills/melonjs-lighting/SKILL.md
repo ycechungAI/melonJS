@@ -41,6 +41,34 @@ normal-mapped sprites.
 returns immediately while its alpha is 0 — so with no ambient colour set there
 is nothing to cut through and the lights just look like soft additive blobs.
 
+## Soft edges: `softness`
+
+A light's hole in the darkness is hard-edged by default: full light inside its
+radius, full darkness outside. `light.softness` (0 to 1) fades it instead:
+
+```js
+const torch = new Light2d(x, y, 220, 220, "#ffb46a", 0.4);
+torch.softness = 0.8;      // lit core of 20% of the radius, then fading out
+```
+
+- `1` thins the darkness straight from the centre to the edge, the same falloff
+  as the glow; in between, a fully lit core of `1 - softness` of the radius.
+- Hard and soft lights mix in one scene. Where lights overlap, what is left of the
+  darkness is what each leaves, multiplied, so two half-lights make three
+  quarters light.
+- The hole is the light's size. For an opening wider than the glow (a torch whose
+  light reaches further than its flame's halo), add a second, bigger light with
+  `illuminationOnly = true`: it cuts the darkness and draws nothing.
+- Up to 32 lights in view are cut by one soft pass; lights outside the view do not
+  count. A scene with no soft light draws exactly as before.
+- To keep a camera out of the darkness (a minimap showing the level lit),
+  override `drawLighting` on the stage and skip that camera.
+- To keep one light out of a camera, put it, or a container it is in, on a
+  `visibilityLayer` the camera's `cullMask` leaves out: there it neither glows,
+  nor cuts the darkness, nor lights normal-mapped sprites (see
+  `melonjs-camera-and-drawing`). This is for a `Light2d`: a `Light3d` lights
+  the meshes of every camera.
+
 ## Multiple lights
 
 Add as many as you need — the glow quads and the ambient cutouts accumulate with
@@ -131,8 +159,9 @@ Unlit areas of a normal-mapped sprite render pure black unless you raise
 `Stage.ambientLightingColor` (default black) — that is the base level added to
 every lit pixel, and it is a different knob from `Stage.ambientLight`.
 
-Without a normal map a sprite is still lit, but flatly: brightness varies with
-distance from the light, not with surface direction.
+Without a normal map a sprite is not shaded at all: it takes the unlit path on
+every backend, and a light changes how it looks only through its additive glow
+and its cutout in the ambient darkness.
 
 ## What needs a GPU backend, and what does not
 
@@ -140,13 +169,15 @@ Less than you would expect. `Light2d` is renderer-agnostic: it just calls
 `renderer.drawLight(this)`, and every backend implements it — the GPU backends
 through a shared procedural radial-falloff shader, the Canvas renderer by
 rasterising a cached `Gradient` into one shared render target and compositing it
-with `drawImage`. The ambient cutout pass is plain `setMask` + `fillRect`. So the
-lit-spot look works everywhere, Canvas included.
+with `drawImage`. The hard ambient cutout pass is plain `setMask` + `fillRect`;
+the soft one is one shader pass on the GPU backends and an offscreen canvas on
+Canvas. So the lit-spot look, soft or hard, works everywhere, Canvas included.
 
 What Canvas cannot do is **per-pixel normal-map lighting**:
-`renderer.setLightUniforms()` is a no-op there, and the first frame that passes a
-non-empty light list logs a one-shot warning. Normal-mapped sprites simply render
-unlit — no error.
+`renderer.setLightUniforms()` is a no-op there, and the first normal-mapped
+sprite drawn while lights are on logs a one-shot warning (a scene with lights
+and no normal maps stays quiet). Normal-mapped sprites simply render unlit — no
+error.
 
 ```js
 if (app.renderer.shaderLanguage === null) {
@@ -171,7 +202,11 @@ See the `melonjs-3d` skill.
 | symptom | cause |
 |---|---|
 | lights added but the scene never darkens | no ambient colour set — `ambientLight` alpha is 0, so the pass returns early |
-| sprite lit flatly, ignoring light direction | no `normalMap` on the sprite, or the Canvas backend is active |
+| the lit area has a hard rim | `softness` is 0 (the default): set it on the light |
+| the darkness opens no wider than the glow | the hole is the light's size: add a bigger `illuminationOnly` light for the opening |
+| a minimap or second camera is dark too | every camera draws the stage's darkness: override `drawLighting` and skip that camera |
+| a light should show in one camera only | put it on a `visibilityLayer` the other camera's `cullMask` leaves out |
+| sprite not shaded by a light, only glowed over | no `normalMap` on the sprite, or the Canvas backend is active |
 | normal-mapped sprite is pure black where unlit | `Stage.ambientLightingColor` left at black |
 | the 33rd light shades nothing | `MAX_LIGHTS = 32` for the normal-map pipeline |
 | `TypeError` assigning `normalMap` | not an image-like value (a video element is rejected outright) |

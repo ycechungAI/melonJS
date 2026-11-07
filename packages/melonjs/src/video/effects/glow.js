@@ -1,3 +1,5 @@
+import { FRAME_GLSL, FRAME_WGSL, FRAME_WGSL_MEMBERS } from "./frame.js";
+import { rgba } from "./rgba.js";
 import ShaderEffect from "./shadereffect.js";
 
 /**
@@ -11,13 +13,13 @@ import ShaderEffect from "./shadereffect.js";
 // names, picked by the ShaderEffect base per renderer.shaderLanguage
 const wgslFragment = `
 struct GlowUniforms {
-	uGlowColor : vec3f,
+	uGlowColor : vec4f,
 	uGlowWidth : f32,
 	uGlowIntensity : f32,
-	uTextureSize : vec2f,
+	uTextureSize : vec2f,${FRAME_WGSL_MEMBERS}
 };
 @group(3) @binding(0) var<uniform> fx : GlowUniforms;
-
+${FRAME_WGSL}
 fn apply(color : vec4f, uv : vec2f) -> vec4f {
 	if (color.a > 0.0) {
 		return color;
@@ -27,11 +29,13 @@ fn apply(color : vec4f, uv : vec2f) -> vec4f {
 	let texel = fx.uGlowWidth / fx.uTextureSize;
 	for (var angle = 0.0; angle < 6.28; angle += 0.785) {
 		let offset = vec2f(cos(angle), sin(angle)) * texel;
-		a += textureSampleLevel(uTexture, uSampler, uv + offset, 0.0).a;
+		a += frameTexelLevel(uv + offset).a;
 	}
 	a = a / 8.0 * fx.uGlowIntensity;
 	if (a > 0.0) {
-		return vec4f(fx.uGlowColor * a, a) * vColor;
+		// the color's alpha is the halo's opacity; premultiplied, as everything the batcher draws is
+		let alpha = a * fx.uGlowColor.a;
+		return vec4f(fx.uGlowColor.rgb * alpha, alpha) * vColor;
 	}
 	return color;
 }
@@ -49,23 +53,27 @@ fn apply(color : vec4f, uv : vec2f) -> vec4f {
  *     color: [0.2, 0.5, 1.0],
  *     intensity: 1.5,
  * }));
+ * @example
+ * // a faint white halo: the color's alpha is the halo's opacity
+ * mySprite.addPostEffect(new GlowEffect(renderer, { color: [1.0, 1.0, 1.0, 0.5] }));
  */
 export default class GlowEffect extends ShaderEffect {
 	/**
 	 * @param {Renderer} renderer - the current renderer instance
 	 * @param {object} [options] - effect options
-	 * @param {number[]} [options.color=[1.0, 1.0, 1.0]] - glow color as [r, g, b] (0.0–1.0)
+	 * @param {number[]} [options.color=[1.0, 1.0, 1.0]] - glow color as [r, g, b] or [r, g, b, a] (0.0–1.0); the alpha is the halo's opacity
 	 * @param {number} [options.width=3.0] - glow spread in pixels
 	 * @param {number} [options.intensity=1.0] - glow brightness multiplier
-	 * @param {number[]} [options.textureSize=[256, 256]] - texture dimensions [width, height]
+	 * @param {number[]} [options.textureSize] - the size, `[width, height]`, of the texture its spread is measured in; by default the texture it draws: a sprite's own, alone or with other effects and at any scale or zoom, the screen for a camera's effect
 	 */
 	constructor(renderer, options = {}) {
 		super(renderer, {
 			glsl: `
-			uniform vec3 uGlowColor;
+			uniform vec4 uGlowColor;
 			uniform float uGlowWidth;
 			uniform float uGlowIntensity;
 			uniform vec2 uTextureSize;
+			${FRAME_GLSL}
 			vec4 apply(vec4 color, vec2 uv) {
 				if (color.a > 0.0) {
 					return color;
@@ -75,11 +83,13 @@ export default class GlowEffect extends ShaderEffect {
 				vec2 texel = uGlowWidth / uTextureSize;
 				for (float angle = 0.0; angle < 6.28; angle += 0.785) {
 					vec2 offset = vec2(cos(angle), sin(angle)) * texel;
-					a += texture2D(uSampler, uv + offset).a;
+					a += frameTexel(uv + offset).a;
 				}
 				a = a / 8.0 * uGlowIntensity;
 				if (a > 0.0) {
-					return vec4(uGlowColor * a, a) * vColor;
+					// the color's alpha is the halo's opacity; premultiplied, as everything the batcher draws is
+					float alpha = a * uGlowColor.a;
+					return vec4(uGlowColor.rgb * alpha, alpha) * vColor;
 				}
 				return color;
 			}
@@ -89,21 +99,21 @@ export default class GlowEffect extends ShaderEffect {
 
 		const color = options.color ?? [1.0, 1.0, 1.0];
 		const width = options.width ?? 3.0;
-		const texSize = options.textureSize ?? [256, 256];
 		this.intensity = options.intensity ?? 1.0;
 
-		this.setUniform("uGlowColor", new Float32Array(color));
+		this.setUniform("uGlowColor", rgba(color));
 		this.setUniform("uGlowWidth", width);
 		this.setUniform("uGlowIntensity", this.intensity);
-		this.setUniform("uTextureSize", new Float32Array(texSize));
+		// its spread is in texels: of the texture it draws, unless given one
+		this._initTextureSize(options.textureSize, [256, 256]);
 	}
 
 	/**
 	 * set the glow color
-	 * @param {number[]} color - glow color as [r, g, b] (0.0–1.0)
+	 * @param {number[]} color - glow color as [r, g, b] or [r, g, b, a] (0.0–1.0); the alpha is the halo's opacity
 	 */
 	setColor(color) {
-		this.setUniform("uGlowColor", new Float32Array(color));
+		this.setUniform("uGlowColor", rgba(color));
 	}
 
 	/**
@@ -116,7 +126,8 @@ export default class GlowEffect extends ShaderEffect {
 	}
 
 	/**
-	 * set the texture size
+	 * Measure the effect's spread in the texels of a texture of this size,
+	 * rather than of the texture it draws (the default)
 	 * @param {number} width - texture width in pixels
 	 * @param {number} height - texture height in pixels
 	 */

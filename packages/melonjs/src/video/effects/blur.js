@@ -1,3 +1,4 @@
+import { FRAME_GLSL, FRAME_WGSL, FRAME_WGSL_MEMBERS } from "./frame.js";
 import ShaderEffect from "./shadereffect.js";
 
 /**
@@ -12,23 +13,23 @@ import ShaderEffect from "./shadereffect.js";
 const wgslFragment = `
 struct BlurUniforms {
 	uBlurStrength : f32,
-	uTextureSize : vec2f,
+	uTextureSize : vec2f,${FRAME_WGSL_MEMBERS}
 };
 @group(3) @binding(0) var<uniform> fx : BlurUniforms;
-
+${FRAME_WGSL}
 fn apply(color : vec4f, uv : vec2f) -> vec4f {
 	let texel = fx.uBlurStrength / fx.uTextureSize;
 	var sum = vec4f(0.0);
 	// 9-tap box blur
-	sum += textureSample(uTexture, uSampler, uv + vec2f(-texel.x, -texel.y));
-	sum += textureSample(uTexture, uSampler, uv + vec2f(0.0, -texel.y));
-	sum += textureSample(uTexture, uSampler, uv + vec2f(texel.x, -texel.y));
-	sum += textureSample(uTexture, uSampler, uv + vec2f(-texel.x, 0.0));
-	sum += textureSample(uTexture, uSampler, uv);
-	sum += textureSample(uTexture, uSampler, uv + vec2f(texel.x, 0.0));
-	sum += textureSample(uTexture, uSampler, uv + vec2f(-texel.x, texel.y));
-	sum += textureSample(uTexture, uSampler, uv + vec2f(0.0, texel.y));
-	sum += textureSample(uTexture, uSampler, uv + vec2f(texel.x, texel.y));
+	sum += frameTexel(uv + vec2f(-texel.x, -texel.y));
+	sum += frameTexel(uv + vec2f(0.0, -texel.y));
+	sum += frameTexel(uv + vec2f(texel.x, -texel.y));
+	sum += frameTexel(uv + vec2f(-texel.x, 0.0));
+	sum += frameTexel(uv);
+	sum += frameTexel(uv + vec2f(texel.x, 0.0));
+	sum += frameTexel(uv + vec2f(-texel.x, texel.y));
+	sum += frameTexel(uv + vec2f(0.0, texel.y));
+	sum += frameTexel(uv + vec2f(texel.x, texel.y));
 	return (sum / 9.0) * vColor;
 }
 `;
@@ -48,26 +49,27 @@ export default class BlurEffect extends ShaderEffect {
 	 * @param {Renderer} renderer - the current renderer instance
 	 * @param {object} [options] - effect options
 	 * @param {number} [options.strength=1.0] - blur strength in texels
-	 * @param {number[]} [options.textureSize=[256, 256]] - texture dimensions [width, height]
+	 * @param {number[]} [options.textureSize] - the size, `[width, height]`, of the texture its strength is measured in; by default the texture it draws: a sprite's own, alone or with other effects and at any scale or zoom, the screen for a camera's effect
 	 */
 	constructor(renderer, options = {}) {
 		super(renderer, {
 			glsl: `
 			uniform float uBlurStrength;
 			uniform vec2 uTextureSize;
+			${FRAME_GLSL}
 			vec4 apply(vec4 color, vec2 uv) {
 				vec2 texel = uBlurStrength / uTextureSize;
 				vec4 sum = vec4(0.0);
 				// 9-tap box blur
-				sum += texture2D(uSampler, uv + vec2(-texel.x, -texel.y));
-				sum += texture2D(uSampler, uv + vec2( 0.0,    -texel.y));
-				sum += texture2D(uSampler, uv + vec2( texel.x, -texel.y));
-				sum += texture2D(uSampler, uv + vec2(-texel.x,  0.0));
-				sum += texture2D(uSampler, uv);
-				sum += texture2D(uSampler, uv + vec2( texel.x,  0.0));
-				sum += texture2D(uSampler, uv + vec2(-texel.x,  texel.y));
-				sum += texture2D(uSampler, uv + vec2( 0.0,     texel.y));
-				sum += texture2D(uSampler, uv + vec2( texel.x,  texel.y));
+				sum += frameTexel(uv + vec2(-texel.x, -texel.y));
+				sum += frameTexel(uv + vec2( 0.0,    -texel.y));
+				sum += frameTexel(uv + vec2( texel.x, -texel.y));
+				sum += frameTexel(uv + vec2(-texel.x,  0.0));
+				sum += frameTexel(uv);
+				sum += frameTexel(uv + vec2( texel.x,  0.0));
+				sum += frameTexel(uv + vec2(-texel.x,  texel.y));
+				sum += frameTexel(uv + vec2( 0.0,     texel.y));
+				sum += frameTexel(uv + vec2( texel.x,  texel.y));
 				return (sum / 9.0) * vColor;
 			}
 			`,
@@ -75,10 +77,10 @@ export default class BlurEffect extends ShaderEffect {
 		});
 
 		this.strength = options.strength ?? 1.0;
-		const texSize = options.textureSize ?? [256, 256];
 
 		this.setUniform("uBlurStrength", this.strength);
-		this.setUniform("uTextureSize", new Float32Array(texSize));
+		// its strength is in texels: of the texture it draws, unless given one
+		this._initTextureSize(options.textureSize, [256, 256]);
 	}
 
 	/**
@@ -91,7 +93,8 @@ export default class BlurEffect extends ShaderEffect {
 	}
 
 	/**
-	 * set the texture size
+	 * Measure the effect's strength in the texels of a texture of this size,
+	 * rather than of the texture it draws (the default)
 	 * @param {number} width - texture width in pixels
 	 * @param {number} height - texture height in pixels
 	 */

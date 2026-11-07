@@ -38,6 +38,11 @@ const ExampleBlendModeRenderables = lazy(() =>
 		(m) => ({ default: m.ExampleBlendModeRenderables }),
 	),
 );
+const ExampleParticleEditor = lazy(() =>
+	import("./examples/particleEditor/ExampleParticleEditor").then((m) => ({
+		default: m.ExampleParticleEditor,
+	})),
+);
 const ExampleParticleReferenceSpace = lazy(() =>
 	import(
 		"./examples/particleReferenceSpace/ExampleParticleReferenceSpace"
@@ -93,9 +98,9 @@ const ExampleWebGPU = lazy(() =>
 		default: m.ExampleWebGPU,
 	})),
 );
-const ExampleIsometricRPG = lazy(() =>
-	import("./examples/isometricRpg/ExampleIsometricRPG").then((m) => ({
-		default: m.ExampleIsometricRPG,
+const ExampleIsometricDungeon = lazy(() =>
+	import("./examples/isometricDungeon/ExampleIsometricDungeon").then((m) => ({
+		default: m.ExampleIsometricDungeon,
 	})),
 );
 const ExampleLights = lazy(() =>
@@ -146,6 +151,11 @@ const ExampleGltf = lazy(() =>
 const ExampleForest = lazy(() =>
 	import("./examples/forest/ExampleForest").then((m) => ({
 		default: m.ExampleForest,
+	})),
+);
+const ExampleEarthDefender = lazy(() =>
+	import("./examples/earthDefender/ExampleEarthDefender").then((m) => ({
+		default: m.ExampleEarthDefender,
 	})),
 );
 const ExampleGroundShadows = lazy(() =>
@@ -317,6 +327,14 @@ const examples: {
 			"The same blend mode applied to a sprite, text, a shape fill, particles and an image layer.",
 	},
 	{
+		component: <ExampleParticleEditor />,
+		label: "Particle Editor",
+		path: "particle-editor",
+		sourceDir: "particleEditor",
+		description:
+			"Build a particle effect from a preset, a texture or your own sprite, in 2D or 3D, and copy the code into your game.",
+	},
+	{
 		component: <ExampleParticleReferenceSpace />,
 		label: "Particle Reference Space",
 		path: "particle-reference-space",
@@ -330,7 +348,15 @@ const examples: {
 		path: "after-burner",
 		sourceDir: "afterBurner",
 		description:
-			"Behind-the-plane arcade shooter on Camera3d + 3D Mesh models. Rounds hit by raycast3d, planes collide as Box3d bodies — arrows / WASD to fly, space to shoot.",
+			"Behind-the-plane arcade shooter on Camera3d + 3D Mesh models. Rounds hit by raycast3d, planes collide as Box3d bodies.",
+	},
+	{
+		component: <ExampleEarthDefender />,
+		label: "Earth Defender",
+		path: "earth-defender",
+		sourceDir: "earthDefender",
+		description:
+			"A Stardust tribute: a Camera3d posed from the player's own surface point, blob shadows lying on a sphere through shadowGroundPoint, mesh-hosted ShaderEffect shields, spatial audio and HDR bloom.",
 	},
 	{
 		component: <ExampleJungleRabbit />,
@@ -404,12 +430,12 @@ const examples: {
 			"The WebGPU backend: sprites, text, blend modes, primitives, clipping and stencil masks.",
 	},
 	{
-		component: <ExampleIsometricRPG />,
-		label: "Isometric RPG",
-		path: "isometric-rpg",
-		sourceDir: "isometricRpg",
+		component: <ExampleIsometricDungeon />,
+		label: "Isometric Dungeon",
+		path: "isometric-dungeon",
+		sourceDir: "isometricDungeon",
 		description:
-			"Isometric tile map rendering with Tiled map support, camera follow, and NPC entities.",
+			"A big isometric Tiled dungeon: depth-sorted walls, flickering wall torches, chests, doors and a locked gate.",
 	},
 	{
 		component: <ExampleLights />,
@@ -465,7 +491,7 @@ const examples: {
 		path: "line-of-sight",
 		sourceDir: "lineOfSight",
 		description:
-			"Stealth-style vision cone driven by the portable adapter.raycast API.",
+			"Stealth-style vision cone and line-of-sight checks with the portable adapter.raycast API.",
 	},
 	{
 		component: <ExampleMasking />,
@@ -609,7 +635,7 @@ const examples: {
 		path: "shader-effects",
 		sourceDir: "shaderEffects",
 		description:
-			"Showcase of all 16 built-in ShaderEffect presets for per-sprite visual effects (WebGL).",
+			"Showcase of the built-in ShaderEffect presets for per-sprite visual effects.",
 	},
 	{
 		component: <ExampleSprite />,
@@ -617,7 +643,7 @@ const examples: {
 		path: "sprite",
 		sourceDir: "sprite",
 		description:
-			"Displaying and transforming sprites with scaling, rotation, and alpha blending.",
+			"Sprites: transforms, tint and blending, atlas animation, and shader effects alone or chained.",
 	},
 	{
 		component: <ExampleTrail />,

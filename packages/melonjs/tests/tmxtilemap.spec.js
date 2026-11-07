@@ -9,6 +9,7 @@ import {
 	Renderable,
 	registerTiledObjectClass,
 	registerTiledObjectFactory,
+	Sprite,
 	Text,
 	TMXLayer,
 	TMXTileMap,
@@ -16,6 +17,7 @@ import {
 } from "../src/index.js";
 import {
 	applyObjectOpacity,
+	parse,
 	parseTintColor,
 	propagateBlendMode,
 	tiledBlendMode,
@@ -754,6 +756,46 @@ describe("TMXTileMap", () => {
 				expect(obj.anchorPoint.y).toEqual(0);
 			}
 		});
+
+		it("should cover the projected shape of a rectangle on an isometric map", () => {
+			// projected, a rectangle reaches left of its origin; the bounds
+			// box (what the broadphase files it by) must still cover it
+			const map = new TMXTileMap("test", {
+				...minimalMap,
+				orientation: "isometric",
+				width: 4,
+				height: 4,
+				tilewidth: 64,
+				tileheight: 32,
+				layers: [
+					{
+						type: "objectgroup",
+						name: "collision",
+						opacity: 1,
+						visible: true,
+						objects: [
+							{ id: 1, name: "", type: "", x: 32, y: 0, width: 8, height: 96 },
+						],
+					},
+				],
+			});
+			const [obj] = map.getObjects(true);
+			const shape = obj.bodyDef.shapes[0];
+			const xs = shape.points.map((p) => {
+				return obj.pos.x + shape.pos.x + p.x;
+			});
+			const ys = shape.points.map((p) => {
+				return obj.pos.y + shape.pos.y + p.y;
+			});
+			const b = obj.getBounds();
+			expect(Math.min(...xs)).toBeLessThan(obj.pos.x + 8);
+			expect([b.left, b.top, b.right, b.bottom]).toEqual([
+				Math.min(...xs),
+				Math.min(...ys),
+				Math.max(...xs),
+				Math.max(...ys),
+			]);
+		});
 	});
 
 	// ---------------------------------------------------------------
@@ -1308,6 +1350,28 @@ describe("TMXTileMap", () => {
 			expect(objects[0].bodyDef.type).toEqual("static");
 		});
 
+		it("should not project the body of a tile object on an isometric map", () => {
+			// Tiled draws a tile object upright, so the default body covers
+			// the image box rather than a projected diamond
+			const map = new TMXTileMap("test", {
+				...tileObjectMap,
+				orientation: "isometric",
+				tilewidth: 64,
+				tileheight: 32,
+			});
+			const shape = map.getObjects(true)[0].bodyDef.shapes[0];
+			expect(
+				shape.points.map((p) => {
+					return [p.x, p.y];
+				}),
+			).toEqual([
+				[0, 0],
+				[32, 0],
+				[32, 32],
+				[0, 32],
+			]);
+		});
+
 		it("should position tile objects correctly", () => {
 			const map = new TMXTileMap("test", tileObjectMap);
 			const objects = map.getObjects(true);
@@ -1315,6 +1379,493 @@ describe("TMXTileMap", () => {
 			expect(objects[0].pos.x).toEqual(64);
 			// Tiled tile objects have y adjusted (anchor at bottom-left)
 			expect(objects[0].pos.y).toBeDefined();
+		});
+	});
+
+	describe("getObjects: tile object size and alignment, as Tiled draws them", () => {
+		// one tile object at (64, 96) over the 32x32 test tiles
+		function tileObject(object, tileset = {}) {
+			const map = new TMXTileMap("test", {
+				...tileObjectMap,
+				tilesets: [{ ...tilesetData, ...tileset }],
+				layers: [
+					{
+						type: "objectgroup",
+						name: "TileObjects",
+						opacity: 1,
+						visible: true,
+						objects: [
+							{ id: 300, name: "", type: "", gid: 1, x: 64, y: 96, ...object },
+						],
+					},
+				],
+			});
+			return map.getObjects(true)[0];
+		}
+
+		it("draws a tile object resized in Tiled at its own size, with a body to match", () => {
+			const obj = tileObject({ width: 64, height: 48 });
+			expect(obj.getBounds().width).toBeCloseTo(64);
+			expect(obj.getBounds().height).toBeCloseTo(48);
+			// anchored at its bottom left: Tiled's y is the bottom of the 48px box
+			expect([obj.pos.x, obj.pos.y]).toEqual([64, 48]);
+			const body = obj.bodyDef.shapes[0].getBounds();
+			expect([body.width, body.height]).toEqual([64, 48]);
+		});
+
+		it("draws a tile object at the tile's size when it has that size or none", () => {
+			for (const size of [{ width: 32, height: 32 }, {}]) {
+				const obj = tileObject(size);
+				expect(obj.getBounds().width).toBeCloseTo(32);
+				expect(obj.getBounds().height).toBeCloseTo(32);
+				expect([obj.pos.x, obj.pos.y]).toEqual([64, 64]);
+				const body = obj.bodyDef.shapes[0].getBounds();
+				expect([body.width, body.height]).toEqual([32, 32]);
+			}
+		});
+
+		it("stretches a flipped tile object without moving it off its box", () => {
+			// gid with the horizontal flip bit: flipped around the tile's own
+			// center, then stretched, it covers the same box as unflipped.
+			// Stretched first, then flipped, it would sit 32px to the left
+			const plain = tileObject({ width: 64, height: 48 }).getBounds();
+			const flipped = tileObject({
+				gid: (0x80000000 | 1) >>> 0,
+				width: 64,
+				height: 48,
+			}).getBounds();
+			expect(flipped.left).toBeCloseTo(plain.left);
+			expect(flipped.top).toBeCloseTo(plain.top);
+			expect(flipped.width).toBeCloseTo(64);
+			expect(flipped.height).toBeCloseTo(48);
+		});
+
+		it("keeps a resized or flipped image-collection tile on its box", () => {
+			// a collection tile is its own 32x48 image. Scaled or flipped about
+			// a centered anchor, it would sit off the box: a quarter of the
+			// lost size up and left, or a whole width to the right
+			const image = fakeImage("tallblock", 32, 48);
+			const collection = {
+				name: "blocks",
+				tilewidth: 32,
+				tileheight: 48,
+				tilecount: 1,
+				columns: 0,
+				image: undefined,
+				tiles: [{ id: 0, image: "tallblock.png" }],
+			};
+			for (const object of [
+				{ width: 16, height: 24 },
+				{ width: 48, height: 36 },
+				{ gid: (0x80000000 | 1) >>> 0, width: 32, height: 48 },
+				{ gid: (0x40000000 | 1) >>> 0, width: 16, height: 24 },
+			]) {
+				const obj = tileObject(object, collection);
+				expect(obj.image).toBe(image);
+				// the world does this on its first update
+				const bounds = obj.updateBounds();
+				const box = [64, 96 - object.height, object.width, object.height];
+				[bounds.left, bounds.top, bounds.width, bounds.height].forEach(
+					(value, i) => {
+						expect(value, JSON.stringify(object)).toBeCloseTo(box[i]);
+					},
+				);
+			}
+		});
+
+		it("turns a rotated tile object about its anchor, sprite and body alike", () => {
+			// [object, the box Tiled draws it in]: Tiled turns a tile object
+			// about the point its tileset aligns, here the bottom left (64, 96)
+			const tallblock = {
+				name: "blocks",
+				tilewidth: 32,
+				tileheight: 48,
+				tilecount: 1,
+				columns: 0,
+				image: undefined,
+				tiles: [{ id: 0, image: "tallblock.png" }],
+			};
+			fakeImage("tallblock", 32, 48);
+			const cases = [
+				// a quarter turn: the box hangs below and right of the corner
+				[{ width: 32, height: 32, rotation: 90 }, {}, [64, 96, 32, 32]],
+				// half a turn: it hangs below and left of it
+				[{ width: 64, height: 48, rotation: 180 }, {}, [0, 96, 64, 48]],
+				// a collection tile, stretched and turned
+				[{ width: 32, height: 48, rotation: 90 }, tallblock, [64, 96, 48, 32]],
+				// centered by its tileset: it turns about its own center
+				[
+					{ width: 64, height: 32, rotation: 90 },
+					{ objectalignment: "center" },
+					[48, 64, 32, 64],
+				],
+			];
+			for (const [object, tileset, box] of cases) {
+				const obj = tileObject(object, tileset);
+				// the world does this on its first update
+				const drawn = obj.updateBounds();
+				const shape = obj.bodyDef.shapes[0].getBounds();
+				const body = [
+					obj.pos.x + shape.left,
+					obj.pos.y + shape.top,
+					shape.width,
+					shape.height,
+				];
+				const label = JSON.stringify(object);
+				[drawn.left, drawn.top, drawn.width, drawn.height].forEach((v, i) => {
+					expect(v, label + " drawn").toBeCloseTo(box[i]);
+				});
+				body.forEach((v, i) => {
+					expect(v, label + " body").toBeCloseTo(box[i]);
+				});
+			}
+		});
+
+		it("loads an animated tile object and shows its frames in order", () => {
+			// frames 0 then 3 of the 2x2 test tiles: by position, not by id
+			const obj = tileObject(
+				{ width: 32, height: 32 },
+				{
+					tiles: [
+						{
+							id: 0,
+							animation: [
+								{ tileid: 0, duration: 100 },
+								{ tileid: 3, duration: 100 },
+							],
+						},
+					],
+				},
+			);
+			expect(obj.current.length).toEqual(2);
+			expect([obj.current.offset.x, obj.current.offset.y]).toEqual([0, 0]);
+			obj.setAnimationFrame(1);
+			expect([obj.current.offset.x, obj.current.offset.y]).toEqual([32, 32]);
+		});
+
+		it("loads an animated image-collection tile object and shows each image", () => {
+			// two 32x48 images, red then blue: the second frame must show blue
+			for (const [name, colour] of [
+				["redblock", "#ff0000"],
+				["blueblock", "#0000ff"],
+			]) {
+				const context = fakeImage(name, 32, 48).getContext("2d");
+				context.fillStyle = colour;
+				context.fillRect(0, 0, 32, 48);
+			}
+			const obj = tileObject(
+				{ width: 32, height: 48 },
+				{
+					name: "animblocks",
+					tilewidth: 32,
+					tileheight: 48,
+					tilecount: 2,
+					columns: 0,
+					image: undefined,
+					tiles: [
+						{
+							id: 0,
+							image: "redblock.png",
+							animation: [
+								{ tileid: 0, duration: 100 },
+								{ tileid: 1, duration: 100 },
+							],
+						},
+						{ id: 1, image: "blueblock.png" },
+					],
+				},
+			);
+			const pixel = () => {
+				const { x, y } = obj.current.offset;
+				return Array.from(
+					obj.image.getContext("2d").getImageData(x + 1, y + 1, 1, 1).data,
+				);
+			};
+			expect(obj.current.length).toEqual(2);
+			expect(pixel()).toEqual([255, 0, 0, 255]);
+			obj.setAnimationFrame(1);
+			expect(pixel()).toEqual([0, 0, 255, 255]);
+		});
+
+		it("places a tile object by its tileset's objectalignment", () => {
+			// [x, y] of the top left of a 64x48 object whose anchor is at (64, 96)
+			const expected = {
+				unspecified: [64, 48],
+				topleft: [64, 96],
+				top: [32, 96],
+				topright: [0, 96],
+				left: [64, 72],
+				center: [32, 72],
+				right: [0, 72],
+				bottomleft: [64, 48],
+				bottom: [32, 48],
+				bottomright: [0, 48],
+			};
+			for (const [objectalignment, position] of Object.entries(expected)) {
+				const obj = tileObject({ width: 64, height: 48 }, { objectalignment });
+				expect([obj.pos.x, obj.pos.y], objectalignment).toEqual(position);
+			}
+		});
+	});
+
+	// ---------------------------------------------------------------
+	// a tile object and its tile's class and properties, as in Tiled
+	// ---------------------------------------------------------------
+	describe("getObjects: a tile object's tile class and properties, as in Tiled", () => {
+		// the settings each registered class was built with
+		const built = [];
+		class TileClassChest extends Renderable {
+			constructor(x, y, settings) {
+				super(x, y, settings.width, settings.height);
+				built.push(settings);
+			}
+		}
+		class TileClassOwn extends Renderable {
+			constructor(x, y, settings) {
+				super(x, y, settings.width, settings.height);
+			}
+		}
+		class TileClassNamed extends Renderable {
+			constructor(x, y, settings) {
+				super(x, y, settings.width, settings.height);
+			}
+		}
+
+		beforeAll(() => {
+			registerTiledObjectClass("TileClassChest", TileClassChest);
+			registerTiledObjectClass("TileClassOwn", TileClassOwn);
+			registerTiledObjectClass("TileClassNamed", TileClassNamed);
+		});
+
+		// tile 0 of the 32x32 test tiles carries `tile`: a class, properties
+		function objectsOf(objects, tile = {}) {
+			const map = new TMXTileMap("test", {
+				...tileObjectMap,
+				tilesets: [{ ...tilesetData, tiles: [{ id: 0, ...tile }] }],
+				layers: [
+					{
+						type: "objectgroup",
+						name: "TileObjects",
+						opacity: 1,
+						visible: true,
+						objects: objects.map((object, i) => {
+							return {
+								id: 400 + i,
+								name: "",
+								type: "",
+								gid: 1,
+								x: 64,
+								y: 96,
+								width: 32,
+								height: 32,
+								...object,
+							};
+						}),
+					},
+				],
+			});
+			built.length = 0;
+			return map.getObjects(true);
+		}
+
+		describe("class", () => {
+			it("builds a tile object with no class by its tile's registered class", () => {
+				const [obj] = objectsOf([{}], { type: "TileClassChest" });
+				expect(obj).toBeInstanceOf(TileClassChest);
+			});
+
+			it("reads the tile's class in its Tiled 1.9 spelling too", () => {
+				const [obj] = objectsOf([{}], { class: "TileClassChest" });
+				expect(obj).toBeInstanceOf(TileClassChest);
+			});
+
+			it("matches a flipped tile object by its tile's class", () => {
+				// the flip flags live in the high bits of the gid
+				const [obj] = objectsOf([{ gid: 1 | 0x80000000 }], {
+					type: "TileClassChest",
+				});
+				expect(obj).toBeInstanceOf(TileClassChest);
+			});
+
+			it("leaves the object's own class alone", () => {
+				objectsOf([{}], { type: "TileClassChest" });
+				expect(built.length).toBe(1);
+				// the JSON format writes an empty class for an object with none
+				expect(built[0].class).toBe("");
+			});
+
+			it("keeps an object's own registered class first", () => {
+				const [obj] = objectsOf([{ type: "TileClassOwn" }], {
+					type: "TileClassChest",
+				});
+				expect(obj).toBeInstanceOf(TileClassOwn);
+			});
+
+			it("keeps an object's registered name first", () => {
+				const [obj] = objectsOf([{ name: "TileClassNamed" }], {
+					type: "TileClassChest",
+				});
+				expect(obj).toBeInstanceOf(TileClassNamed);
+			});
+
+			it("makes a plain tile sprite when the tile's class is not registered", () => {
+				const [obj] = objectsOf([{}], { type: "NothingRegisteredUnderThis" });
+				expect(obj).toBeInstanceOf(Sprite);
+				expect(obj).not.toBeInstanceOf(TileClassChest);
+			});
+
+			it("never turns a tile into a built-in by its class", () => {
+				// structural types and the engine's own classes stay tiles: a map
+				// whose tiles were classed like them loads as it always did
+				for (const type of [
+					"shape",
+					"text",
+					"tile",
+					"Trigger",
+					"Collectable",
+				]) {
+					const [obj] = objectsOf([{}], { type });
+					expect(obj.constructor, type).toBe(Sprite);
+				}
+			});
+		});
+
+		describe("properties", () => {
+			const tile = {
+				type: "TileClassChest",
+				properties: [
+					{ name: "opens", type: "int", value: 3 },
+					{ name: "gold", type: "int", value: 5 },
+					{ name: "loot", type: "class", value: { coins: 2 } },
+				],
+			};
+
+			it("resolves a property from the tile when the object has none", () => {
+				objectsOf([{}], tile);
+				expect(built[0].resolvedProperty("opens")).toBe(3);
+			});
+
+			it("resolves the object's own property over its tile's", () => {
+				objectsOf(
+					[{ properties: [{ name: "gold", type: "int", value: 9 }] }],
+					tile,
+				);
+				expect(built[0].resolvedProperty("gold")).toBe(9);
+				expect(built[0].resolvedProperties()).toEqual({
+					opens: 3,
+					gold: 9,
+					loot: { coins: 2 },
+				});
+			});
+
+			it("resolves undefined for a property neither sets", () => {
+				objectsOf([{}], tile);
+				expect(built[0].resolvedProperty("missing")).toBeUndefined();
+			});
+
+			it("resolves only custom properties, not the object's fields", () => {
+				objectsOf([{ name: "chest" }], tile);
+				expect(built[0].name).toBe("chest");
+				expect(built[0].resolvedProperty("name")).toBeUndefined();
+				expect(Object.keys(built[0].resolvedProperties()).sort()).toEqual([
+					"gold",
+					"loot",
+					"opens",
+				]);
+			});
+
+			it("returns a new object every time, leaving the tileset as it was", () => {
+				objectsOf([{}], tile);
+				const resolved = built[0].resolvedProperties();
+				resolved.opens = 99;
+				expect(built[0].resolvedProperties()).not.toBe(resolved);
+				expect(built[0].resolvedProperty("opens")).toBe(3);
+			});
+
+			it("resolves the properties of an object that is not a tile", () => {
+				const map = new TMXTileMap("test", {
+					...tileObjectMap,
+					layers: [
+						{
+							type: "objectgroup",
+							name: "Shapes",
+							opacity: 1,
+							visible: true,
+							objects: [
+								{
+									id: 500,
+									name: "zone",
+									type: "TileClassChest",
+									x: 0,
+									y: 0,
+									width: 16,
+									height: 16,
+									properties: [{ name: "depth", type: "int", value: 4 }],
+								},
+							],
+						},
+					],
+				});
+				built.length = 0;
+				map.getObjects(true);
+				expect(built[0].resolvedProperty("depth")).toBe(4);
+				expect(built[0].resolvedProperties()).toEqual({ depth: 4 });
+			});
+
+			// what existing maps rely on
+			it("still sets the object's own properties on it by name", () => {
+				objectsOf(
+					[{ properties: [{ name: "gold", type: "int", value: 9 }] }],
+					tile,
+				);
+				expect(built[0].gold).toBe(9);
+			});
+
+			it("sets none of its tile's properties on the object", () => {
+				objectsOf([{}], tile);
+				expect("opens" in built[0]).toBe(false);
+				expect(built[0].gold).toBeUndefined();
+			});
+
+			it("does not hand a tile's properties to a plain tile sprite", () => {
+				// a tile property named like a sprite setting must not reach the
+				// sprite, or existing maps would draw differently
+				const [obj] = objectsOf([{}], {
+					properties: [
+						{ name: "flipX", type: "bool", value: true },
+						{ name: "anchorPoint", type: "string", value: "0.5" },
+					],
+				});
+				expect(obj).toBeInstanceOf(Sprite);
+				expect(obj.isFlippedX).toBe(false);
+				expect([obj.anchorPoint.x, obj.anchorPoint.y]).toEqual([0, 0]);
+			});
+		});
+
+		it("reads a tile's class and properties from a TMX file", () => {
+			const tmx = new DOMParser().parseFromString(
+				`<map version="1.10" orientation="orthogonal" renderorder="right-down" width="4" height="4" tilewidth="32" tileheight="32" infinite="0">
+					<tileset firstgid="1" name="testtiles" tilewidth="32" tileheight="32" tilecount="4" columns="2">
+						<image source="testtiles.png" width="64" height="64"/>
+						<tile id="0" type="TileClassChest">
+							<properties>
+								<property name="opens" type="int" value="3"/>
+								<property name="facing" value="W"/>
+							</properties>
+						</tile>
+					</tileset>
+					<objectgroup id="1" name="TileObjects">
+						<object id="1" gid="1" x="64" y="96" width="32" height="32"/>
+					</objectgroup>
+				</map>`,
+				"text/xml",
+			).documentElement;
+			const map = new TMXTileMap("test", parse(tmx));
+			built.length = 0;
+			const [obj] = map.getObjects(true);
+			expect(obj).toBeInstanceOf(TileClassChest);
+			expect(built[0].resolvedProperty("opens")).toBe(3);
+			expect(built[0].resolvedProperty("facing")).toBe("W");
 		});
 	});
 

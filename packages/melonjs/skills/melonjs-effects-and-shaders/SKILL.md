@@ -110,22 +110,134 @@ reused across renderables.
 
 ## Built-in effects
 
-Twenty-one presets, every one constructed as `new XEffect(renderer, options)` and
-every one shipping both a GLSL and a WGSL body, so they all run on either GPU
-backend: `VignetteEffect`, `ScanlineEffect` (optional CRT curvature),
+Twenty-three presets, every one constructed as `new XEffect(renderer, options)`
+and every one shipping both a GLSL and a WGSL body, so they all run on either
+GPU backend: `VignetteEffect`, `ScanlineEffect` (optional CRT curvature),
 `BloomEffect`, `GlowEffect`, `BlurEffect`, `PixelateEffect`,
 `ChromaticAberrationEffect`, `DropShadowEffect`, `FlashEffect`,
 `OutlineEffect`, `ColorMatrixEffect`, `DesaturateEffect`, `DissolveEffect`,
-`TintPulseEffect`, `WaveEffect`, `InvertEffect`, `SepiaEffect`,
-`HologramEffect`, `ShineEffect`, `RadialGradientEffect`, `ToneMappingEffect`.
+`TintPulseEffect`, `WaveEffect`, `SwayEffect`, `InvertEffect`, `SepiaEffect`,
+`HologramEffect`, `ShineEffect`, `RadialGradientEffect`, `SquishEffect`,
+`ToneMappingEffect`.
 
-`RadialGradientEffect` is a procedural soft spot: solid at the centre of its
-host quad, fading linearly to transparent at the edge, and elliptical for free
-on a non-square quad. It is the one to reach for instead of baking a disc into
-a canvas, for a pickup highlight, a trigger marker or a damage flash. Its
-falloff assumes the quad samples a FULL texture rect, so pair it with a
-standalone image or `Renderer.getWhitePixel()` rather than a sprite that draws
-a sub-region of an atlas, where the centre would land off-quad.
+**Colors take an alpha.** Every color option and `setColor` takes `[r, g, b]`
+or `[r, g, b, a]`, each 0.0 to 1.0, and the alpha is the color's own opacity: a
+half-transparent outline, a glow at half strength, a flash that only half
+covers. `[r, g, b]` is opaque, as it always was. Any other length throws.
+`RadialGradientEffect` takes a `Color` instead, and its alpha scales the spot.
+
+```js
+sprite.addPostEffect(new OutlineEffect(app.renderer, { color: [1, 1, 1, 0.5] }));
+```
+
+**On a sprite cut from an atlas or a tileset, the effects that read around a
+pixel keep to the sprite's own frame.** `GlowEffect`, `OutlineEffect`,
+`BlurEffect`, `DropShadowEffect`, `ChromaticAberrationEffect`, `WaveEffect`,
+`SwayEffect`, `PixelateEffect` and `BloomEffect` read the neighbouring frames
+as transparent, as if the sprite were drawn on its own, so they never show
+along its edges and the atlas needs no padding for them. Past the texture's own
+edge (a standalone image, or the outside of an atlas) nothing changes.
+
+**The effects that place a pattern place it on the renderable they draw.**
+`SwayEffect`'s planted row, `WaveEffect`'s `anchor`, the centre of
+`VignetteEffect`, `RadialGradientEffect` and `ScanlineEffect`'s curvature all
+land on the sprite itself: cut from an atlas, flipped, rotated, or with other
+effects after it, the pattern sits where it sits on a sprite with a texture of
+its own and that one effect. What is measured in the texture stays measured in
+it: `ShineEffect`'s sweep, bands and width, `WaveEffect`'s amplitude and
+frequency, `DissolveEffect`'s grain, the lines of `HologramEffect` and
+`ScanlineEffect` (on an atlas sprite, fractions of the atlas, so a single shine
+crosses an atlas sprite only part of the time). With other effects after them
+they all stay on the sprite. `SwayEffect` measures everything across the
+sprite.
+
+**Their widths, offsets and sizes are in pixels of the texture they draw, with
+nothing to pass.** Each of those effects takes the size of what it draws: the
+sprite's whole texture (the atlas image, not the frame), the screen for a
+camera's effect, a mesh's texture. With other effects after it, it still
+measures in the sprite's own pixels, at any scale and under a camera's zoom
+(on a container, in the container's own), so adding a second effect never
+changes how wide the first comes out. Do not pass `textureSize` to get this: a
+`textureSize` (or `setTextureSize()`) fixes the size instead, for a width
+meant in some other texture's pixels.
+
+```js
+// 2 pixels of the sprite's art, whatever the size of its atlas, its scale,
+// the camera's zoom, or the effects after it
+sprite.addPostEffect(new OutlineEffect(app.renderer, { width: 2 }));
+sprite.addPostEffect(new GlowEffect(app.renderer, { width: 6 }));
+```
+
+With two or more effects, the sprite is drawn into a capture and each effect
+reads that, at the game's texture filter, as a sprite reads its own texture:
+under `"nearest"` (or `antiAlias` off) a width that lands between two screen
+pixels, such as 2 pixels of a sprite drawn at 0.3, stays crisp, and under
+`"linear"` it blends, on WebGL and WebGPU alike. The result lands inside the
+clip the sprite is drawn under, a minimap camera's view or a clipping
+container, as with one effect.
+
+`SwayEffect` leans a sprite or a layer from side to side, as if in a breeze: the
+top sways most and everything from its `anchor` row down stays put, so a tree's
+trunk or a reed's root stays planted. It suits anything planted at its bottom;
+something hanging from its top, like a banner, needs its own shader. It is a
+`WaveEffect`, which takes the same `anchor`, so it adds no shader. Drive it with
+`setTime(seconds)` every frame, like any time-based effect; it wraps the phase
+itself, so a raw clock never costs precision on a phone's medium-precision
+floats.
+
+```js
+const sway = new SwayEffect(app.renderer, { strength: 0.02, anchor: 0.9 });
+tree.addPostEffect(sway);
+// each frame
+sway.setTime(timer.getTime() / 1000);
+```
+
+Its strength (a fraction of the sprite's width), its `anchor` and how it bends
+are all measured across the sprite, so a sprite cut from an atlas sways exactly
+like the same art with a texture of its own. `WaveEffect`'s `anchor` is a row of
+the sprite too, but its amplitude and frequency are measured across the texture,
+so on an atlas sprite they are fractions of the atlas.
+
+`RadialGradientEffect` is a procedural soft spot: solid at the centre of the
+renderable it draws, fading linearly to transparent at the edge, and elliptical
+for free on a non-square one. It is the one to reach for instead of baking a
+disc into a canvas, for a pickup highlight, a trigger marker or a damage flash,
+on a standalone image, `Renderer.getWhitePixel()` or a sprite cut from an atlas
+alike.
+
+`SquishEffect` bulges a sprite's middle out (`setBulge(0.3)`) or pinches it in
+(`setBulge(-0.3)`), its top and bottom rows staying put. Bulging out widens the
+sprite past its own frame, and the effect draws on a wider quad to make room,
+so the art needs no transparent margin. On its own it is a jelly wobble; paired
+with a change of height it is **squash and stretch that keeps the volume**:
+scale the sprite to `scaleY` of its height about its feet and set the bulge to
+`1 - scaleY`, so a stretched sprite pinches in and a squashed one bulges out.
+Ease `scaleY` back to 1 with a short `Tween.Easing.Back.Out`; an elastic ease
+keeps it trembling long after the landing.
+
+```js
+const squish = new SquishEffect(app.renderer);
+player.addPostEffect(squish);
+// every frame, from the player's update()
+const feet = player.height * (1 - player.anchorPoint.y);
+player.currentTransform
+    .identity()
+    .translate(0, feet)
+    .scale(1, scaleY)
+    .translate(0, -feet);
+squish.setBulge(1 - scaleY);
+```
+
+Apply that from the sprite's own `update()`, not from a tween's `onUpdate`. A
+physics adapter that mirrors a body's angle (Matter does) rewrites
+`currentTransform` on every step, before the renderables update, so a scale set
+anywhere else is gone by the time the sprite is drawn. Let the tween animate a
+plain `{ scaleY }` object and read it in `update()`.
+
+It is made for a sprite carrying it as its only effect: chained with another,
+or on the camera, the frame it measures against is the whole capture, so it
+squishes the whole frame. The bulge is outside the sprite's bounds, so culling
+and pointer events ignore it.
 
 **`BloomEffect` and `GlowEffect` are not the same thing**, and reaching for the
 wrong one is the usual disappointment here. `GlowEffect` draws a halo OUTSIDE a
@@ -143,9 +255,8 @@ app.viewport.addPostEffect(
 );
 ```
 
-Its tap offsets are in texels, so it takes its size from the renderer at
-construction; call `setTextureSize(w, h)` from an `event.ONRESIZE` handler, or
-when applying it to something smaller than the frame.
+Its `radius` is in texels of what it filters, the screen on a camera, and it
+follows a resize by itself.
 
 **`ToneMappingEffect` goes after it, and goes last.** Bloom spreads the bright
 parts; the tone map is what stops the sum of the two clipping flat at white,
@@ -425,6 +536,42 @@ loader.preload([{ name: "ramp", type: "shader", data: myFragmentBody }]);
 label.addPostEffect(loader.getShader("ramp"));
 ```
 
+### Sprites sharing one effect share one draw
+
+Sprites drawn one after the other through the **same** effect instance are one
+draw call, as plain sprites are, even when they come from different frames of
+an atlas: a hundred enemies outlined by one shared `OutlineEffect` draw once.
+Each still draws with the values it was given: a uniform set to a **new**
+value draws the sprites queued before it first (setting the value it already
+has changes nothing). What splits the batch:
+
+- a uniform taking a new value between two sprites: give a few sprites the
+  same value one after the other, rather than a different one each;
+- a different texture (the effect path samples one texture per draw);
+- a different effect instance, or a sprite without the effect in between;
+- a `noise_uv` effect on sprites of different frames or sizes (its rect is
+  per sprite);
+- one of the effects that place a pattern on the sprite (`SwayEffect`,
+  `WaveEffect`, `ShineEffect`, `VignetteEffect`, `RadialGradientEffect`,
+  `ScanlineEffect`, `DissolveEffect`, `HologramEffect`): each sprite is told
+  where it is, so each draws on its own;
+- a `screen_texture` effect, which draws each sprite on its own, as each one
+  samples a capture of everything drawn before it.
+
+So share one instance (the loader's `"shader"` type hands one back, see
+above) rather than constructing an effect per sprite: *n* instances are *n*
+draws as well as *n* programs. One you construct yourself and share needs
+`effect.shared = true`, or the first renderable destroyed destroys it for the
+others (the loader's are marked shared already):
+
+```js
+const outline = new OutlineEffect(renderer, { color: [1, 1, 1] });
+outline.shared = true; // you destroy it, when no enemy is left
+for (const enemy of enemies) {
+    enemy.addPostEffect(outline);
+}
+```
+
 ### Declare a level's effects with that level's assets
 
 An effect the loader knows about can be prepared before anything draws it; an
@@ -453,8 +600,15 @@ With `prewarm` on (the default since 20.6), `loader.preload()` warms on its way
 through — automatically, on every call — and compiles the GPU-side objects for
 every shader it holds — on WebGPU that is the
 WGSL module, which is otherwise built inside the draw path the first time the
-effect is used. Effects constructed inline are not in the loader, so nothing can
-bring them forward.
+effect is used.
+
+Since 20.10 the rest is warmed when the effect is **attached**, inline effects
+included: `addPostEffect` (or assigning `shader`) compiles the pipelines that
+effect will draw with on that renderable — on WebGPU the costly part, keyed by
+the renderable's blend mode and target as well as the shader — and on WebGL
+links the spliced program when the host is a mesh. It finishes off the frame,
+so attach when you build (a pool, a stage starting), not when you show: an
+effect attached and drawn in the same frame still compiles on that frame.
 
 One caveat if you are moving an inline effect to a file: a template literal can
 interpolate constants into the source (`vec2(${ASPECT}, 1.0)`), and a static
@@ -470,8 +624,8 @@ uniform values — fine when the look is uniform, and the reason to clone (and
 pay a link) when it is not.
 
 Note this covers **your** effects only. The engine's own mesh/quad shader
-variants are compiled lazily per feature combination on first draw and cannot be
-preloaded — see `melonjs-loading-assets` for the warm-up that covers those.
+variants are covered by the loading-screen warm-up and by the per-renderable one
+— see `melonjs-loading-assets`.
 
 ### Screen-reading builtins
 
@@ -480,7 +634,9 @@ For refraction, distortion and anything that samples what is already drawn:
 - **`screen_texture`** — a sampler kept filled with everything drawn so far
   (GLSL: annotate the sampler `uniform sampler2D tex : screen_texture;`)
 - **`screen_uv`** — this fragment's 0..1 position in that capture
-- **`noise_uv`** — 0..1 across the sprite regardless of its atlas frame
+- **`noise_uv`** — 0..1 across the sprite regardless of its atlas frame, and
+  across the renderable when it has several effects (it does not slide with
+  the camera)
 
 In WGSL the capture is sampled through `screen_sampler` (clamped) or
 `screen_sampler_repeat` (wrapping) instead of GLSL's `: screen_texture`
@@ -575,11 +731,13 @@ that against your request detects the fallback.
 
 ## The Canvas fallback
 
-`ShaderEffect` on a Canvas renderer logs a warning, leaves `enabled = false`, and
-turns every method into a no-op. Nothing throws. The same happens on a GPU
-backend when no body matches its language — a GLSL-only effect under WebGPU.
+`ShaderEffect` on a Canvas renderer leaves `enabled = false` and turns every
+method into a no-op. Nothing throws, and the console gets one warning, from the
+first such effect; the rest stay quiet. The same happens on a GPU backend when
+no body matches its language — a GLSL-only effect under WebGPU.
 
-That is fine for decoration. It is **not** fine when the shader draws your
+That is fine for decoration, which needs no guard: create and add the effect as
+on any renderer. It is **not** fine when the shader draws your
 content — the carrier renderable then shows through raw. A 1×1 white texture
 stretched to 280×156 renders as a white box where the effect should be.
 
@@ -600,6 +758,7 @@ same question after construction.
 
 | symptom | cause |
 |---|---|
+| a camera's post effect hides another camera drawn before it | before 20.13 a later camera's pass replaced the whole frame; update. Since then each camera's effects apply to what it draws, over the cameras before it |
 | effect does nothing, warning in console | Canvas fallback — no programmable pipeline |
 | effect does nothing on some machines only | GLSL-only shader, `video.AUTO` chose WebGPU |
 | a white or solid box where the effect should be | carrier renderable drawn while the effect is disabled |
@@ -608,7 +767,10 @@ same question after construction.
 | ported shader renders upside down | a hand-bound `toFrameTexture()` capture — GL is bottom-up, WebGPU top-down |
 | shadow/smear offset flips on some draws | vertical UV offset not multiplied by `uUVYDir` |
 | frame rate collapses with many blended sprites | an *advanced* mode (overlay, darken, …) — each draw is a capture plus a composite |
+| many sprites with the same effect still cost a draw each | an effect instance per sprite, or a uniform set to a different value per sprite — share one instance and group sprites by value |
 | animated shader never moves | `setTime` fed milliseconds, or the shader declares no `uTime` |
+| squash and stretch only bulges, the height never changes, under Matter | the adapter rewrites `currentTransform` every step; set the scale from the sprite's `update()` |
+| `SquishEffect` squishes the whole screen instead of the sprite | it is chained with another effect, or on the camera; give the sprite it alone |
 | syntax error in a file whose shader you just edited, pointing at a line of GLSL | a backtick in the shader body ended the template literal — most often one wrapped around an identifier in a comment |
 
 ## Related skills

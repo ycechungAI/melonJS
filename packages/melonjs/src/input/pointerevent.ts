@@ -302,6 +302,28 @@ function triggerEvent(
 }
 
 /**
+ * Whether a point is outside the visible area of a container above a region.
+ *
+ * Asks each ancestor through `clipContains`, which a `Container` answers from
+ * its own rectangle while `clipping` is on, and a scrolling `UIPanel` from its
+ * content area. An ancestor without the method never clips.
+ * @param region - the region being hit-tested
+ * @param x - the point, in the coordinates of the region's bounds
+ * @param y - the point, in the coordinates of the region's bounds
+ * @returns true when some ancestor does not show that point
+ * @ignore
+ * @internal
+ */
+function isClippedOut(region: any, x: number, y: number): boolean {
+	for (let node = region.ancestor; node != null; node = node.ancestor) {
+		if (typeof node.clipContains === "function" && !node.clipContains(x, y)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
  * propagate events to registered objects
  * @ignore
  * @internal
@@ -334,6 +356,19 @@ function dispatchEvent(normalizedEvents: Pointer[]): boolean {
 		currentPointer.setSize(pointer.width, pointer.height);
 
 		const isPointerMove = POINTER_MOVE.includes(pointer.type);
+
+		// the pointer left the canvas, or a finger lifted: every region it
+		// was over is left, wherever the browser reports the exit (at the
+		// canvas's edge, usually far from the region, so not through the
+		// spatial query below, which only finds regions near that point)
+		if (POINTER_LEAVE.includes(pointer.type)) {
+			for (const handlers of eventHandlers.values()) {
+				if (handlers.pointerId === pointer.pointerId) {
+					triggerEvent(handlers, pointer.type, pointer, null);
+				}
+			}
+			continue;
+		}
 
 		// trigger a global event for pointer move
 		if (isPointerMove) {
@@ -412,10 +447,15 @@ function dispatchEvent(normalizedEvents: Pointer[]): boolean {
 					}
 				}
 
+				const hitX =
+					region.isFloating === true ? pointer.gameX : absoluteWorldX;
+				const hitY =
+					region.isFloating === true ? pointer.gameY : absoluteWorldY;
+				// inside its bounds AND inside every clipping container above
+				// it: a child scrolled or cropped out of view is not drawn
+				// there, so it must not answer there either
 				const eventInBounds =
-					region.isFloating === true
-						? bounds.contains(pointer.gameX, pointer.gameY)
-						: bounds.contains(absoluteWorldX, absoluteWorldY);
+					bounds.contains(hitX, hitY) && !isClippedOut(region, hitX, hitY);
 
 				// Covered by whatever consumed the move above. Being inside its
 				// own bounds is no longer what decides it, so release the
@@ -484,10 +524,30 @@ function dispatchEvent(normalizedEvents: Pointer[]): boolean {
 					case POINTER_UP[1]:
 					case POINTER_UP[2]:
 					case POINTER_UP[3]:
-						// pointer defined & inside of bounds: trigger the POINTER_UP callback
+						// pointer defined & inside of bounds: trigger the POINTER_UP callback.
+						// The region keeps the pointer: the press is over, but the
+						// pointer is still over it, so moving away still leaves it and
+						// moving on over it does not enter it again. A legacy
+						// `touchend` is the exception: a lifted finger is over nothing,
+						// and touch events send no leave after it, so it leaves here.
 						if (handlers.pointerId === pointer.pointerId && eventInBounds) {
+							const lifted = pointer.type === POINTER_UP[2];
 							// trigger the corresponding callback
-							if (triggerEvent(handlers, pointer.type, pointer, null)) {
+							const stop = triggerEvent(
+								handlers,
+								pointer.type,
+								pointer,
+								lifted ? null : pointer.pointerId,
+							);
+							if (lifted) {
+								triggerEvent(
+									handlers,
+									findActiveEvent(activeEventList, POINTER_LEAVE),
+									pointer,
+									null,
+								);
+							}
+							if (stop) {
 								handled = true;
 								break;
 							}
@@ -498,10 +558,18 @@ function dispatchEvent(normalizedEvents: Pointer[]): boolean {
 					case POINTER_CANCEL[1]:
 					case POINTER_CANCEL[2]:
 					case POINTER_CANCEL[3]:
-						// pointer defined: trigger the POINTER_CANCEL callback
+						// pointer defined: trigger the POINTER_CANCEL callback, then
+						// leave: a cancelled pointer is gone, and the region forgets it
+						// here, so the browser's own leave after it would not reach it
 						if (handlers.pointerId === pointer.pointerId) {
-							// trigger the corresponding callback
-							if (triggerEvent(handlers, pointer.type, pointer, null)) {
+							const stop = triggerEvent(handlers, pointer.type, pointer, null);
+							triggerEvent(
+								handlers,
+								findActiveEvent(activeEventList, POINTER_LEAVE),
+								pointer,
+								null,
+							);
+							if (stop) {
 								handled = true;
 								break;
 							}
@@ -584,9 +652,14 @@ function normalizeEvent(originalEvent: any): Pointer[] {
 		return normalizedEvents;
 	}
 
-	// else use the first entry to simulate mouse event
+	// else use the first entry to simulate mouse event: its event state only.
+	// The button bindings (`bind`, set by bindPointer) belong to the global
+	// pointer: every pooled pointer has its own empty list, which would
+	// otherwise replace them on each event.
 	normalizedEvents[0].isPrimary = true;
+	const bind = pointer.bind;
 	Object.assign(pointer, normalizedEvents[0]);
+	pointer.bind = bind;
 
 	return normalizedEvents;
 }

@@ -4,8 +4,10 @@ import { Matrix2d } from "../../math/matrix2d.ts";
 import { Vector2d } from "../../math/vector2d.ts";
 import timer from "../../system/timer.ts";
 import { getBasename, getExtension } from "../../utils/file.ts";
+import { createCanvas } from "../../video/canvas_factory.js";
+import { TextureAtlas } from "../../video/texture/atlas.js";
 import { buildFlipTransform } from "./TMXTile.js";
-import { resolveEmbeddedImage } from "./TMXUtils.js";
+import { applyTransparentColor, resolveEmbeddedImage } from "./TMXUtils.js";
 
 // shared scratch matrix for flip-transform construction in drawTileRaw — avoids
 // per-call allocation in the hot path. Single-threaded JS means it's safe to
@@ -30,6 +32,14 @@ export default class TMXTileset {
 		 * @internal
 		 */
 		this.tileProperties = new Map();
+
+		/**
+		 * per-tile class indexed by gid
+		 * @type {Map<number, string>}
+		 * @ignore
+		 * @internal
+		 */
+		this.tileClasses = new Map();
 
 		/**
 		 * per-tile images for "Collection of Image" tilesets, indexed by gid
@@ -133,6 +143,16 @@ export default class TMXTileset {
 		 * @default "stretch"
 		 */
 		this.fillmode = tileset.fillmode ?? "stretch";
+
+		/**
+		 * the point of a tile object from this tileset that sits at its
+		 * position: "topleft", "top", "topright", "left", "center", "right",
+		 * "bottomleft", "bottom" or "bottomright". "unspecified" means the
+		 * bottom left, or the bottom center on an isometric map
+		 * @type {string}
+		 * @default "unspecified"
+		 */
+		this.objectalignment = tileset.objectalignment ?? "unspecified";
 
 		/**
 		 * the map's tile grid width (used for tilerendersize="grid")
@@ -239,6 +259,14 @@ export default class TMXTileset {
 
 		// Tiled 1.10+ provides an explicit flag; fall back to detection for older maps
 		this.isCollection = tileset.isCollection ?? this.imageCollection.size > 0;
+
+		// an image collection's gids run to its highest tile id (ids can
+		// skip numbers, where tiles were removed)
+		if (this.isCollection) {
+			for (const gid of this.imageCollection.keys()) {
+				this.lastgid = Math.max(this.lastgid, gid);
+			}
+		}
 
 		// set tile offset
 		const offset = tileset.tileoffset;
@@ -370,6 +398,12 @@ export default class TMXTileset {
 		for (const tile of tileEntries) {
 			const tileId = +tile.id;
 
+			// the tile's class: `class` in Tiled 1.9, `type` before and since 1.10
+			const tileClass = tile.class ?? tile.type;
+			if (typeof tileClass === "string" && tileClass !== "") {
+				this.tileClasses.set(tileId + this.firstgid, tileClass);
+			}
+
 			// parse animation frames
 			if (tile.animation) {
 				this.isAnimated = true;
@@ -403,7 +437,10 @@ export default class TMXTileset {
 
 			// store per-tile image (collection of images tileset)
 			if (tile.image) {
-				const image = getImage(tile.image);
+				const image = applyTransparentColor(
+					getImage(tile.image),
+					tile.transparentcolor,
+				);
 				if (!image) {
 					throw new Error(
 						`melonJS: '${tile.image}' file for tile '${tileId + this.firstgid}' not found!`,
@@ -464,8 +501,11 @@ export default class TMXTileset {
 	 * @internal
 	 */
 	_initAtlas(tileset) {
-		// get the global tileset texture
-		this.image = getImage(tileset.image);
+		// get the global tileset texture, its transparent color applied
+		this.image = applyTransparentColor(
+			getImage(tileset.image),
+			tileset.transparentcolor,
+		);
 
 		if (!this.image) {
 			throw new Error(
@@ -482,24 +522,34 @@ export default class TMXTileset {
 		});
 		this.atlas = this.texture.getAtlas();
 
-		// calculate the number of tiles per horizontal line
-		const hTileCount =
-			+tileset.columns ||
-			Math.round(this.image.width / (this.tilewidth + this.spacing));
-		let vTileCount = Math.round(
-			this.image.height / (this.tileheight + this.spacing),
+		// the tiles the image holds, counted as Tiled does: whole tiles only,
+		// from the margin, a tile plus the spacing apart (Tiled lets the
+		// last column and row go without their outer margin). A partial
+		// tile at the right or bottom edge is not one, and must not take a
+		// gid of the next tileset
+		const columns = Math.max(
+			Math.floor(
+				(this.image.width - this.margin + this.spacing) /
+					(this.tilewidth + this.spacing),
+			),
+			0,
 		);
-		if (tileset.tilecount % hTileCount > 0) {
-			++vTileCount;
-		}
+		const rows = Math.max(
+			Math.floor(
+				(this.image.height - this.margin + this.spacing) /
+					(this.tileheight + this.spacing),
+			),
+			0,
+		);
+		const computed = (+tileset.columns || columns) * rows;
+		// the tile count Tiled saved (always, since Tiled 0.13) is the one
+		// its gids were given by
+		const tilecount = +tileset.tilecount > 0 ? +tileset.tilecount : computed;
 		// compute the last gid value in the tileset
-		this.lastgid = this.firstgid + (hTileCount * vTileCount - 1 || 0);
-		if (
-			tileset.tilecount &&
-			this.lastgid - this.firstgid + 1 !== +tileset.tilecount
-		) {
+		this.lastgid = this.firstgid + Math.max(tilecount - 1, 0);
+		if (+tileset.tilecount > 0 && computed < tilecount) {
 			console.warn(
-				`Computed tilecount (${this.lastgid - this.firstgid + 1}) does not match expected tilecount (${tileset.tilecount})`,
+				`melonJS: tileset '${this.name}' image holds ${computed} tiles, fewer than its tilecount (${tilecount})`,
 			);
 		}
 	}
@@ -511,6 +561,53 @@ export default class TMXTileset {
 	 */
 	getTileImage(gid) {
 		return this.imageCollection.get(gid);
+	}
+
+	/**
+	 * the texture the sprite of an animated tile object is cut from: the
+	 * tileset image, or for an image collection the images its animations
+	 * show, painted side by side once and named by their tile id
+	 * @returns {TextureAtlas}
+	 * @ignore
+	 * @internal
+	 */
+	getAnimationTexture() {
+		if (!this.isCollection) {
+			return this.texture;
+		}
+		if (this._animationTexture === undefined) {
+			const ids = new Set();
+			for (const animation of this.animations.values()) {
+				for (const frame of animation.frames) {
+					ids.add(+frame.tileid);
+				}
+			}
+			let width = 0;
+			let height = 0;
+			for (const id of ids) {
+				const image = this.getTileImage(id + this.firstgid);
+				width += image.width;
+				height = Math.max(height, image.height);
+			}
+			const canvas = createCanvas(width, height);
+			const context = canvas.getContext("2d");
+			const frames = [];
+			let x = 0;
+			for (const id of ids) {
+				const image = this.getTileImage(id + this.firstgid);
+				context.drawImage(image, x, 0);
+				frames.push({
+					filename: "" + id,
+					frame: { x, y: 0, w: image.width, h: image.height },
+				});
+				x += image.width;
+			}
+			this._animationTexture = new TextureAtlas(
+				{ meta: { app: "melonJS", size: { w: width, h: height } }, frames },
+				canvas,
+			);
+		}
+		return this._animationTexture;
 	}
 
 	/**
@@ -557,6 +654,16 @@ export default class TMXTileset {
 	 */
 	getTileProperties(tileId) {
 		return this.tileProperties.get(tileId);
+	}
+
+	/**
+	 * return the class of the specified tile, as set on the tile in Tiled's
+	 * tileset editor. A tile object with no class of its own is matched by it.
+	 * @param {number} tileId - global tile ID
+	 * @returns {string|undefined} the tile's class, or undefined if it has none
+	 */
+	getTileClass(tileId) {
+		return this.tileClasses.get(tileId);
 	}
 
 	/**
@@ -626,6 +733,9 @@ export default class TMXTileset {
 			} else {
 				dw = tmxTile.width;
 				dh = tmxTile.height;
+				// bottom-align against tileset baseline (renderer uses
+				// tileset.tileheight, the tallest image of the collection)
+				dy += this.tileheight - dh;
 			}
 		} else {
 			// spritesheet: use precomputed values
@@ -671,8 +781,8 @@ export default class TMXTileset {
 				this.tileheight,
 				dx,
 				dy,
-				dw + renderer.uvOffset,
-				dh + renderer.uvOffset,
+				dw,
+				dh,
 			);
 		}
 
@@ -730,6 +840,9 @@ export default class TMXTileset {
 			} else {
 				dw = tileWidth;
 				dh = tileHeight;
+				// bottom-align against tileset baseline (renderer uses
+				// tileset.tileheight, the tallest image of the collection)
+				dy += this.tileheight - dh;
 			}
 		} else {
 			// spritesheet: use precomputed values
@@ -781,8 +894,8 @@ export default class TMXTileset {
 				this.tileheight,
 				dx,
 				dy,
-				dw + renderer.uvOffset,
-				dh + renderer.uvOffset,
+				dw,
+				dh,
 			);
 		}
 

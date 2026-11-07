@@ -352,6 +352,184 @@ describe("TMXObject", () => {
 			expect(pts[1].x).toBeCloseTo(0, 0);
 			expect(pts[1].y).toBeCloseTo(100, 0);
 		});
+
+		describe("on isometric maps", () => {
+			// where Tiled draws a point (x, y) of an object relative to the
+			// object position: (x - y) * tilewidth / (2 * tileheight), (x + y) / 2
+			const project = (tw, th, x, y) => {
+				return [((x - y) * tw) / (2 * th), (x + y) / 2];
+			};
+			const isoMap = (tilewidth, tileheight) => {
+				return { ...mockMap("isometric"), tilewidth, tileheight };
+			};
+			const expectPoints = (shape, expected) => {
+				const pts = shape.points.map((p) => {
+					return [p.x + shape.pos.x, p.y + shape.pos.y];
+				});
+				expect(pts.length).toEqual(expected.length);
+				for (let i = 0; i < pts.length; i++) {
+					expect(pts[i][0]).toBeCloseTo(expected[i][0], 6);
+					expect(pts[i][1]).toBeCloseTo(expected[i][1], 6);
+				}
+			};
+
+			for (const [tw, th] of [
+				[64, 32],
+				[128, 32],
+				[186, 108],
+				[32, 32],
+			]) {
+				it(`should project a rectangle with ${tw}x${th} tiles`, () => {
+					const obj = new TMXObject(
+						isoMap(tw, th),
+						{ name: "", x: 0, y: 0, width: 96, height: 48 },
+						0,
+					);
+					expectPoints(obj.shapes[0], [
+						project(tw, th, 0, 0),
+						project(tw, th, 96, 0),
+						project(tw, th, 96, 48),
+						project(tw, th, 0, 48),
+					]);
+				});
+
+				it(`should project a polygon with ${tw}x${th} tiles`, () => {
+					const obj = new TMXObject(
+						isoMap(tw, th),
+						{
+							name: "",
+							x: 0,
+							y: 0,
+							polygon: [
+								{ x: 0, y: 0 },
+								{ x: 60, y: 10 },
+								{ x: 20, y: 70 },
+							],
+						},
+						0,
+					);
+					expectPoints(obj.shapes[0], [
+						project(tw, th, 0, 0),
+						project(tw, th, 60, 10),
+						project(tw, th, 20, 70),
+					]);
+				});
+
+				it(`should project polyline segments with ${tw}x${th} tiles`, () => {
+					const obj = new TMXObject(
+						isoMap(tw, th),
+						{
+							name: "",
+							x: 0,
+							y: 0,
+							polyline: [
+								{ x: 0, y: 0 },
+								{ x: 50, y: 0 },
+								{ x: 50, y: 40 },
+							],
+						},
+						0,
+					);
+					expectPoints(obj.shapes[0], [
+						project(tw, th, 0, 0),
+						project(tw, th, 50, 0),
+					]);
+					expectPoints(obj.shapes[1], [
+						project(tw, th, 50, 0),
+						project(tw, th, 50, 40),
+					]);
+				});
+			}
+
+			describe("ellipses", () => {
+				// where Tiled puts the point at angle t of the ellipse inside
+				// the object's box, the box turned by `rotation` about the
+				// object's position
+				const onEllipse = (tw, th, w, h, t, rotation = 0) => {
+					const x = w / 2 + (w / 2) * Math.cos(t);
+					const y = h / 2 + (h / 2) * Math.sin(t);
+					const c = Math.cos(rotation);
+					const s = Math.sin(rotation);
+					return project(tw, th, x * c - y * s, x * s + y * c);
+				};
+				const ellipse = (map, w, h, rotation = 0) => {
+					return new TMXObject(
+						map,
+						{
+							name: "",
+							x: 0,
+							y: 0,
+							width: w,
+							height: h,
+							rotation,
+							ellipse: true,
+						},
+						0,
+					);
+				};
+
+				for (const [tw, th] of [
+					[64, 32],
+					[128, 32],
+					[186, 108],
+				]) {
+					it.each([[0], [30]])(
+						`projects a circle turned by %s degrees with ${tw}x${th} tiles, as an ellipse`,
+						(degrees) => {
+							const rotation = (degrees * Math.PI) / 180;
+							const shape = ellipse(isoMap(tw, th), 100, 100, degrees)
+								.shapes[0];
+							expect(shape.type).toEqual("Ellipse");
+							// every point of the projected circle lies on it
+							for (let k = 0; k < 16; k++) {
+								const [x, y] = onEllipse(
+									tw,
+									th,
+									100,
+									100,
+									(k * Math.PI) / 8,
+									rotation,
+								);
+								const u = (x - shape.pos.x) / shape.radiusV.x;
+								const v = (y - shape.pos.y) / shape.radiusV.y;
+								expect(u * u + v * v).toBeCloseTo(1, 6);
+							}
+						},
+					);
+
+					it(`projects any other ellipse with ${tw}x${th} tiles, as a polygon on it`, () => {
+						const shape = ellipse(isoMap(tw, th), 216, 108).shapes[0];
+						expect(shape.type).toEqual("Polygon");
+						const expected = [];
+						for (let k = 0; k < 16; k++) {
+							expected.push(onEllipse(tw, th, 216, 108, (k * Math.PI) / 8));
+						}
+						expectPoints(shape, expected);
+					});
+				}
+
+				it("turns any other ellipse with the object before projecting it", () => {
+					const rotation = Math.PI / 6;
+					const shape = ellipse(isoMap(186, 108), 216, 108, 30).shapes[0];
+					const expected = [];
+					for (let k = 0; k < 16; k++) {
+						expected.push(
+							onEllipse(186, 108, 216, 108, (k * Math.PI) / 8, rotation),
+						);
+					}
+					expectPoints(shape, expected);
+				});
+
+				it("leaves an ellipse on an orthogonal map as it was", () => {
+					const shape = ellipse(mockMap(), 216, 108).shapes[0];
+					expect(shape.type).toEqual("Ellipse");
+					expect(shape.pos.x).toEqual(108);
+					expect(shape.pos.y).toEqual(54);
+					expect(shape.radiusV.x).toEqual(108);
+					expect(shape.radiusV.y).toEqual(54);
+				});
+			});
+		});
 	});
 
 	describe("basic properties", () => {

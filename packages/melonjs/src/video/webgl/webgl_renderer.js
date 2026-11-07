@@ -1,3 +1,6 @@
+import { warnOnce } from "../../lang/console.js";
+import Light2d from "../../lighting/light2d.ts";
+import { shaderList } from "../../loader/cache.js";
 import { Color, colorPool } from "./../../math/color.ts";
 import { Matrix3d } from "../../math/matrix3d.ts";
 import { Bounds } from "../../physics/bounds.ts";
@@ -18,6 +21,7 @@ import {
 	isSupportedBlendMode,
 	normalizeBlendMode,
 } from "../blendmodes.js";
+import AmbientLightEffect from "../effects/ambientlight.js";
 import BlendEffect from "../effects/blendEffect.js";
 import RadialGradientEffect from "../effects/radialGradient.js";
 import { Gradient } from "../gradient.js";
@@ -28,7 +32,9 @@ import { createAtlas, TextureAtlas } from "./../texture/atlas.js";
 import TextureCache from "./../texture/cache.js";
 import { FrameTexture } from "./../texture/frametexture.js";
 import { dashPath, dashSegments } from "../utils/dash.js";
+import { pointsBox } from "../utils/pixel_snap.js";
 import {
+	arcSweep,
 	generateJoinCircles,
 	generateTriangleFan,
 } from "../utils/tessellation.js";
@@ -38,6 +44,7 @@ import LitQuadBatcher from "./batchers/lit_quad_batcher";
 import MeshBatcher from "./batchers/mesh_batcher";
 import PrimitiveBatcher from "./batchers/primitive_batcher";
 import QuadBatcher from "./batchers/quad_batcher";
+import { markContextLost } from "./buffer/deletable.js";
 import { createLightUniformScratch, packLights } from "./lighting/pack.ts";
 import OrthogonalTMXLayerGPURenderer from "./renderers/tmxlayer/orthogonal.js";
 import { WebGLTextureStore } from "./texture/store.js";
@@ -112,6 +119,15 @@ function initBlendEnums(gl) {
 		"one-minus-dst-alpha": gl.ONE_MINUS_DST_ALPHA,
 	};
 }
+
+/**
+ * How long, in milliseconds, the mesh-effect warm-up may link programs in
+ * one task before giving the page a frame. Linking is synchronous; a budget
+ * keeps a stage's worth of it from landing in a single frame.
+ * @ignore
+ * @internal
+ */
+const MESH_EFFECT_LINK_BUDGET = 4;
 
 /**
  * a WebGL renderer object
@@ -227,6 +243,16 @@ export default class WebGLRenderer extends Renderer {
 		 * @internal
 		 */
 		this._effectProjectionStack = [];
+
+		/**
+		 * The opacity each (possibly nested) post-effect pass was begun
+		 * under, by depth: the pass draws its content opaque, and the last
+		 * blit of a renderable's chain composites it at this.
+		 * @type {number[]}
+		 * @ignore
+		 * @internal
+		 */
+		this._effectAlphaStack = [];
 		/**
 		 * @ignore
 		 * @internal
@@ -278,11 +304,6 @@ export default class WebGLRenderer extends Renderer {
 		 * @internal
 		 */
 		this._advancedBlendStencil = false;
-		/**
-		 * @ignore
-		 * @internal
-		 */
-		this._advancedBlendWarned = new Set();
 
 		/**
 		 * sets or returns the thickness of lines for shape drawing
@@ -413,6 +434,9 @@ export default class WebGLRenderer extends Renderer {
 		 */
 		this.currentTransform = this.renderState.currentTransform;
 
+		// an effect pass's capture is a framebuffer, read bottom-up
+		this._captureFlipsY = true;
+
 		/**
 		 * The current batcher used by the renderer
 		 * @type {WebGLBatcher}
@@ -522,6 +546,11 @@ export default class WebGLRenderer extends Renderer {
 			(e) => {
 				e.preventDefault();
 				this.isContextValid = false;
+				// From here on a handle may belong to the dead context, so
+				// teardown has to probe before deleting. Until this happens
+				// the probe is skipped, because it is synchronous and every
+				// released buffer would pay for it. See `buffer/deletable.js`.
+				markContextLost(this.gl);
 				// driver auto-frees lost resources; just drop the ref
 				this.vertexBuffer = null;
 				emit(ONCONTEXT_LOST, this);
@@ -570,7 +599,6 @@ export default class WebGLRenderer extends Renderer {
 				// Clearing the memo alone is not enough — the flags were
 				// captured at construction and nothing else recomputes them.
 				this._extensions.clear();
-				this._hdrRefusalWarned = false;
 				this._deriveCapabilities();
 				// and the format derived from them: a restored context is a
 				// NEW context and need not offer what the old one did. Left
@@ -609,6 +637,12 @@ export default class WebGLRenderer extends Renderer {
 				// work already done for the rest of the session and the
 				// variants silently go back to being built on first draw
 				this._prewarmed = undefined;
+				this._prewarmedEffects = new WeakSet();
+				// and nothing else would rebuild them: the loader only warms
+				// on a preload, and the game has long finished preloading
+				if (this.settings.prewarm === true) {
+					this.prewarm().catch(() => {});
+				}
 			}
 		};
 		this.onCanvasResize = (width, height) => {
@@ -762,21 +796,12 @@ export default class WebGLRenderer extends Renderer {
 			this._renderTargetPool.destroy();
 		}
 
-		if (wanted && granted !== true && this._hdrRefusalWarned !== true) {
-			// Once. `setHDR` is meant to be driven from a settings toggle,
-			// and a refusal repeated on every press is noise that teaches
-			// people to ignore the console. Cleared on context restore,
-			// where a NEW context may refuse for a new reason.
-			//
-			// `warning()` is the deprecation helper and would format this as
-			// one, so this uses the plain console form the other capability
-			// notices take. A game that never asked is never nagged.
-			/**
-			 * @ignore
-			 * @internal
-			 */
-			this._hdrRefusalWarned = true;
-			console.warn(
+		if (wanted && granted !== true) {
+			// once per page: `setHDR` is meant to be driven from a settings
+			// toggle, and a refusal repeated on every press is noise that
+			// teaches people to ignore the console. A game that never asked
+			// is never nagged.
+			warnOnce(
 				"hdr: true was requested but this WebGL2 driver cannot render into a half-float color buffer (neither EXT_color_buffer_float nor EXT_color_buffer_half_float is available) — falling back to 8 bits per channel",
 			);
 		}
@@ -893,10 +918,29 @@ export default class WebGLRenderer extends Renderer {
 	 * @see {@link Renderer#prewarm}
 	 */
 	prewarm() {
+		// Every preloaded `{type: "shader"}` asset, so a mesh-hosted effect's
+		// spliced variant is built here rather than on the frame it first
+		// draws. The WebGPU backend already warms this list; the splice is
+		// what WebGL has to do on top of it.
+		//
+		// Two halves with different lifetimes. The batchers' own variants are
+		// a fixed set, built once per context, so that half is memoized. The
+		// effects are NOT: `shaderList` grows with every preload, and loading
+		// a level's effects with that level is the pattern this is for. Only
+		// memoizing the whole call meant a second preload warmed none of its
+		// shaders, silently, with the lazy path covering for it.
+		this._prewarmedEffects ??= new WeakSet();
+		const effects = Object.values(shaderList).filter((effect) => {
+			return effect != null && !this._prewarmedEffects.has(effect);
+		});
+		for (const effect of effects) {
+			this._prewarmedEffects.add(effect);
+		}
+		const batchers = [...this.batchers.values()];
 		if (this._prewarmed === undefined) {
 			this._prewarmed = Promise.all(
-				[...this.batchers.values()].map((batcher) => {
-					return batcher.prewarm();
+				batchers.map((batcher) => {
+					return batcher.prewarm(effects);
 				}),
 			).then(() => {
 				// the batchers each leave their own program bound; put the
@@ -904,11 +948,286 @@ export default class WebGLRenderer extends Renderer {
 				// next draw inherits whichever batcher finished last
 				this.setBatcher("quad");
 			});
+		} else if (effects.length > 0) {
+			// chained, so a warm-up never runs while the previous one is
+			// still yielding between links
+			this._prewarmed = this._prewarmed.then(() => {
+				return Promise.all(
+					batchers.map((batcher) => {
+						return batcher.prewarmEffects?.(effects);
+					}),
+				).then(() => {
+					this.setBatcher("quad");
+				});
+			});
 		}
 		return this._prewarmed;
 	}
 
+	/**
+	 * Warm the renderable's own draw. A program is linked when it is made on
+	 * this backend, so what is left is what the renderer makes the first
+	 * time a frame needs it: the effects a light draws with.
+	 * @param {Renderable} renderable - the renderable to warm for
+	 * @override
+	 * @ignore
+	 * @internal
+	 */
+	_warmDraw(renderable) {
+		if (renderable instanceof Light2d) {
+			this._warmLight(renderable);
+		}
+	}
+
+	/**
+	 * Link, off the frame, the effects a light draws with: its glow, through
+	 * the radial-gradient effect, and for a light with a soft edge the
+	 * stage's darkness, through the ambient-light effect (see `drawLight`,
+	 * `drawAmbientLight`). The renderer made both the first time a frame drew
+	 * a light, so they were linked inside that frame.
+	 * @param {Light2d} light - the light to warm for
+	 * @ignore
+	 * @internal
+	 */
+	_warmLight(light) {
+		const gl = this.gl;
+		if (gl === null || gl.isContextLost?.() === true) {
+			return;
+		}
+		this._lightShader ??= new RadialGradientEffect(this);
+		if (light.softness > 0) {
+			this._ambientShader ??= new AmbientLightEffect(this);
+		}
+	}
+
+	/**
+	 * Warm what one renderable's post effects will need on this backend.
+	 *
+	 * An effect's own program is linked when the effect is constructed, so
+	 * what is left is what depends on where it is drawn: a mesh does not
+	 * draw an effect with that program but with the effect spliced into the
+	 * mesh shader, built on first draw; and a chain composites through
+	 * render targets, built on the frame the chain first runs or grows a
+	 * second effect.
+	 * @param {Renderable} renderable - the renderable to warm for
+	 * @override
+	 * @ignore
+	 * @internal
+	 */
+	_warmPostEffects(renderable) {
+		const gl = this.gl;
+		if (gl === null || gl.isContextLost?.() === true) {
+			return;
+		}
+		const effects = renderable.postEffects.filter((fx) => {
+			return fx != null;
+		});
+		if (effects.length === 0) {
+			return;
+		}
+
+		// Render targets: only outside any effect pass, because making a
+		// framebuffer rebinds the screen framebuffer when it is done, and a
+		// pass in progress has its own bound. A warm-up runs after the
+		// caller's task, which is between frames in practice.
+		const isCamera = renderable._postEffectManaged === true;
+		if (
+			this._effectPassDepth === 0 &&
+			(isCamera ||
+				effects.length > 1 ||
+				renderable.postEffectNeedsCapture === true)
+		) {
+			const { width, height } = this.getCanvas();
+			this.flush();
+			this._renderTargetPool.reserve(
+				isCamera,
+				this._postEffectCapacity(renderable, effects),
+				width,
+				height,
+			);
+			// creating a target binds (then clears) TEXTURE0, as in
+			// `beginPostEffect`
+			this.invalidateTextureUnit(0);
+		}
+
+		if (!this._hostsMeshEffect(renderable)) {
+			return;
+		}
+		const batcher = this.batchers.get(
+			renderable.lit === true ? "litMesh" : "mesh",
+		);
+		if (batcher === undefined) {
+			return;
+		}
+		// Queued rather than linked here. Linking is synchronous, and a stage
+		// that builds a pool of effect-carrying meshes up front (projectiles,
+		// impact flashes) would pay every link in one frame, a spike of its
+		// own. Each clone of an effect is its own program, so a pool of
+		// twenty is twenty links.
+		this._meshEffectWarmQueue ??= [];
+		// The fog `#define` is captured NOW, from the stage's cameras (see
+		// `Renderer#_warmFogStates`). The link runs in later tasks, and the
+		// renderer's own fog at that point is whichever camera drew last.
+		for (const fog of this._warmFog ?? [this._fog3d != null]) {
+			const fogDefine = fog ? "#define FOG\n" : "";
+			for (const fx of effects) {
+				this._meshEffectWarmQueue.push(batcher, fx, fogDefine);
+			}
+		}
+		if (this._meshEffectWarmScheduled !== true) {
+			this._meshEffectWarmScheduled = true;
+			/**
+			 * settles once the queue `_linkQueuedMeshEffects` works through
+			 * is empty, for a state change waiting to draw
+			 * @type {Promise<void>}
+			 * @ignore
+			 * @internal
+			 */
+			this._meshEffectWarmDone = new Promise((resolve) => {
+				this._meshEffectWarmSettle = resolve;
+			});
+			queueMicrotask(() => {
+				this._linkQueuedMeshEffects();
+			});
+		}
+	}
+
+	/**
+	 * Run `warm` and hand back what is still to be built once it returns:
+	 * the spliced mesh programs it queued, which are linked over the next
+	 * tasks rather than all at once.
+	 * @param {Function} warm - issues the warm-ups
+	 * @returns {Promise<void>[]} the queued links, as one promise, or nothing
+	 * @override
+	 * @ignore
+	 * @internal
+	 */
+	_collectWarms(warm) {
+		warm();
+		return this._meshEffectWarmScheduled === true
+			? [this._meshEffectWarmDone]
+			: [];
+	}
+
+	/**
+	 * Link the spliced mesh programs queued by `_warmPostEffects`, a few
+	 * milliseconds' worth per task, so a pool's worth spreads over the next
+	 * frames instead of landing in one. A draw that comes first simply links
+	 * its own program, as it would have without the warm-up.
+	 * @ignore
+	 * @internal
+	 */
+	_linkQueuedMeshEffects() {
+		const queue = this._meshEffectWarmQueue;
+		const gl = this.gl;
+		if (gl === null || gl.isContextLost?.() === true) {
+			queue.length = 0;
+			this._settleMeshEffectWarm();
+			return;
+		}
+		const start = globalThis.performance.now();
+		const previous = this.currentProgram;
+		try {
+			while (
+				queue.length > 0 &&
+				globalThis.performance.now() - start < MESH_EFFECT_LINK_BUDGET
+			) {
+				const batcher = queue.shift();
+				const fx = queue.shift();
+				const fogDefine = queue.shift();
+				if (fx.destroyed !== true && batcher.canHostEffect?.(fx) === true) {
+					batcher._effectShader(fx, fogDefine);
+				}
+			}
+		} finally {
+			this._restoreProgram(previous);
+		}
+		if (queue.length === 0) {
+			this._settleMeshEffectWarm();
+		} else if (globalThis.document?.hidden === true) {
+			// a hidden tab throttles timers to one a second and draws nothing,
+			// so there is no frame to protect: finish now
+			this._linkQueuedMeshEffects();
+		} else {
+			setTimeout(() => {
+				this._linkQueuedMeshEffects();
+			}, 0);
+		}
+	}
+
+	/**
+	 * The link queue is empty: let the next warm-up schedule a new one, and
+	 * release whatever is waiting on this one.
+	 * @ignore
+	 * @internal
+	 */
+	_settleMeshEffectWarm() {
+		this._meshEffectWarmScheduled = false;
+		this._meshEffectWarmSettle?.();
+		this._meshEffectWarmSettle = undefined;
+	}
+
+	/**
+	 * Build the advanced blend shader and its offscreen target before the
+	 * first draw in one of those modes, which otherwise compiles the shader
+	 * and creates the target in the middle of that frame.
+	 * @override
+	 * @ignore
+	 * @internal
+	 */
+	_warmAdvancedBlend() {
+		const gl = this.gl;
+		if (gl === null || gl.isContextLost?.() === true) {
+			return;
+		}
+		if (typeof this._advancedBlendEffect === "undefined") {
+			const previous = this.currentProgram;
+			try {
+				this._advancedBlendEffect = new BlendEffect(this);
+			} finally {
+				this._restoreProgram(previous);
+			}
+		}
+		// the target only outside any pass or bracket, for the same reason as
+		// the effect targets in `_warmPostEffects`
+		if (
+			typeof this._advancedBlendTarget === "undefined" &&
+			this._effectPassDepth === 0 &&
+			this._advancedBlendOpen !== true
+		) {
+			const { width, height } = this.getCanvas();
+			this.flush();
+			// the same target `_openAdvancedBlend` makes, see the note there
+			this._advancedBlendTarget = new WebGLRenderTarget(gl, width, height, {
+				samples: 0,
+				format: gl.RGBA8,
+			});
+			this.invalidateTextureUnit(0);
+		}
+	}
+
+	/**
+	 * Put back the program a warm-up found bound. Linking leaves the new
+	 * program bound, and the batchers trust what they last bound, so a
+	 * warm-up between two draws would otherwise hand the next one a
+	 * stranger's program.
+	 * @param {WebGLProgram|undefined} previous - what was bound before
+	 * @ignore
+	 * @internal
+	 */
+	_restoreProgram(previous) {
+		if (previous != null && this.currentProgram !== previous) {
+			this.gl.useProgram(previous);
+			this.currentProgram = previous;
+		}
+	}
+
 	destroy() {
+		// a warm-up slice still pending must not link into batchers that are
+		// about to be torn down
+		if (this._meshEffectWarmQueue !== undefined) {
+			this._meshEffectWarmQueue.length = 0;
+		}
 		// renderer-owned, so no camera's teardown will have freed it
 		this._toneMapEffect?.destroy?.();
 		/**
@@ -1025,6 +1344,16 @@ export default class WebGLRenderer extends Renderer {
 			 */
 			this._lightShader = undefined;
 		}
+		// the same for the ambient-light effect (re-created on the next
+		// soft-cutout pass)
+		if (this._ambientShader !== undefined) {
+			this._ambientShader.destroy?.();
+			/**
+			 * @ignore
+			 * @internal
+			 */
+			this._ambientShader = undefined;
+		}
 		if (this._lightAtlas !== undefined) {
 			// `TextureCache` is keyed by the source image, not by the
 			// `TextureAtlas` instance. Dropping the wrong key would leak
@@ -1088,6 +1417,31 @@ export default class WebGLRenderer extends Renderer {
 			}
 		}
 		super.drawTileLayer(layer, rect);
+	}
+
+	/**
+	 * A tile layer drawn tile by tile: the sprite shaders keep each tile's
+	 * samples half a texel inside it (see `gpu/frame.js`), so two tiles
+	 * never blend the next tile of their tileset in along their edge.
+	 * @ignore
+	 * @internal
+	 */
+	beginTileLayer() {
+		this.drawingTiles = true;
+		this.batchers.forEach((batcher) => {
+			batcher.syncFrameClamp?.();
+		});
+	}
+
+	/**
+	 * @ignore
+	 * @internal
+	 */
+	endTileLayer() {
+		this.drawingTiles = false;
+		this.batchers.forEach((batcher) => {
+			batcher.syncFrameClamp?.();
+		});
 	}
 
 	/**
@@ -1404,6 +1758,39 @@ export default class WebGLRenderer extends Renderer {
 		// here. The next `setBatcher` call (sprites, primitives, etc.)
 		// will reconcile to the right shader on its own (see
 		// `setBatcher`), and that's what unlocks the cross-light batch.
+	}
+
+	/**
+	 * Draw the ambient darkness with a hole per light, as one quad over the
+	 * view through the ambient-light effect (see `AmbientLightEffect`).
+	 * @ignore
+	 * @internal
+	 */
+	drawAmbientLight(color, lights, x, y, width, height) {
+		if (this._ambientShader === undefined) {
+			this._ambientShader = new AmbientLightEffect(this);
+		}
+		this._ambientShader.setLights(lights, x, y, width, height);
+		this.save();
+		this.setGlobalAlpha(1.0);
+		this.setBlendMode("normal");
+		const batcher = this.setBatcher("quad", this._ambientShader);
+		batcher.addQuad(
+			this._getLightAtlas(),
+			x,
+			y,
+			width,
+			height,
+			0,
+			0,
+			1,
+			1,
+			// the ambient color and its alpha, through the vertex tint
+			color.toUint32(color.alpha),
+		);
+		// drawn now, under these lights: the next camera loads its own
+		this.flush();
+		this.restore();
 	}
 
 	/**
@@ -1754,9 +2141,17 @@ export default class WebGLRenderer extends Renderer {
 				new Matrix3d();
 		}
 		savedProjection.copy(this.projectionMatrix);
+		// the opacity the renderable is drawn at: its content goes into the
+		// target opaque, and the chain's last blit composites it at this
+		this._effectAlphaStack[this._effectPassDepth] = this.globalAlpha();
 		this._effectPassDepth++;
 
-		const rt = this._renderTargetPool.begin(isCamera, effects.length, w, h);
+		const rt = this._renderTargetPool.begin(
+			isCamera,
+			this._postEffectCapacity(renderable, effects),
+			w,
+			h,
+		);
 		// FBO creation/resize binds (then nulls) TEXTURE0 — invalidate EVERY
 		// batcher's cache for that unit, not just the current one: a batcher
 		// that isn't current right now would otherwise keep trusting its stale
@@ -1769,7 +2164,10 @@ export default class WebGLRenderer extends Renderer {
 		this.setGlobalAlpha(1.0);
 		this.setBlendMode("normal");
 
-		if (isCamera) {
+		// a camera that starts the frame starts its pass like one (background
+		// colour, fresh stencil); one drawn over another camera, and any
+		// renderable, starts transparent so what is behind shows through
+		if (isCamera && !renderable._postEffectOver) {
 			this.clear();
 		} else {
 			this.clearRenderTarget();
@@ -1789,8 +2187,9 @@ export default class WebGLRenderer extends Renderer {
 		if (effects.length === 0) {
 			return;
 		}
-		// single effect on non-managed renderable used customShader — no FBO to unbind
-		if (this._usesPostEffectFastPath(renderable, effects)) {
+		// single effect on non-managed renderable used customShader — no FBO
+		// to unbind; its effect is put back to the space `uv` always was
+		if (this._endEffectSpace(renderable, effects)) {
 			return;
 		}
 
@@ -1803,7 +2202,10 @@ export default class WebGLRenderer extends Renderer {
 		const isCamera = renderable._postEffectManaged;
 		const rt1 = this._renderTargetPool.getCaptureTarget();
 		const rt2 = this._renderTargetPool.getPingPongTarget();
-		const keepBlend = !isCamera;
+		// a camera that starts the frame replaces it; one drawn over another
+		// camera is blended over what that one drew
+		const over = isCamera && renderable._postEffectOver === true;
+		const keepBlend = !isCamera || over;
 		const canvas = this.getCanvas();
 		const w = canvas.width;
 		const h = canvas.height;
@@ -1854,8 +2256,22 @@ export default class WebGLRenderer extends Renderer {
 			this.toFrameTexture();
 		}
 
+		// the chain's passes are told where the renderable is
+		this._beginChainSpace(renderable);
+		if (over) {
+			// whatever the camera's last draw left set
+			this.setBlendMode("normal");
+		}
+		// a renderable's chain lands at the opacity it is drawn at, by its
+		// last blit only; a camera's composites whole
+		const alpha = isCamera
+			? 1
+			: this._effectAlphaStack[this._effectPassDepth - 1];
 		if (effects.length === 1) {
-			this.blitEffect(rt1.texture, 0, 0, w, h, effects[0], keepBlend);
+			if (!isCamera) {
+				this._resumeSavedClip();
+			}
+			this.blitEffect(rt1.texture, 0, 0, w, h, effects[0], keepBlend, alpha);
 		} else {
 			// multi-pass: ping-pong between two render targets
 			let src = rt1;
@@ -1877,6 +2293,9 @@ export default class WebGLRenderer extends Renderer {
 				parentRT.bind();
 			}
 			this.setViewport(0, 0, w, h);
+			if (!isCamera) {
+				this._resumeSavedClip();
+			}
 
 			this.blitEffect(
 				src.texture,
@@ -1886,12 +2305,14 @@ export default class WebGLRenderer extends Renderer {
 				h,
 				effects[effects.length - 1],
 				keepBlend,
+				alpha,
 			);
 		}
 
 		if (isCamera && renderable.isDefault === false) {
 			this.disableScissor();
 		}
+		this._clearChainSpace();
 
 		// restore renderer state and projection saved in beginPostEffect
 		this.restore();
@@ -1912,12 +2333,7 @@ export default class WebGLRenderer extends Renderer {
 	 * @internal
 	 */
 	_warnAdvancedBlendFallback(what) {
-		const key = `${what}:${this.currentBlendMode}`;
-		if (this._advancedBlendWarned.has(key)) {
-			return;
-		}
-		this._advancedBlendWarned.add(key);
-		console.warn(
+		warnOnce(
 			`WebGLRenderer: blend mode "${this.currentBlendMode}" is not supported for ${what} and falls back to "normal"`,
 		);
 	}
@@ -2088,8 +2504,18 @@ export default class WebGLRenderer extends Renderer {
 	 * @param {number} height - destination height
 	 * @param {ShaderEffect} shader - the shader effect to apply
 	 * @param {boolean} [keepBlend=false] - if true, keep current blend mode (for sprite compositing)
+	 * @param {number} [alpha=1] - the opacity to composite the blit at (0.0 to 1.0)
 	 */
-	blitEffect(source, x, y, width, height, shader, keepBlend = false) {
+	blitEffect(
+		source,
+		x,
+		y,
+		width,
+		height,
+		shader,
+		keepBlend = false,
+		alpha = 1,
+	) {
 		// A blit is compositing machinery, not a scene draw: it must never
 		// open an advanced-blend bracket of its own. That covers both the
 		// post-effect chain's ping-pong blits (which run under the
@@ -2113,7 +2539,7 @@ export default class WebGLRenderer extends Renderer {
 		if (!keepBlend) {
 			this.setBlendEnabled(false);
 		}
-		batcher.blitTexture(source, x, y, width, height, shader);
+		batcher.blitTexture(source, x, y, width, height, shader, alpha);
 		if (!keepBlend) {
 			this.setBlendEnabled(true);
 		}
@@ -2199,6 +2625,35 @@ export default class WebGLRenderer extends Renderer {
 		this.currentScissor[1] = sy;
 		this.currentScissor[2] = sw;
 		this.currentScissor[3] = sh;
+	}
+
+	/**
+	 * Put back the clip a renderable's effect pass was begun under, for its
+	 * composite to land inside it: a camera's view on the screen, a
+	 * clipping container. The pass drops it (see `beginPostEffect`) to
+	 * capture the whole canvas, and the `restore()` that ends the pass
+	 * would only put it back once the composite has drawn.
+	 * @ignore
+	 * @internal
+	 */
+	_resumeSavedClip() {
+		const saved = this.renderState.peekScissor();
+		if (saved === null) {
+			return;
+		}
+		const gl = this.gl;
+		const canvas = this.getCanvas();
+		this.flush();
+		gl.enable(gl.SCISSOR_TEST);
+		this._scissorActive = true;
+		this.currentScissor.set(saved);
+		// screen-space coords (see `clipRect`), with GL's bottom-left y-flip
+		gl.scissor(
+			saved[0],
+			canvas.height - saved[3] - saved[1],
+			saved[2],
+			saved[3],
+		);
 	}
 
 	/**
@@ -2332,12 +2787,6 @@ export default class WebGLRenderer extends Renderer {
 			sy = 0;
 		}
 
-		if (this.settings.subPixel === false) {
-			// clamp to pixel grid
-			dx |= 0;
-			dy |= 0;
-		}
-
 		// dispatch to the lit batcher only when the scene actually has
 		// active lights AND this sprite has a normal map. Otherwise the
 		// unlit `quad` batcher is faster (full texture-unit capacity, no
@@ -2355,11 +2804,12 @@ export default class WebGLRenderer extends Renderer {
 			this.batchers.has("litQuad") &&
 			this.activeLightCount > 0 &&
 			this.currentNormalMap !== null;
-		this.setBatcher(useLit ? "litQuad" : "quad");
-
+		// the sprite's own effect, or the default program. Left bound after
+		// the quad: the next sprite drawn with the same effect joins the
+		// same draw, and one drawn without it puts the default back here
 		const shader = this.customShader;
+		this.setBatcher(useLit ? "litQuad" : "quad", shader);
 		if (shader != null) {
-			this.currentBatcher.useShader(shader);
 			// (re)bind any extra textures a ShaderEffect declared via setTexture
 			shader._prepareTextures?.(this.currentBatcher);
 		}
@@ -2383,7 +2833,9 @@ export default class WebGLRenderer extends Renderer {
 				reupload = true;
 			}
 		}
-		const uvs = texture.getUVs(sx, sy, sw, sh);
+		const uvs = texture._quadUVs(image, sx, sy, sw, sh);
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(dx, dy, dw, dh);
 		if (useLit) {
 			this.currentBatcher.addQuad(
 				texture,
@@ -2414,10 +2866,7 @@ export default class WebGLRenderer extends Renderer {
 				reupload,
 			);
 		}
-
-		if (typeof shader === "object") {
-			this.currentBatcher.useShader(this.currentBatcher.defaultShader);
-		}
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -2430,8 +2879,22 @@ export default class WebGLRenderer extends Renderer {
 	 * @see WebGLRenderer#createPattern
 	 */
 	drawPattern(pattern, x, y, width, height) {
-		const uvs = pattern.getUVs("0,0," + width + "," + height);
-		this.setBatcher("quad");
+		// the renderable's own effect, bound as `drawImage` binds it. Left
+		// out, an `ImageLayer` with a single ShaderEffect drew without it on
+		// this backend: `setBatcher` puts the batcher back on its default
+		// program, and nothing here put the effect on again.
+		if (this.customShader?._screenTextureUniforms?.length > 0) {
+			this.toFrameTexture();
+		}
+		const shader = this.customShader;
+		this.setBatcher("quad", shader);
+		if (shader != null) {
+			shader._prepareTextures?.(this.currentBatcher);
+		}
+		// computed last: it is a scratch array, valid until the next call
+		const uvs = pattern._quadUVs(pattern.getTexture(), 0, 0, width, height);
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(x, y, width, height);
 		this.currentBatcher.addQuad(
 			pattern,
 			x,
@@ -2444,6 +2907,7 @@ export default class WebGLRenderer extends Renderer {
 			uvs[3],
 			this.currentTint.toUint32(this.getGlobalAlpha()),
 		);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -2618,6 +3082,15 @@ export default class WebGLRenderer extends Renderer {
 			: null;
 		let hostedShader = spliced !== null && spliced !== undefined;
 		if (hostedShader) {
+			// an effect measuring in texels counts the mesh's (before binding
+			// the spliced program: this writes the effect's own)
+			const image = mesh.texture?.getTexture();
+			if (image !== undefined) {
+				this.customShader._setSourceSize?.(
+					image.width || image.videoWidth || 1,
+					image.height || image.videoHeight || 1,
+				);
+			}
 			this.currentBatcher.useShader(spliced);
 			this.currentBatcher.replayEffectUniforms(this.customShader, spliced);
 		} else if (this.customShader != null && this.customShader.program != null) {
@@ -2625,15 +3098,9 @@ export default class WebGLRenderer extends Renderer {
 			this.currentBatcher.useShader(this.customShader);
 		} else if (
 			this.customShader != null &&
-			this.customShader.isWebGL !== true &&
-			this._meshShaderWarned !== true
+			this.customShader.isWebGL !== true
 		) {
-			/**
-			 * @ignore
-			 * @internal
-			 */
-			this._meshShaderWarned = true;
-			console.warn(
+			warnOnce(
 				"melonJS: this custom shader cannot be hosted on a Mesh by the WebGL renderer (no compiled GLSL program) — the mesh draws with the built-in shading",
 			);
 		}
@@ -2990,6 +3457,8 @@ export default class WebGLRenderer extends Renderer {
 		}
 		const result = this.renderState.restore(canvas.width, canvas.height);
 		if (result !== null) {
+			this.lineWidth = this.renderState.lineWidth;
+			this.lineJoin = this.renderState.lineJoin;
 			this.setBlendMode(result.blendMode);
 			if (scissorChanging) {
 				const gl = this.gl;
@@ -3031,6 +3500,10 @@ export default class WebGLRenderer extends Renderer {
 	 */
 	save() {
 		this.renderState.currentShader = this.customShader;
+		// line width and join are plain fields here, not context state: hand
+		// them to the stack so restore() puts them back, as on Canvas
+		this.renderState.lineWidth = this.lineWidth;
+		this.renderState.lineJoin = this.lineJoin;
 		this.renderState.save(this._scissorActive === true);
 	}
 
@@ -3120,12 +3593,21 @@ export default class WebGLRenderer extends Renderer {
 	 * decoupled from {@link WebGLRenderer#setAntiAlias} (which controls MSAA).
 	 * Records the setting (via the base) then re-filters every currently-bound
 	 * texture. WebGL only.
-	 * @param {"auto"|"nearest"|"linear"} [mode="auto"] - `"auto"` follows `antiAlias`
+	 * @param {"auto"|"nearest"|"linear"|"linear-mipmap"} [mode="auto"] - `"auto"` follows `antiAlias`
 	 * @see Renderer#getDefaultTextureFilter
+	 * @example
+	 * // smooth, and from the mipmaps wherever something is drawn small
+	 * app.renderer.setTextureFilter("linear-mipmap");
+	 * // back to the antiAlias setting
+	 * app.renderer.setTextureFilter("auto");
 	 */
 	setTextureFilter(mode = "auto") {
 		super.setTextureFilter(mode);
 		this._reapplyTextureFilter(this._glTextureFilter());
+		// under "linear-mipmap" a sprite keeps its samples inside its frame
+		this.batchers.forEach((batcher) => {
+			batcher.syncFrameClamp?.();
+		});
 	}
 
 	/**
@@ -3163,13 +3645,8 @@ export default class WebGLRenderer extends Renderer {
 	setHDROutput(enable = false) {
 		super.setHDROutput(enable);
 		this.supportsHDROutput = false;
-		if (enable === true && this._hdrOutputRefusalWarned !== true) {
-			/**
-			 * @ignore
-			 * @internal
-			 */
-			this._hdrOutputRefusalWarned = true;
-			console.warn(
+		if (enable === true) {
+			warnOnce(
 				"hdrOutput: true was requested but the WebGL2 backend cannot present in extended range (no browser implements the drawing-buffer tone mapping that would allow it) — presenting in SDR",
 			);
 		}
@@ -3192,7 +3669,9 @@ export default class WebGLRenderer extends Renderer {
 	 * @param {number} alpha - 0.0 to 1.0 values accepted.
 	 */
 	setGlobalAlpha(alpha) {
-		this.currentColor.alpha = alpha;
+		// apart from the colour's own alpha, as a 2D context keeps its
+		// globalAlpha apart from its fillStyle
+		this.renderState.globalAlpha = alpha;
 	}
 
 	/**
@@ -3200,7 +3679,7 @@ export default class WebGLRenderer extends Renderer {
 	 * @returns {number} global alpha value
 	 */
 	getGlobalAlpha() {
-		return this.currentColor.alpha;
+		return this.renderState.globalAlpha;
 	}
 
 	/**
@@ -3215,9 +3694,9 @@ export default class WebGLRenderer extends Renderer {
 		} else {
 			this.renderState.currentGradient = null;
 			this._currentGradient = null;
-			const alpha = this.currentColor.alpha;
+			// the colour keeps its own alpha: fills and strokes are drawn at
+			// it times the global alpha (see `packedFillColor`)
 			this.currentColor.copy(color);
-			this.currentColor.alpha *= alpha;
 		}
 	}
 
@@ -3236,14 +3715,25 @@ export default class WebGLRenderer extends Renderer {
 			this.fillArc(x, y, radius, start, end, antiClockwise);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(
+			x - radius,
+			y - radius,
+			radius * 2,
+			radius * 2,
+			this.lineWidth / 2,
+		);
 		this.setBatcher("primitive");
 		this.path2D.beginPath();
 		this.path2D.arc(x, y, radius, start, end, antiClockwise);
 		this.currentBatcher.drawVertices(this.gl.LINES, this.path2D.points);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
-	 * Fill an arc at the specified coordinates with given radius, start and end points
+	 * Fill an arc at the specified coordinates with given radius, start and end points.
+	 * The angles are read like `CanvasRenderingContext2D.arc`: an end before
+	 * the start wraps round, and a span of 2π or more is the whole circle.
 	 * @param {number} x - arc center point x-axis
 	 * @param {number} y - arc center point y-axis
 	 * @param {number} radius - arc radius
@@ -3264,28 +3754,37 @@ export default class WebGLRenderer extends Renderer {
 			);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(
+			x - radius,
+			y - radius,
+			radius * 2,
+			radius * 2,
+		);
 		this.setBatcher("primitive");
-		let diff = Math.abs(end - start);
-		if (antiClockwise) {
-			diff = Math.PI * 2 - diff;
+		const diff = arcSweep(start, end, antiClockwise);
+		if (diff > 0) {
+			const segments = Math.max(
+				4,
+				Math.round((diff * radius) / this.path2D.arcResolution),
+			);
+			// the fan always runs clockwise: an anticlockwise arc from `start`
+			// covers the same angles as a clockwise one ending at `start`
+			const startAngle = antiClockwise ? start - diff : start;
+			this.currentBatcher.drawVertices(
+				this.gl.TRIANGLES,
+				generateTriangleFan(
+					x,
+					y,
+					radius,
+					radius,
+					startAngle,
+					startAngle + diff,
+					segments,
+				),
+			);
 		}
-		const segments = Math.max(
-			4,
-			Math.round((diff * radius) / this.path2D.arcResolution),
-		);
-		const startAngle = antiClockwise ? end : start;
-		this.currentBatcher.drawVertices(
-			this.gl.TRIANGLES,
-			generateTriangleFan(
-				x,
-				y,
-				radius,
-				radius,
-				startAngle,
-				startAngle + diff,
-				segments,
-			),
-		);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3301,10 +3800,19 @@ export default class WebGLRenderer extends Renderer {
 			this.fillEllipse(x, y, w, h);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(
+			x - w,
+			y - h,
+			w * 2,
+			h * 2,
+			this.lineWidth / 2,
+		);
 		this.setBatcher("primitive");
 		this.path2D.beginPath();
 		this.path2D.ellipse(x, y, w, h, 0, 0, 360);
 		this.currentBatcher.drawVertices(this.gl.LINES, this.path2D.points);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3327,6 +3835,8 @@ export default class WebGLRenderer extends Renderer {
 			);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(x - w, y - h, w * 2, h * 2);
 		this.setBatcher("primitive");
 		const segments = Math.max(
 			8,
@@ -3336,6 +3846,7 @@ export default class WebGLRenderer extends Renderer {
 			this.gl.TRIANGLES,
 			generateTriangleFan(x, y, w, h, 0, Math.PI * 2, segments),
 		);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3346,6 +3857,14 @@ export default class WebGLRenderer extends Renderer {
 	 * @param {number} endY - the end y coordinate
 	 */
 	strokeLine(startX, startY, endX, endY) {
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(
+			Math.min(startX, endX),
+			Math.min(startY, endY),
+			Math.abs(endX - startX),
+			Math.abs(endY - startY),
+			this.lineWidth / 2,
+		);
 		this.setBatcher("primitive");
 		const dash = this.renderState.lineDash;
 		if (dash.length > 0) {
@@ -3359,6 +3878,7 @@ export default class WebGLRenderer extends Renderer {
 			this.path2D.lineTo(endX, endY);
 			this.currentBatcher.drawVertices(this.gl.LINES, this.path2D.points);
 		}
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3386,6 +3906,16 @@ export default class WebGLRenderer extends Renderer {
 		const len = points.length;
 
 		this.translate(poly.pos.x, poly.pos.y);
+		// the box the points drawn cover, local to the polygon
+		const box = pointsBox(poly.points);
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(
+			box[0],
+			box[1],
+			box[2],
+			box[3],
+			this.lineWidth / 2,
+		);
 
 		this.setBatcher("primitive");
 		this.path2D.beginPath();
@@ -3424,6 +3954,7 @@ export default class WebGLRenderer extends Renderer {
 			);
 		}
 
+		this._pixelSnapEnd(snapped);
 		this.translate(-poly.pos.x, -poly.pos.y);
 	}
 
@@ -3436,6 +3967,10 @@ export default class WebGLRenderer extends Renderer {
 			const bounds = poly.getBounds();
 			// translate to polygon's local space so gradient coords match
 			this.translate(poly.pos.x, poly.pos.y);
+			// on whole pixels unless `subPixel` is set: the mask and the
+			// gradient over it alike
+			const box = pointsBox(poly.points);
+			const snapped = this._pixelSnapBegin(box[0], box[1], box[2], box[3]);
 			this.#gradientMask(
 				() => {
 					// draw polygon vertices directly (already translated)
@@ -3460,11 +3995,16 @@ export default class WebGLRenderer extends Renderer {
 				bounds.width,
 				bounds.height,
 			);
+			this._pixelSnapEnd(snapped);
 			this.translate(-poly.pos.x, -poly.pos.y);
 			return;
 		}
 		this.setBatcher("primitive");
 		this.translate(poly.pos.x, poly.pos.y);
+		// the box the points drawn cover, local to the polygon
+		const box = pointsBox(poly.points);
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(box[0], box[1], box[2], box[3]);
 		const indices = poly.getIndices();
 		const points = poly.points;
 		const verts = this._polyVerts;
@@ -3483,6 +4023,7 @@ export default class WebGLRenderer extends Renderer {
 		}
 
 		this.currentBatcher.drawVertices(this.gl.TRIANGLES, verts, len);
+		this._pixelSnapEnd(snapped);
 		this.translate(-poly.pos.x, -poly.pos.y);
 	}
 
@@ -3499,6 +4040,14 @@ export default class WebGLRenderer extends Renderer {
 			this.fillRect(x, y, width, height);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(
+			x,
+			y,
+			width,
+			height,
+			this.lineWidth / 2,
+		);
 		this.setBatcher("primitive");
 		this.path2D.beginPath();
 		this.path2D.rect(x, y, width, height);
@@ -3519,6 +4068,7 @@ export default class WebGLRenderer extends Renderer {
 				),
 			);
 		}
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3548,6 +4098,8 @@ export default class WebGLRenderer extends Renderer {
 			);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(x, y, width, height);
 		this.setBatcher("primitive");
 		// 2 triangles directly — avoids path2D + earcut overhead
 		const right = x + width;
@@ -3566,6 +4118,7 @@ export default class WebGLRenderer extends Renderer {
 		pts[5].x = x;
 		pts[5].y = bottom;
 		this.currentBatcher.drawVertices(this.gl.TRIANGLES, pts);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3582,10 +4135,19 @@ export default class WebGLRenderer extends Renderer {
 			this.fillRoundRect(x, y, width, height, radius);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(
+			x,
+			y,
+			width,
+			height,
+			this.lineWidth / 2,
+		);
 		this.setBatcher("primitive");
 		this.path2D.beginPath();
 		this.path2D.roundRect(x, y, width, height, radius);
 		this.currentBatcher.drawVertices(this.gl.LINES, this.path2D.points);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3609,6 +4171,8 @@ export default class WebGLRenderer extends Renderer {
 			);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(x, y, width, height);
 		this.setBatcher("primitive");
 		const r = Math.min(radius, width / 2, height / 2);
 		const verts = [];
@@ -3686,6 +4250,7 @@ export default class WebGLRenderer extends Renderer {
 		); // bottom-left
 
 		this.currentBatcher.drawVertices(this.gl.TRIANGLES, verts);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3847,12 +4412,6 @@ export default class WebGLRenderer extends Renderer {
 				),
 			);
 		}
-		if (this.settings.subPixel === false) {
-			// snap position values to pixel grid
-			const a = this.currentTransform.val;
-			a[12] |= 0;
-			a[13] |= 0;
-		}
 	}
 
 	/**
@@ -3861,13 +4420,9 @@ export default class WebGLRenderer extends Renderer {
 	 * @param {number} y - Distance to move in the vertical direction. Positive values are down, and negative are up.
 	 */
 	translate(x, y) {
+		// not snapped here: a draw is snapped once, where it lands (see
+		// _pixelSnapBegin)
 		this.currentTransform.translate(x, y);
-		if (this.settings.subPixel === false) {
-			// snap position values to pixel grid
-			const a = this.currentTransform.val;
-			a[12] |= 0;
-			a[13] |= 0;
-		}
 	}
 
 	/**
@@ -3888,16 +4443,10 @@ export default class WebGLRenderer extends Renderer {
 		// `ColorLayer`-style hosts have `Infinity` dimensions + a 0.5
 		// anchor, leaving `currentTransform.tx/ty = -Infinity`. Running
 		// transform math on that produces NaN corners and a broken
-		// `gl.scissor`. Treat a non-finite transform as "no clip".
+		// `gl.scissor`. Treat a non-finite transform as "no further clip":
+		// the clip already active, if any, stays, as a clip can only narrow.
 		const m = this.currentTransform;
 		if (!Number.isFinite(m.tx) || !Number.isFinite(m.ty)) {
-			if (this._scissorActive) {
-				// drain pending vertices under the active scissor first;
-				// otherwise they would flush later under no scissor.
-				this.flush();
-				gl.disable(gl.SCISSOR_TEST);
-				this._scissorActive = false;
-			}
 			return;
 		}
 
@@ -3911,15 +4460,38 @@ export default class WebGLRenderer extends Renderer {
 		const aabb = this._clipAABB;
 		aabb.clear();
 		aabb.addFrame(x, y, x + width, y + height, m);
-		const sx = Math.floor(aabb.min.x);
-		const sy = Math.floor(aabb.min.y);
-		const sw = Math.ceil(aabb.max.x - sx);
-		const sh = Math.ceil(aabb.max.y - sy);
+		// on whole pixels unless `subPixel` is set: each edge rounded to its
+		// nearest, as any draw is (see _pixelSnapBegin). Otherwise, or turned,
+		// the box covering every pixel the clip touches
+		const snap = this._snapsToPixels();
+		let sx = snap ? Math.round(aabb.min.x) : Math.floor(aabb.min.x);
+		let sy = snap ? Math.round(aabb.min.y) : Math.floor(aabb.min.y);
+		let sw = snap ? Math.round(aabb.max.x) - sx : Math.ceil(aabb.max.x - sx);
+		let sh = snap ? Math.round(aabb.max.y) - sy : Math.ceil(aabb.max.y - sy);
+
+		// A clip inside a clip is the overlap of the two, as Canvas's
+		// `context.clip()` is: a clipping container nested in another, or
+		// a scrolling panel in a clipping parent, stays inside both.
+		// `save()` / `restore()` bring the outer clip back.
+		const cs = this.currentScissor;
+		if (this._scissorActive) {
+			const left = Math.max(sx, cs[0]);
+			const top = Math.max(sy, cs[1]);
+			const right = Math.min(sx + sw, cs[0] + cs[2]);
+			const bottom = Math.min(sy + sh, cs[1] + cs[3]);
+			sx = left;
+			sy = top;
+			// no overlap: an empty scissor, so nothing draws
+			sw = Math.max(0, right - left);
+			sh = Math.max(0, bottom - top);
+		}
 
 		// If the resulting screen AABB covers the whole canvas, treat as
 		// no-clip and disable the scissor. Caller intent: "clip to the
 		// full viewport" → no scissor needed. Works regardless of the
-		// transform that produced the AABB.
+		// transform that produced the AABB. (With a clip already active
+		// the overlap is inside it, so this only matches when that clip
+		// covered the canvas too.)
 		if (
 			sx <= 0 &&
 			sy <= 0 &&
@@ -3936,7 +4508,6 @@ export default class WebGLRenderer extends Renderer {
 
 		// `currentScissor` now stores screen-space coords directly so
 		// `restore()` can re-apply without re-running the transform math.
-		const cs = this.currentScissor;
 		if (
 			this._scissorActive &&
 			cs[0] === sx &&
@@ -3986,16 +4557,7 @@ export default class WebGLRenderer extends Renderer {
 			// reserved as #gradientMask's temporary marker, and an 8-bit
 			// stencil couldn't represent deeper nesting anyway
 			this.maskLevel = 0x7f;
-			if (this._maskDepthWarned !== true) {
-				/**
-				 * @ignore
-				 * @internal
-				 */
-				this._maskDepthWarned = true;
-				console.warn(
-					"melonJS: setMask nesting deeper than 127 — mask level clamped",
-				);
-			}
+			warnOnce("melonJS: setMask nesting deeper than 127 — mask level clamped");
 		}
 
 		// Write phase: increment stencil for the drawn shape's pixels so each

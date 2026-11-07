@@ -108,6 +108,28 @@ export default class Camera2d extends Renderable {
 	damping: number;
 
 	/**
+	 * The layers this camera draws, as bits: a renderable is drawn only if
+	 * its {@link Renderable#visibilityLayer} shares a bit with this mask. All
+	 * bits by default, so a camera draws everything. Leave a layer out to
+	 * keep what is on it off this camera only, such as the particles off a
+	 * minimap: `~layer` is every layer but that one.
+	 * <br><br>
+	 * It decides what this camera draws, and nothing else: what it leaves
+	 * out still updates, collides and receives pointer events. A
+	 * {@link Light2d} it leaves out, itself or a container it is in,
+	 * neither glows, nor cuts its hole in the darkness, nor lights
+	 * normal-mapped sprites in this camera. A mask of `0` draws nothing.
+	 * @default -1 (all bits)
+	 * @see Renderable#visibilityLayer
+	 * @example
+	 * // particles on their own layer, and a minimap that leaves it out
+	 * const PARTICLES = 2;
+	 * emitter.visibilityLayer = PARTICLES;
+	 * minimap.cullMask = ~PARTICLES;
+	 */
+	cullMask: number;
+
+	/**
 	 * the closest point relative to the camera. Widened from `-1000` in
 	 * 19.7 to accommodate sprites at large `depth` values now that
 	 * `aVertex.z` participates in clip-space (PR A): the default
@@ -188,7 +210,21 @@ export default class Camera2d extends Renderable {
 	 */
 	invCurrentTransform: Matrix3d;
 
-	/** offset for shake effect */
+	/**
+	 * Shifts the view without moving the camera, in world units: to look
+	 * ahead of what the camera follows, or above it, or for a shake of
+	 * your own. It is applied after following and the camera's bounds, so
+	 * the view can show past them. Drawing, culling, the lights and the
+	 * pointer (`localToWorld`, `worldToLocal`) all count it. The built-in
+	 * {@link Camera2d#shake} adds its jitter to it and takes it back off
+	 * when it ends, so a value set before or during a shake is kept.
+	 * Cleared by {@link Camera2d#reset}.
+	 * @default <0,0>
+	 * @example
+	 * // follow the hero, looking a little above his feet
+	 * app.viewport.follow(hero, app.viewport.AXIS.BOTH, 0.1);
+	 * app.viewport.offset.set(0, -70);
+	 */
 	offset: Vector2d;
 
 	/** target to follow */
@@ -246,6 +282,8 @@ export default class Camera2d extends Renderable {
 
 		this.damping = 1.0;
 
+		this.cullMask = -1;
+
 		this.near = -1e6;
 
 		this.far = 1e6;
@@ -254,7 +292,7 @@ export default class Camera2d extends Renderable {
 
 		this.invCurrentTransform = new Matrix3d();
 
-		// offset for shake effect
+		// shifts the view, see the field's doc
 		this.offset = new Vector2d();
 
 		// target to follow
@@ -342,17 +380,23 @@ export default class Camera2d extends Renderable {
 	 * @internal
 	 */
 	_followH(target: Vector2d | Vector3d): number {
+		// the deadzone is in screen pixels, and a zoomed camera sees
+		// `width / zoom` of the world: compare and clamp in world units
+		const zoom = this.zoom;
 		let targetX = this.pos.x;
-		if (target.x - this.pos.x > this.deadzone.right) {
+		if ((target.x - this.pos.x) * zoom > this.deadzone.right) {
 			// clamp against the bounds' right EDGE — `bounds.width` is
 			// `right - left`, so using it as a max only worked for a
 			// zero-origin world and cut `left` px off the far side
 			targetX = Math.min(
-				target.x - this.deadzone.right,
-				this.bounds.right - this.width,
+				target.x - this.deadzone.right / zoom,
+				this.bounds.right - this.width / zoom,
 			);
-		} else if (target.x - this.pos.x < this.deadzone.pos.x) {
-			targetX = Math.max(target.x - this.deadzone.pos.x, this.bounds.left);
+		} else if ((target.x - this.pos.x) * zoom < this.deadzone.pos.x) {
+			targetX = Math.max(
+				target.x - this.deadzone.pos.x / zoom,
+				this.bounds.left,
+			);
 		}
 		return targetX;
 	}
@@ -362,14 +406,19 @@ export default class Camera2d extends Renderable {
 	 * @internal
 	 */
 	_followV(target: Vector2d | Vector3d): number {
+		// in world units, as `_followH`
+		const zoom = this.zoom;
 		let targetY = this.pos.y;
-		if (target.y - this.pos.y > this.deadzone.bottom) {
+		if ((target.y - this.pos.y) * zoom > this.deadzone.bottom) {
 			targetY = Math.min(
-				target.y - this.deadzone.bottom,
-				this.bounds.bottom - this.height,
+				target.y - this.deadzone.bottom / zoom,
+				this.bounds.bottom - this.height / zoom,
 			);
-		} else if (target.y - this.pos.y < this.deadzone.pos.y) {
-			targetY = Math.max(target.y - this.deadzone.pos.y, this.bounds.top);
+		} else if ((target.y - this.pos.y) * zoom < this.deadzone.pos.y) {
+			targetY = Math.max(
+				target.y - this.deadzone.pos.y / zoom,
+				this.bounds.top,
+			);
 		}
 		return targetY;
 	}
@@ -451,16 +500,68 @@ export default class Camera2d extends Renderable {
 	}
 
 	/**
+	 * Whether this camera draws the floating renderables that are not
+	 * `visibleInAllCameras` (a HUD, a `ColorLayer`). A camera with default
+	 * settings does, and so does the stage's main camera when it is zoomed:
+	 * zoom does not make it a minimap. Any other camera (a minimap, a
+	 * split-screen view) leaves them to the main camera.
+	 * @ignore
+	 * @internal
+	 */
+	get drawsFloating(): boolean {
+		if (this.isDefault) {
+			return true;
+		}
+		return (
+			this.screenX === 0 &&
+			this.screenY === 0 &&
+			state.current()?.cameras.get("default") === this
+		);
+	}
+
+	/**
+	 * Where the view starts on one axis, given the camera's position shifted
+	 * by its offset: on a whole pixel (in world units) unless `subPixel` is
+	 * set. The world is drawn from it, culled against it ({@link worldView})
+	 * and the pointer is read from it ({@link localToWorld}), so a click lands
+	 * on what is drawn under it. The position itself keeps its fraction, so a
+	 * damped follow still converges.
+	 *
+	 * Rounding the view once, rather than leaving its fraction to every draw,
+	 * is what keeps things still against each other while the view scrolls: a
+	 * hero at x = 100.5 next to a tile at 96 stays 5 pixels from it, where a
+	 * view at x = 0.2 then 0.6 would draw them 4 then 5 pixels apart.
+	 * @param value - the position plus the offset, on one axis
+	 * @returns where the view starts on that axis
+	 * @ignore
+	 */
+	_viewOrigin(value: number): number {
+		return this._snapView ? Math.round(value) : value;
+	}
+
+	/**
+	 * Whether the view starts on a whole pixel ({@link _viewOrigin}): taken
+	 * from the `subPixel` setting of the renderer that draws this camera, at
+	 * the start of each {@link draw}, so a camera follows its own application
+	 * rather than whichever one was created last. `true` until the first
+	 * draw, which is `subPixel`'s default.
+	 * @ignore
+	 */
+	_snapView = true;
+
+	/**
 	 * The world-space bounds currently visible through this camera,
-	 * taking into account position and zoom level.
+	 * taking into account position, {@link Camera2d#offset} and zoom level.
 	 * @returns the visible world area
 	 */
 	get worldView(): Bounds {
+		const x = this._viewOrigin(this.pos.x + this.offset.x);
+		const y = this._viewOrigin(this.pos.y + this.offset.y);
 		this._worldView.setMinMax(
-			this.pos.x,
-			this.pos.y,
-			this.pos.x + this.width / this.zoom,
-			this.pos.y + this.height / this.zoom,
+			x,
+			y,
+			x + this.width / this.zoom,
+			y + this.height / this.zoom,
 		);
 		return this._worldView;
 	}
@@ -493,8 +594,9 @@ export default class Camera2d extends Renderable {
 		// override sets its own depth after this has run.
 		this.setPosition(x, y);
 
-		// reset the target
+		// reset the target, and the view's offset from it
 		this.unfollow();
+		this.offset.setZero();
 
 		// damping default value
 		this.smoothFollow = true;
@@ -526,21 +628,30 @@ export default class Camera2d extends Renderable {
 	 * change the deadzone settings.
 	 * the "deadzone" defines an area within the current camera in which
 	 * the followed renderable can move without scrolling the camera.
+	 * Its edges are on whole pixels: the size is rounded to the nearest one.
 	 * @see {@link follow}
 	 * @param w - deadzone width
 	 * @param h - deadzone height
+	 * @example
+	 * // the hero moves 200 x 120 pixels around the middle before the camera follows
+	 * app.viewport.follow(hero, app.viewport.AXIS.BOTH);
+	 * app.viewport.setDeadzone(200, 120);
 	 */
 	setDeadzone(w: number, h: number): void {
 		if (typeof this.deadzone === "undefined") {
 			this.deadzone = new Rect(0, 0, 0, 0);
 		}
 
-		// reusing the old code for now...
+		// whole pixels on every side, so a camera following a target that is
+		// on a whole pixel comes to rest on one (the default, a sixth of the
+		// view, is a fraction for most sizes)
+		const width = Math.round(w);
+		const height = Math.round(h);
 		this.deadzone.pos.set(
-			~~((this.width - w) / 2),
-			~~((this.height - h) / 2 - h * 0.25),
+			~~((this.width - width) / 2),
+			~~((this.height - height) / 2 - height * 0.25),
 		);
-		this.deadzone.resize(w, h);
+		this.deadzone.resize(width, height);
 
 		this.smoothFollow = false;
 
@@ -670,9 +781,18 @@ export default class Camera2d extends Renderable {
 		const _y = this.pos.y;
 
 		// clamp against the bounds' far edges — `bounds.width/height` are
-		// extents (`right - left`), correct as a max only for a zero origin
-		this.pos.x = clamp(x, this.bounds.left, this.bounds.right - this.width);
-		this.pos.y = clamp(y, this.bounds.top, this.bounds.bottom - this.height);
+		// extents (`right - left`), correct as a max only for a zero origin.
+		// A zoomed camera sees `width / zoom` of the world
+		this.pos.x = clamp(
+			x,
+			this.bounds.left,
+			this.bounds.right - this.width / this.zoom,
+		);
+		this.pos.y = clamp(
+			y,
+			this.bounds.top,
+			this.bounds.bottom - this.height / this.zoom,
+		);
 
 		//publish the VIEWPORT_ONCHANGE event if necessary
 		if (_x !== this.pos.x || _y !== this.pos.y) {
@@ -925,8 +1045,8 @@ export default class Camera2d extends Renderable {
 	focusOn(target: Renderable): void {
 		const bounds = target.getBounds();
 		this.moveTo(
-			bounds.left + bounds.width / 2 - this.width / 2,
-			bounds.top + bounds.height / 2 - this.height / 2,
+			bounds.left + bounds.width / 2 - this.width / this.zoom / 2,
+			bounds.top + bounds.height / 2 - this.height / this.zoom / 2,
 		);
 	}
 
@@ -963,7 +1083,26 @@ export default class Camera2d extends Renderable {
 	}
 
 	/**
-	 * convert the given "local" (screen) coordinates into world coordinates
+	 * The offset of the world container (`world.pos`, set when a level smaller
+	 * than the view is centred) as this camera draws it: a camera with default
+	 * settings draws the world shifted by it, and any other one (a minimap, a
+	 * zoomed view) cancels it in {@link Camera2d#draw}. The coordinate
+	 * conversions follow the same rule, so they agree with what is drawn.
+	 * @param axis - "x" or "y"
+	 * @returns the offset this camera draws the world container at
+	 * @ignore
+	 */
+	_worldOffset(axis: "x" | "y"): number {
+		return this.isDefault ? game.world.pos[axis] : 0;
+	}
+
+	/**
+	 * convert the given "local" (screen) coordinates into world coordinates.
+	 * Screen coordinates are in canvas pixels: on a zoomed camera, or one
+	 * drawn in a corner of the screen (see {@link screenX}), they are
+	 * measured from where the camera is drawn, and scaled by its zoom.
+	 * The world coordinates are those of the world's children, where this
+	 * camera draws them: the inverse of {@link Camera2d#worldToLocal}.
 	 * @param x - the x coordinate of the local point to be converted
 	 * @param y - the y coordinate of the local point to be converted
 	 * @param [v] - an optional vector object where to set the converted value
@@ -971,7 +1110,14 @@ export default class Camera2d extends Renderable {
 	 */
 	localToWorld(x: number, y: number, v?: Vector2d): Vector2d {
 		v = v || vector2dPool.get();
-		v.set(x, y).add(this.pos).sub(game.world.pos);
+		v.set(
+			(x - this.screenX) / this.zoom +
+				this._viewOrigin(this.pos.x + this.offset.x) -
+				this._worldOffset("x"),
+			(y - this.screenY) / this.zoom +
+				this._viewOrigin(this.pos.y + this.offset.y) -
+				this._worldOffset("y"),
+		);
 		if (!this.currentTransform.isIdentity()) {
 			this.invCurrentTransform.apply(v);
 		}
@@ -979,7 +1125,8 @@ export default class Camera2d extends Renderable {
 	}
 
 	/**
-	 * convert the given world coordinates into "local" (screen) coordinates
+	 * convert the given world coordinates into "local" (screen) coordinates,
+	 * in canvas pixels: where this camera draws the given point
 	 * @param x - the x world coordinate to be converted
 	 * @param y - the y world coordinate to be converted
 	 * @param [v] - an optional vector object where to set the converted value
@@ -991,7 +1138,14 @@ export default class Camera2d extends Renderable {
 		if (!this.currentTransform.isIdentity()) {
 			this.currentTransform.apply(v);
 		}
-		return v.sub(this.pos).add(game.world.pos);
+		v.x += this._worldOffset("x");
+		v.y += this._worldOffset("y");
+		return v.set(
+			(v.x - this._viewOrigin(this.pos.x + this.offset.x)) * this.zoom +
+				this.screenX,
+			(v.y - this._viewOrigin(this.pos.y + this.offset.y)) * this.zoom +
+				this.screenY,
+		);
 	}
 
 	/**
@@ -1058,6 +1212,30 @@ export default class Camera2d extends Renderable {
 	}
 
 	/**
+	 * The built-in {@link Camera2d#colorMatrix} as the effect that applies it,
+	 * made on first need and kept, and set to the current matrix.
+	 *
+	 * `draw` appends it last in the camera's chain for the frame. The
+	 * renderer's warm-up calls this too, once a stage has been built, so the
+	 * effect exists, and is warmed where `draw` will run it, before the frame
+	 * that first needs it rather than inside that frame.
+	 * @param renderer - the renderer the camera draws with
+	 * @returns the effect, or null while the matrix is identity
+	 * @ignore
+	 * @internal
+	 */
+	_syncColorMatrixEffect(renderer: Renderer): ColorMatrixEffect | null {
+		if (this.colorMatrix.isIdentity()) {
+			return null;
+		}
+		if (!this._colorMatrixEffect) {
+			this._colorMatrixEffect = new ColorMatrixEffect(renderer);
+		}
+		this._colorMatrixEffect.reset().multiply(this.colorMatrix);
+		return this._colorMatrixEffect;
+	}
+
+	/**
 	 * draw all objects visible in this viewport
 	 * @ignore
 	 * @internal
@@ -1074,24 +1252,28 @@ export default class Camera2d extends Renderable {
 		}
 		// cast to any to access canvas/webgl renderer-specific methods not on base Renderer
 		const r = renderer as any;
+		// before anything below culls or translates by the view's origin
+		// (`settings` is typed as a bare object on the base Renderer)
+		this._snapView = r.settings.subPixel === false;
 		const isNonDefault = !this.isDefault;
 		// for non-default cameras, compensate for the world container's
 		// centering offset (applied inside container.draw via renderer.translate)
 		const containerOffsetX = isNonDefault ? container.pos.x : 0;
 		const containerOffsetY = isNonDefault ? container.pos.y : 0;
-		const translateX = this.pos.x + this.offset.x + containerOffsetX;
-		const translateY = this.pos.y + this.offset.y + containerOffsetY;
+		const translateX =
+			this._viewOrigin(this.pos.x + this.offset.x) + containerOffsetX;
+		const translateY =
+			this._viewOrigin(this.pos.y + this.offset.y) + containerOffsetY;
 
 		// sync the built-in colorMatrix: append as final pass if non-identity
-		if (!this.colorMatrix.isIdentity()) {
-			if (!this._colorMatrixEffect) {
-				this._colorMatrixEffect = new ColorMatrixEffect(renderer);
-			}
-			this._colorMatrixEffect.reset().multiply(this.colorMatrix);
-			this.postEffects.push(this._colorMatrixEffect);
+		const colorMatrixEffect = this._syncColorMatrixEffect(renderer);
+		if (colorMatrixEffect !== null) {
+			this.postEffects.push(colorMatrixEffect);
 		}
 
-		// post-effect: bind FBO if shader effects are set (WebGL only)
+		// post-effect: bind FBO if shader effects are set (WebGL only). On a
+		// camera drawn after another one (`_postEffectOver`, set by
+		// `Stage#draw`) the pass goes OVER what that one drew, see there
 		const usePostEffect = r.beginPostEffect(this);
 
 		// apply the world-to-camera-view transform on the container.
@@ -1137,7 +1319,7 @@ export default class Camera2d extends Renderable {
 		// no-op.
 		const stage = state.current();
 		renderer.setLightUniforms(
-			stage?._activeLights,
+			stage?._lightsFor(this),
 			stage?.ambientLightingColor,
 			translateX,
 			translateY,
@@ -1148,17 +1330,21 @@ export default class Camera2d extends Renderable {
 		// for non-default cameras, temporarily expand the camera rect to the
 		// visible world area so TMXLayer draws all tiles within the zoomed view.
 		// When zoom is 1, worldView matches camera size — no visible effect.
-		if (isNonDefault) {
-			const view = this.worldView;
-			const savedWidth = this.width;
-			const savedHeight = this.height;
-			this.width = view.width;
-			this.height = view.height;
-			container.draw(r, this);
-			this.width = savedWidth;
-			this.height = savedHeight;
-		} else {
-			container.draw(r, this);
+		// the world itself obeys the mask, as every container in it does: on
+		// no layer this camera draws, nothing of it is drawn
+		if ((container.visibilityLayer & this.cullMask) !== 0) {
+			if (isNonDefault) {
+				const view = this.worldView;
+				const savedWidth = this.width;
+				const savedHeight = this.height;
+				this.width = view.width;
+				this.height = view.height;
+				container.draw(r, this);
+				this.width = savedWidth;
+				this.height = savedHeight;
+			} else {
+				container.draw(r, this);
+			}
 		}
 
 		// Ground shadows (#1515) are held back until every opaque mesh in the
@@ -1208,7 +1394,17 @@ export default class Camera2d extends Renderable {
 		// non-default cameras (minimap/splitscreen) line up correctly —
 		// `camera.pos + camera.offset` alone misses `containerOffsetX/Y`.
 		if (stage) {
+			// the projection the world was drawn through, bound again: the
+			// Canvas renderer keeps it in the context transform, which the
+			// world's restore has undone by now, so the darkness of a zoomed
+			// or offset camera was cut where the lights would be unzoomed.
+			// Within its own save, so nothing drawn after inherits it
+			renderer.save();
+			renderer.setProjection(
+				isNonDefault ? this.worldProjection : this.projectionMatrix,
+			);
 			stage.drawLighting(renderer, this, translateX, translateY);
+			renderer.restore();
 		}
 
 		// post-effect: unbind FBO and blit to screen through shader effect

@@ -5,8 +5,20 @@
  * @category Animation
  */
 export interface AnimationOptions {
-	/** called when the animation completes a cycle (each loop, or once if `loop: false`). */
+	/**
+	 * called when the animation completes a cycle (each loop, or once if `loop: false`).
+	 * A one-frame frame animation completes once its frame delay has elapsed when
+	 * played with `loop: false` or `next`; a looping one-frame animation does not
+	 * step, so it never calls `onComplete`.
+	 */
 	onComplete?: (() => unknown) | undefined;
+	/**
+	 * called with the index of each frame as playback reaches it, from frame 0
+	 * when the animation starts, and again at the start of each cycle. Frame
+	 * animations only (a {@link Sprite}, a {@link Sprite3d}): a {@link Mesh}
+	 * keyframe animation has no frames, and never calls it.
+	 */
+	onFrame?: ((frame: number) => unknown) | undefined;
 	/** name of an animation to switch to when this one finishes. */
 	next?: string | undefined;
 	/** loop forever (default) or play once and hold the last frame. */
@@ -39,6 +51,8 @@ export type AnimationOptionsInput =
 	| {
 			/** called when the animation completes a cycle */
 			onComplete?: () => unknown;
+			/** called with the index of each frame as playback reaches it (frame animations only) */
+			onFrame?: (frame: number) => unknown;
 			/** name of an animation to switch to when this one finishes */
 			next?: string;
 			/** loop forever (default) or play once and hold the last frame */
@@ -53,7 +67,7 @@ export type AnimationOptionsInput =
  * - `undefined` → loop forever
  * - a `string` → the name of the next animation to chain to
  * - a `function` → legacy completion callback (return `false` to hold the last frame)
- * - an options object → `{ onComplete, next, loop, speed }`
+ * - an options object → `{ onComplete, onFrame, next, loop, speed }`
  * @param arg - the second argument passed to `setCurrentAnimation`
  * @returns the normalized options
  * @category Animation
@@ -74,6 +88,7 @@ export function parseAnimationOptions(
 	if (arg !== null && typeof arg === "object") {
 		return {
 			onComplete: arg.onComplete,
+			onFrame: arg.onFrame,
 			next: arg.next,
 			// only an explicit `false` disables looping
 			loop: arg.loop !== false,

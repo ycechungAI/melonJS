@@ -1,6 +1,6 @@
 melonJS 2
 =========
-![melonJS Logo](https://github.com/melonjs/melonJS/raw/master/media/Banner/Banner%20-%20Billboard%20-%20Original%20Logo%20-%20horizontal.png)
+![melonJS: fast & light 2D & 3D games for the web, running on WebGPU, WebGL 2 or Canvas](https://github.com/melonjs/melonJS/raw/master/media/readme/hero.webp)
 
 [![Build Status](https://github.com/melonjs/melonJS/actions/workflows/main.yml/badge.svg)](https://github.com/melonjs/melonJS/actions/workflows/main.yml)
 [![NPM Package](https://img.shields.io/npm/v/melonjs)](https://www.npmjs.com/package/melonjs)
@@ -14,9 +14,7 @@ melonJS 2
 
 A modern & fully featured HTML5 game engine
 -------------------------------------------------------------------------------
-![melonJS](https://melonjs.org/img/alex4-github.png)
-
-[melonJS](https://melonjs.org/) is an open-source 2.5D game engine designed for indie developers — perspective and orthogonal cameras, GPU-accelerated tilemap rendering, post-processing effects, custom shaders, 3D mesh support, polygon-accurate physics, modern Tiled workflows, and high performance. Runs on WebGPU, WebGL 2 or Canvas2D with automatic fallback. The whole engine is ~250 KB minzipped of vanilla JS/TS, with no dependencies and no toolchain lock-in. Built with modern class syntax and bundled with [esbuild](https://esbuild.github.io).
+[melonJS](https://melonjs.org/) is an open-source 2D & 3D game engine designed for indie developers — perspective and orthogonal cameras, GPU-accelerated tilemap rendering, post-processing effects, custom shaders, 3D mesh support, polygon-accurate physics, modern Tiled workflows, and high performance. Runs on WebGPU, WebGL 2 or Canvas2D with automatic fallback. The whole engine is ~250 KB minzipped of vanilla JS/TS, with no dependencies and no toolchain lock-in. Built with modern class syntax and bundled with [esbuild](https://esbuild.github.io).
 
 [melonJS](https://melonjs.org/) is licensed under the [MIT License](LICENSE.md) and actively maintained by the team at AltByte in Singapore.
 
@@ -138,7 +136,7 @@ Core
 - Tween effects with multiple easing functions (Quadratic, Cubic, Elastic, Bounce, etc.) and Bezier/Catmull-Rom interpolation
 - Transition effects
 - Pooling support for object recycling
-- Particle system with `ParticleEmitter` (emission rate, lifetime, velocity, gravity, blend modes), and a reference space so particles can be measured from the emitter, from the world, or from any container — a moving emitter leaves a trail instead of dragging its cloud along
+- Particle system with `ParticleEmitter` (emission rate, lifetime, velocity, gravity, blend modes), and a reference space so particles can be measured from the emitter, from the world, or from any container — a moving emitter leaves a trail instead of dragging its cloud along, and a [Particle Editor](https://melonjs.github.io/melonJS/examples/#/particle-editor) to tune effects live and copy the code
 - EventEmitter based event system
 - Persistent data storage (save/load via localStorage)
 - Plugin system for extending engine capabilities
@@ -180,8 +178,9 @@ Examples
 -------------------------------------------------------------------------------
 
 * [Platformer](https://melonjs.github.io/melonJS/examples/#/platformer) ([source](https://github.com/melonjs/melonJS/tree/master/packages/examples/src/examples/platformer))
-* [Isometric RPG](https://melonjs.github.io/melonJS/examples/#/isometric-rpg) ([source](https://github.com/melonjs/melonJS/tree/master/packages/examples/src/examples/isometricRpg))
+* [Isometric Dungeon](https://melonjs.github.io/melonJS/examples/#/isometric-dungeon) ([source](https://github.com/melonjs/melonJS/tree/master/packages/examples/src/examples/isometricDungeon))
 * [SVG Shapes](https://melonjs.github.io/melonJS/examples/#/svg-shapes) ([source](https://github.com/melonjs/melonJS/tree/master/packages/examples/src/examples/svgShapes))
+* [Particle Editor](https://melonjs.github.io/melonJS/examples/#/particle-editor) ([source](https://github.com/melonjs/melonJS/tree/master/packages/examples/src/examples/particleEditor)) — tune a `ParticleEmitter` live in 2D or 3D, from presets or a random roll, and copy the matching code or JSON
 * [Graphics](https://melonjs.github.io/melonJS/examples/#/graphics) ([source](https://github.com/melonjs/melonJS/tree/master/packages/examples/src/examples/graphics))
 * [Hello World](https://melonjs.github.io/melonJS/examples/#/hello-world) ([source](https://github.com/melonjs/melonJS/tree/master/packages/examples/src/examples/helloWorld))
 * [Hello WebGPU](https://melonjs.github.io/melonJS/examples/#/webgpu) ([source](https://github.com/melonjs/melonJS/tree/master/packages/examples/src/examples/webgpu)) — the WebGPU backend in action, with the renderer negotiation surfaced on screen
@@ -192,6 +191,7 @@ Examples
 * [3D Mesh](https://melonjs.github.io/melonJS/examples/#/mesh-3d) ([source](https://github.com/melonjs/melonJS/tree/master/packages/examples/src/examples/mesh3d))
 * [3D Mesh Material](https://melonjs.github.io/melonJS/examples/#/mesh-3d-material) ([source](https://github.com/melonjs/melonJS/tree/master/packages/examples/src/examples/mesh3dMaterial))
 * [AfterBurner Clone](https://melonjs.github.io/melonJS/examples/#/after-burner) ([source](https://github.com/melonjs/melonJS/tree/master/packages/examples/src/examples/afterBurner)) — `Camera3d` + 3D Mesh arcade shooter
+* [Earth Defender](https://melonjs.github.io/melonJS/examples/#/earth-defender) ([source](https://github.com/melonjs/melonJS/tree/master/packages/examples/src/examples/earthDefender)) — a Stardust tribute: a `Camera3d` posed from the player's own surface point, blob shadows lying on a sphere through `shadowGroundPoint`, mesh-hosted `ShaderEffect` shields, spatial audio and HDR bloom
 * [Ground Shadows](https://melonjs.github.io/melonJS/examples/#/ground-shadows) ([source](https://github.com/melonjs/melonJS/tree/master/packages/examples/src/examples/groundShadows)) — every blob-shadow setting side by side under an orbiting sun, including blobs lying on a slope and a 70-instance scatter that costs one extra draw
 * [Jungle Rabbit](https://melonjs.github.io/melonJS/examples/#/jungle-rabbit) ([source](https://github.com/melonjs/melonJS/tree/master/packages/examples/src/examples/jungleRabbit)) — a low-poly river endless runner: Blender-modelled props through `InstancedMesh`, a rigged paddling boat, a procedural valley and shadows laid on its banks
 * [glTF Scene](https://melonjs.github.io/melonJS/examples/#/gltf) ([source](https://github.com/melonjs/melonJS/tree/master/packages/examples/src/examples/gltf)) — a Blender-authored, lit 3D scene loaded with `level.load`
@@ -249,6 +249,7 @@ Here is the list of official plugins maintained by the melonJS team:
 - [debug-plugin](https://github.com/melonjs/melonJS/tree/master/packages/debug-plugin) - a debug panel for inspecting game objects
 - [tiled-inflate-plugin](https://github.com/melonjs/melonJS/tree/master/packages/tiled-inflate-plugin) - enable loading and parsing of zlib, gzip and zstd compressed [Tiled](https://www.mapeditor.org/) maps
 - [spine-plugin](https://github.com/melonjs/melonJS/tree/master/packages/spine-plugin) - [Spine](http://esotericsoftware.com) runtime integration to render Spine skeletal animations, with a dedicated batcher on each renderer (WebGPU, WebGL and Canvas)
+- [gamepad-plugin](https://github.com/melonjs/melonJS/tree/master/packages/gamepad-plugin) - on-screen touch controls (sticks and buttons) reported as a gamepad, so the same bindings cover a real pad and a touch screen
 - [capacitor-plugin](https://github.com/melonjs/melonJS/tree/master/packages/capacitor-plugin) - bridges [Capacitor](https://capacitorjs.com/)'s native lifecycle (pause/resume, hardware back-button, orientation lock, splash) for melonJS games wrapped as iOS / Android apps
 
 If you wish to develop your own plugin, we also provide a [plugin template](https://github.com/melonjs/plugin-template) to help you get started.

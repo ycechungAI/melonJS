@@ -77,9 +77,12 @@ function createContext(canvas, attributes) {
 }
 
 /**
- * A 2D canvas render target for offscreen texture generation.
- * Used by Text, Gradient, Light2d and Particle systems to render into
- * a canvas that is then uploaded as a WebGL texture.
+ * A 2D canvas render target: draw into it once and reuse it, as a texture,
+ * a baked background or a fog map. Make one and keep it rather than making
+ * a new one each time. The engine uses it too, for text, gradients,
+ * particle textures and tinted images. Drawn with the WebGL or WebGPU
+ * renderer, its canvas is uploaded to the GPU, and uploaded again after
+ * {@link CanvasRenderTarget#invalidate}.
  * @augments RenderTarget
  * @category Rendering
  */
@@ -204,7 +207,7 @@ class CanvasRenderTarget extends RenderTarget {
 
 	/**
 	 * Returns an ImageData object representing the underlying pixel data for a specified portion of this canvas texture.
-	 * (Note: when using getImageData(), it is highly recommended to use the `willReadFrequently` attribute when creatimg the corresponding canvas texture)
+	 * (Note: when using getImageData(), it is highly recommended to use the `willReadFrequently` attribute when creating the corresponding canvas texture)
 	 * @param {number} x - The x-axis coordinate of the top-left corner of the rectangle from which the ImageData will be extracted
 	 * @param {number} y - The y-axis coordinate of the top-left corner of the rectangle from which the ImageData will be extracted
 	 * @param {number} width - The width of the rectangle from which the ImageData will be extracted. Positive values are to the right, and negative to the left
@@ -314,6 +317,9 @@ class CanvasRenderTarget extends RenderTarget {
 				renderer.cache.get(this.canvas),
 			);
 			renderer.currentBatcher.markTextureDirty(this.glTextureUnit);
+			// the new pixels may come at a new size, and UVs are worked out
+			// from the size of the pixels on the GPU
+			renderer.cache.sizeChanged(this.canvas);
 		} else if (renderer.type === "WebGPU" && renderer.cache.has(this.canvas)) {
 			// drain pending vertices, then re-upload the canvas. The store
 			// gives the new pixels a fresh GPUTexture when draws recorded
@@ -324,14 +330,15 @@ class CanvasRenderTarget extends RenderTarget {
 			renderer.textureStore.getBinding(renderer.cache.get(this.canvas), {
 				force: true,
 			});
+			renderer.cache.sizeChanged(this.canvas);
 		}
 	}
 
 	/**
-	 * Destroy this canvas render target and release associated GPU resources.
-	 * @param {Renderer} [renderer] - the renderer to clean up WebGL resources from
-	 * @ignore
-	 * @internal
+	 * Release this render target: its canvas, and the copy of it the
+	 * renderer uploaded to the GPU. It must not be used afterwards.
+	 * @param {Renderer} [renderer] - the renderer it was drawn with, so the
+	 * copy uploaded to the GPU is freed too
 	 */
 	destroy(renderer) {
 		// Look up the cached texture by SOURCE identity (the `canvas`

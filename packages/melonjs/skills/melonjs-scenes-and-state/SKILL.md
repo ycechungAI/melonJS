@@ -45,6 +45,16 @@ of on a deferred tick, which is what you want when changing state right after a
 preload completes. It is ignored when a transition is configured — a transition
 always drives the switch from its own completion callback.
 
+`onResetEvent` runs when the switch is made. The first frame, `STATE_CHANGE` and
+a transition's reveal follow once the shaders the stage queued are ready, which
+is a few milliseconds once the browser has compiled them before, and at most
+1.5s on a first visit. So build the stage in `onResetEvent`: an object a
+`STATE_CHANGE` listener adds is not waited for, and its first draw may still
+compile what it needs. That first frame steps the world once before drawing it,
+however short it is, so everything `onResetEvent` added is in it (the same goes
+for the frame after a `level.load` made while the game runs). Before 20.12 it
+was drawn unstepped, and showed the stage's background alone for one frame.
+
 `state.change` **throws** `Undefined Stage for state '<id>'` if nothing was
 registered for that id, and `state.set` throws if the second argument is not a
 `Stage` instance. Neither fails quietly.
@@ -97,11 +107,15 @@ this.HUD.floating = true;               // screen coordinates, not world
 app.world.addChild(this.HUD, 100);      // explicit z — see melonjs-renderables
 ```
 
+Everything inside a persistent container is kept with it, physics bodies
+included (before 20.13 the children's bodies were dropped by the reset).
+
 ## Transitions and pausing
 
 ```js
 state.transition("fade", "#FFFFFF", 250);
 state.transition("mask", "#000", 500, new Ellipse(0, 0, 1, 1));  // shape required
+state.transition("pixelate", "#000", 300);  // blocks up to 32px; a 4th argument sets the size
 state.pause();                               // freeze update, keep drawing
 state.resume();
 app.freeze(150);                             // brief hit-stop (proxies state.freeze)
@@ -109,7 +123,18 @@ app.freeze(150);                             // brief hit-stop (proxies state.fr
 
 `state.transition` is global and sticky — once set it applies to every later
 `state.change`. The `"mask"` form needs its fourth argument, an `Ellipse` or
-`Polygon`; without one it warns and falls back to a direct switch.
+`Polygon`; without one it warns and falls back to a direct switch. The
+`"pixelate"` form breaks the screen up into blocks (its fourth argument is the
+largest block size in pixels). It is a shader effect, so on Canvas it does
+nothing and the state changes directly.
+
+A `state.change` asked for while a transition covers the screen (Enter pressed
+twice on a menu, a timer firing as the player skips a screen) needs no guard:
+the transition already under way makes it, switching to the last state asked
+for with the last arguments, and a second cover never goes up. A change to a
+state with no transition of its own (`state.setTransition(id, false)`) is made
+at once, and the cover comes down with it. Before 20.12 the second change left
+the first cover on the camera for good, the screen black over a running game.
 
 ### A Stage's own `update()` is NOT paused
 
@@ -292,6 +317,14 @@ Four traps:
 - **Stop a tween before destroying its target**, or `onUpdate` fires against a
   dead renderable.
 
+**A target can be an array: a path.** `to({ x: [200, 120, 300] })` runs from
+the current value through each entry in turn, and
+`interpolation: Tween.Interpolation.CatmullRom` smooths the corners. Each
+`start()` builds the path afresh from the current value, so a replay or a chain
+that comes back round runs the same path, and with `yoyo` the return leg plays
+it back the way it came. Before 20.13 a restart ran a longer path each time and
+a `yoyo` path turned the property into `NaN`.
+
 **To animate something that is not a property, tween a holder and push the
 value in `onUpdate`.** A shader uniform and a light's intensity are both set
 through a method, so there is nothing for `to()` to interpolate directly. The
@@ -365,6 +398,7 @@ import { save } from "melonjs";
 
 save.add({ hiscore: 0 });      // once; idempotent, loads any stored value
 save.hiscore = 1200;           // plain assignment writes to localStorage
+save.remove("hiscore");        // gone from localStorage; set it again to save it again
 ```
 
 **In TypeScript, keep what `add()` returns.** The namespace carries a
@@ -394,9 +428,12 @@ both.
 | the world freezes on blur but the game keeps advancing | simulation lives in `Stage.update`, which the pause does not gate — only `Container.update` checks `state.isPaused()` |
 | the player character is left behind and scrolls off after a lost window | same cause: the stage advanced the camera while its world children were paused |
 | a tween does nothing | `.start()` never called |
+| an array (path) tween wanders further on each replay, or goes `NaN` with `yoyo` | before 20.13 `start()` re-prepended the start value to the path and `yoyo` swapped the array into the start value; upgrade |
+| a repeating or `yoyo` tween runs a single cycle when started again (a pulse pulses once, a yoyo stays at the far end) | before 20.13 `start()` did not restore the `repeat` count the first run had used up; upgrade |
 | effect stops during a hit-stop | tween needs `updateWhenPaused = true` |
 | crash after a stage switch | callback ran during teardown — guard with `state.isCurrent` |
 | HUD scrolls away with the camera | missing `floating = true` |
+| a `save` key set again after `save.remove()` reads back fine, then is gone (or back at its default) after a reload (before 20.13) | the write skipped the list of keys restored at boot; update |
 
 ## Related skills
 

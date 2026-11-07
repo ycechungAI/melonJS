@@ -38,6 +38,8 @@ export default defineConfig(() =>
 		root: __dirname,
 		test: {
 			include: ["tests/**/*.{test,spec}.[jt]s?(x)"],
+			// servers on other origins, for the loader's cross-origin tests
+			globalSetup: ["tests/helpers/cors-servers.js"],
 			// Several specs create a WebGL context in `beforeAll`. On a CI
 			// container with no GPU that runs through a software rasterizer and
 			// can genuinely take tens of seconds under load, so the default hook
@@ -100,6 +102,11 @@ export default defineConfig(() =>
 		// contributor's machine that genuinely has no GL).
 		define: {
 			"import.meta.env.VITE_CI": JSON.stringify(process.env.CI ?? ""),
+			// Benchmarks run only when asked for, with `BENCH=1`: they measure
+			// rather than test, and the heavy ones tie up the browser's shared
+			// GPU process long enough to time out the specs running beside
+			// them (#1817).
+			"import.meta.env.VITE_BENCH": JSON.stringify(process.env.BENCH ?? ""),
 		},
 		publicDir: resolve(__dirname, "tests/public"),
 		plugins: [

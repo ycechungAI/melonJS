@@ -1,10 +1,10 @@
+import { Color } from "./../math/color.ts";
 import { randomFloat } from "./../math/math.ts";
 import { Matrix3d } from "../math/matrix3d.ts";
 import { Vector2d } from "../math/vector2d.ts";
 import Container from "./../renderable/container.js";
 import timer from "../system/timer.ts";
 import type CanvasRenderer from "../video/canvas/canvas_renderer.js";
-import CanvasRenderTarget from "../video/rendertarget/canvasrendertarget.js";
 import type WebGLRenderer from "../video/webgl/webgl_renderer.js";
 import { particlePool } from "./particle.ts";
 import defaultEmitterSettings, {
@@ -38,24 +38,6 @@ const _correction = new Matrix3d();
 const _rebase = new Vector2d();
 
 /**
- * @ignore
- * @internal
- */
-function createDefaultParticleTexture(
-	w: number = 8,
-	h: number = 8,
-): CanvasRenderTarget {
-	const defaultParticleTexture = new CanvasRenderTarget(w, h, {
-		offscreenCanvas: true,
-	});
-
-	defaultParticleTexture.context.fillStyle = "#fff";
-	defaultParticleTexture.context.fillRect(0, 0, w, h);
-
-	return defaultParticleTexture;
-}
-
-/**
  * If `settings[minKey] > settings[maxKey]`, lower `min` to `max`.
  * Guards against the partial-override footgun where a user sets only the
  * `max` half of a range-style setting and the default of `min` ends up larger.
@@ -78,6 +60,55 @@ function clampMinToMax<K extends keyof ParticleEmitterSettings>(
  * @ignore
  * @internal
  */
+/**
+ * How many steps a {@link ParticleEmitterSettings.tintOverLife} blend is taken
+ * in, whatever the number of colors.
+ * @ignore
+ * @internal
+ */
+const TINT_STEPS = 32;
+
+/**
+ * The tint of each step of a particle's life, blended from the
+ * `tintOverLife` colors (undefined without them). Checked before the
+ * settings change, like the sheet settings.
+ * @ignore
+ * @internal
+ */
+function tintOverLifeSteps(
+	settings: ParticleEmitterSettings,
+): readonly Color[] | undefined {
+	const colors = settings.tintOverLife;
+	if (colors === undefined) {
+		return undefined;
+	}
+	if (!Array.isArray(colors) || colors.length === 0) {
+		throw new TypeError(
+			"ParticleEmitter: tintOverLife must be a non-empty array of CSS colors",
+		);
+	}
+	const stops = colors.map((css: unknown) => {
+		if (typeof css !== "string") {
+			throw new TypeError(
+				`ParticleEmitter: tintOverLife colors must be CSS strings, not ${String(css)}`,
+			);
+		}
+		return new Color().parseCSS(css);
+	});
+	const steps: Color[] = [];
+	for (let i = 0; i < TINT_STEPS; i++) {
+		// the first step is the first color, the last one the last color
+		const at = (i / (TINT_STEPS - 1)) * (stops.length - 1);
+		const from = Math.floor(at);
+		const to = Math.min(from + 1, stops.length - 1);
+		const step = stops[from].clone().lerp(stops[to], at - from);
+		// the color only: opacity is the particle's fade
+		step.alpha = 1;
+		steps.push(step);
+	}
+	return steps;
+}
+
 function particleFrames(
 	settings: ParticleEmitterSettings,
 ): ReadonlyArray<readonly [number, number]> | undefined {
@@ -143,6 +174,13 @@ function particleFrames(
  * emitter.blendMode = "overlay";   // live particles AND future ones
  * ```
  *
+ * ### Visibility layers
+ *
+ * Particles are on their emitter's {@link Renderable#visibilityLayer}: they
+ * are born on it, and follow a change to it on the emitter's next `update`.
+ * So a camera whose {@link Camera2d#cullMask} draws only the emitter's layer
+ * draws the emitter's particles as well.
+ *
  * ### Reference space
  *
  * A particle stores a position, and
@@ -171,6 +209,7 @@ function particleFrames(
  * const emitter = new ParticleEmitter(x, y, { referenceSpace: "world" });
  * ```
  * @category Particles
+ * @see [Particle Editor](https://melonjs.github.io/melonJS/examples/#/particle-editor) — tune an emitter live, in 2D or 3D, and copy the matching code
  */
 export default class ParticleEmitter extends Container {
 	/**
@@ -184,6 +223,14 @@ export default class ParticleEmitter extends Container {
 	 * @internal
 	 */
 	_particleFrames: ReadonlyArray<readonly [number, number]> | undefined;
+
+	/**
+	 * The tint of each step of a particle's life (`tintOverLife`), shared by
+	 * the particles emitted after reset.
+	 * @ignore
+	 * @internal
+	 */
+	_tintSteps: readonly Color[] | undefined;
 
 	/**
 	 * @ignore
@@ -222,18 +269,21 @@ export default class ParticleEmitter extends Container {
 	_dt: number;
 
 	/**
-	 * @ignore
-	 * @internal
-	 */
-	_defaultParticle: CanvasRenderTarget | undefined;
-
-	/**
 	 * The blend mode last fanned out to the particles, so a change to
 	 * {@link ParticleEmitter#blendMode} can be detected per frame.
 	 * @ignore
 	 * @internal
 	 */
 	#appliedBlendMode: string = "normal";
+
+	/**
+	 * The visibility layers last fanned out to the particles, so a change to
+	 * the emitter's {@link Renderable#visibilityLayer} can be detected per
+	 * frame.
+	 * @ignore
+	 * @internal
+	 */
+	#appliedVisibilityLayer = 1;
 
 	/**
 	 * Decide whether this emitter's particles have to be depth sorted.
@@ -259,10 +309,13 @@ export default class ParticleEmitter extends Container {
 		// off an axis throws particles out of the emitter's plane whatever
 		// the axis itself is, so a ring with `elevation` left at 0 still
 		// moves in Z.
+		// So does a spawn `depth`: particles born at different depths overlap
+		// in a different order from each side, even flying flat.
 		const moves3d =
 			this.settings.elevation !== 0 ||
 			this.settings.elevationVariation !== 0 ||
-			this.settings.maxSpread !== 0;
+			this.settings.maxSpread !== 0 ||
+			this.settings.depth > 0;
 		const commutative =
 			this.blendMode === "additive" ||
 			(this.blendMode === "normal" && this.settings.textureAdditive);
@@ -308,11 +361,15 @@ export default class ParticleEmitter extends Container {
 	_spawnMap: Matrix3d | undefined;
 
 	/**
-	 * @param x - x position of the particle emitter
-	 * @param y - y position of the particle emitter
+	 * The spawn area (`settings.width` by `settings.height`) is centred on
+	 * (x, y). After construction `pos` is the area's top left corner, as on
+	 * any renderable: to move the emitter to a new point, offset by half the
+	 * area.
+	 * @param x - x position of the centre of the spawn area
+	 * @param y - y position of the centre of the spawn area
 	 * @param [settings=ParticleEmitterSettings] - the settings for the particle emitter.
 	 * @example
-	 * // Create a particle emitter at position 100, 100
+	 * // Create a particle emitter centred on 100, 100
 	 * let emitter = new ParticleEmitter(100, 100, {
 	 *     width: 16,
 	 *     height : 16,
@@ -391,8 +448,10 @@ export default class ParticleEmitter extends Container {
 		// fallback texture. Live particles retain the previous frame snapshot.
 		const nextSettings = { ...defaultEmitterSettings, ...settings };
 		const frames = particleFrames(nextSettings);
+		const tintSteps = tintOverLifeSteps(nextSettings);
 		Object.assign(this.settings, nextSettings);
 		this._particleFrames = frames;
+		this._tintSteps = tintSteps;
 
 		// Clamp range-style settings: if `min > max`, lower `min` to `max`.
 		// Catches the common footgun where a user overrides only one half of
@@ -407,21 +466,12 @@ export default class ParticleEmitter extends Container {
 		// boot but reset() runs after VIDEO_INIT, so this is the safest place.
 		this._deltaInv = timer.maxfps / 1000;
 
-		// dispose any previously-created fallback texture. Switching to a
-		// user-provided image *or* re-creating the default fallback both make
-		// the old CanvasRenderTarget unreachable, so destroy it eagerly to
-		// avoid a leak across repeated reset() calls.
-		if (typeof this._defaultParticle !== "undefined") {
-			this._defaultParticle.destroy();
-			this._defaultParticle = undefined;
-		}
-		if (typeof this.settings.image === "undefined") {
-			this._defaultParticle = createDefaultParticleTexture(
-				this.settings.textureSize,
-				this.settings.textureSize,
-			);
-			this.settings.image = this._defaultParticle.canvas;
-		}
+		// Without an image, the particles draw a white square of their own:
+		// no texture is made here, and `settings.image` stays as it was given
+		// (see `particleLook` in particle.ts). Each emitter used to paint a
+		// square canvas into it, rebuilt on every reset() and never freed from
+		// the renderer: one texture per reset() or emitter on WebGL and
+		// WebGPU, and on Canvas the tinted copies of each (#1807).
 
 		this.floating = this.settings.floating;
 		// keep the property in step with the setting, so constructing (or
@@ -650,15 +700,17 @@ export default class ParticleEmitter extends Container {
 			}
 		}
 
+		const depth = this.settings.depth;
 		for (let i = 0; i < count; i++) {
-			// Add particle to the container
-			// `z = 0`: a particle's `pos` is LOCAL to its emitter, the z
-			// component included, exactly like any other child of any other
-			// container. The explicit 0 is not decoration — left out,
-			// `Container.autoDepth` would number the particles 1, 2, 3...
-			// {@link Particle#preDraw} is what puts the burst back on the
-			// emitter's perspective slice, by ADDING the depth it inherits.
-			this.addChild(particlePool.get(this), 0);
+			// A particle's z is local to its emitter, like the rest of its
+			// `pos`: 0, or a random depth within the spawn `depth`.
+			// {@link Particle#preDraw} adds the emitter's own depth. Always
+			// pass a z: left out, `Container.autoDepth` would number the
+			// particles 1, 2, 3...
+			this.addChild(
+				particlePool.get(this),
+				depth > 0 ? randomFloat(-depth / 2, depth / 2) : 0,
+			);
 		}
 		if (count > 0) {
 			this._hasSpawned = true;
@@ -730,6 +782,19 @@ export default class ParticleEmitter extends Container {
 			// fading in over a particle lifetime
 			for (const particle of this.children ?? []) {
 				particle.blendMode = this.blendMode;
+			}
+			this.isDirty = true;
+		}
+
+		// The same for the visibility layers. A camera draws a particle only
+		// if the particle AND its emitter are on a layer it draws, and a
+		// particle is born on the emitter's layers (see `Particle`), so the
+		// ones alive have to follow a change too: or a camera that draws
+		// only the emitter's new layer would leave every one of them out.
+		if (this.visibilityLayer !== this.#appliedVisibilityLayer) {
+			this.#appliedVisibilityLayer = this.visibilityLayer;
+			for (const particle of this.children ?? []) {
+				particle.visibilityLayer = this.visibilityLayer;
 			}
 			this.isDirty = true;
 		}
@@ -831,10 +896,8 @@ export default class ParticleEmitter extends Container {
 	 */
 	override destroy(): void {
 		super.destroy();
-		if (typeof this._defaultParticle !== "undefined") {
-			this._defaultParticle.destroy();
-			this._defaultParticle = undefined;
-		}
+		// nothing to free for the built-in square: the white pixel is shared
+		// by every emitter, and by everything else drawn without a texture
 		// Clear the image reference so a discarded emitter doesn't pin a
 		// (potentially large) image / canvas alive via `settings.image`.
 		// `this.settings = undefined` was here too but offered no GC win

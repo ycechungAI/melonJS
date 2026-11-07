@@ -1,8 +1,200 @@
 # Changelog
 
-## [20.9.0] (melonJS 2) - _unreleased_
+## [20.13.0] (melonJS 2) - _2026-11-06_
 
 ### Added
+- Particles: a `depth` setting, so particles under a `Camera3d` spawn through a volume instead of on a flat sheet
+- Text: `paintOrder`, to draw the outline behind the glyphs (`"stroke"`, the default) or over them (`"fill"`)
+- Text: `lineJoin` and `miterLimit`, the shape of the outline's corners (`"round"` by default, `"bevel"` or `"miter"`)
+- UI: `UICheckbox`, a checkbox with its label, that becomes a radio button with a `group` ([#1722](https://github.com/melonjs/melonJS/issues/1722))
+- UI: `UISlider`, a horizontal or vertical slider with `min`, `max` and `step`, moved by dragging, clicking the track or the mouse wheel
+- UI: `UIPanel` lays out its children (`"column"`, `"row"` or `"grid"`), scrolls them, and takes a nine-slice `skin`, a `title` and `draggable`
+- UI: `UITextButton` takes `onClick`, a `skin` and `pressedColor`, and the size, font and color settings the other widgets use; `label` is its text object
+- UI: every `UIBaseElement` has `enabled`, `cancelPress()` / `onCancel()`, and a hover and press bounce (`hoverScale`, `pressScale`)
+- UI: keyboard and gamepad navigation between widgets, once one takes the focus with `focus()`
+- UI: drop shadows on `UIPanel` and `ProgressBar` (`shadowColor`, `shadowOffsetX`, `shadowOffsetY`, `shadowBlur`)
+- UI: `UISpriteElement` is a `UIBaseElement` holding a `Sprite`, so it has everything the other widgets have; `Sprite` members other than its region and animation methods are on `element.sprite`
+- UI: the widgets' settings and skin types are exported, `ProgressBar`'s `onChange` also gets the bar, and `Container#clipContains(x, y)` tells whether a container shows its children at a point
+
+### Deprecated
+- UI: `UITextButton#bitmapText`, for `label`
+
+### Fixed
+- Rendering: a translucent `setColor()` no longer fades what is drawn after it, nor changes `getGlobalAlpha()`
+- Rendering: on WebGL and WebGPU, a clip inside a clip is their overlap, as on Canvas ([#1816](https://github.com/melonjs/melonJS/issues/1816))
+- WebGL: `fillArc()` handles an end angle before the start, and `save()` / `restore()` keep `lineWidth` and `lineJoin`, as on Canvas
+- Camera: post effects on a camera no longer wipe out the cameras drawn before it; a minimap with effects shows the view behind where it draws nothing
+- Camera: `worldToLocal()` / `localToWorld()` are right on a minimap or zoomed camera when the level is centred
+- Camera: `fadeIn()` and `fadeOut()` always call `onComplete` ([#1810](https://github.com/melonjs/melonJS/issues/1810))
+- Container: `reset()`, and so `level.load`, keeps the pending sort of the persistent children it keeps
+- Container: `onDeactivateEvent` is called once per child of a removed container, not twice or more
+- Container: `enableChildBoundsUpdate` follows moving children, so the camera no longer culls the group
+- Container: physics bodies of nested children are added and removed at any depth; moving a group with bodies to another container no longer throws
+- World: a persistent container's children keep their physics bodies through a state change or `level.load`
+- Sprite: redefining the playing animation no longer crashes the next update when it is shorter
+- Sprite: a `flicker()` callback gets the sprite as `this`, after the flicker has ended
+- Particles: particles follow their emitter's `visibilityLayer`
+- Particles: an emitter without an `image` no longer leaks a texture per emitter or `reset()`; all share the renderer's white pixel ([#1807](https://github.com/melonjs/melonJS/issues/1807))
+- Text: an outline no longer hides thin letters or gets cut off at the edges. Its corners are round by default and only its outer half shows: double `lineWidth` to keep its weight, or use `paintOrder: "fill"` and `lineJoin: "miter"` for the old look
+- Text: word wrap keeps `\n` line breaks, and no longer adds a blank first line for a long first word (Text and BitmapText)
+- Text: multi-line text is placed by `textBaseline` as one block, as BitmapText is, so it stays inside its bounds
+- Text: `setText("1,000")` after `["1", "000"]` updates the text (Text and BitmapText)
+- Text: `measureText("other text")` no longer changes the label's own size and alignment (Text and BitmapText)
+- UI: a press on a UI element no longer also reaches the game behind it (`onClick()` / `onRelease()` return `false` by default; return `true` to let it through)
+- UI: a `UITextButton` with a CSS font no longer throws, draws its background where it is after a move, and no longer writes into its settings
+- UI: a blocking `UIPanel` stays opaque to hover while the pointer is on it
+- UI: dragging works by touch, and a dragged element in the world no longer jumps by the camera position
+- UI: hover survives a click, and ends when the pointer leaves the canvas or is cancelled
+- UI: a child clipped out of view gets no pointer events where it is hidden
+- UI: `ProgressBar` re-clamps its value when `min` or `max` change
+- Physics: a resting body stays grounded under heavier gravity or mass, at a low frame rate or on a rising floor
+- Physics: `applyForce()` reads its contact point in world coordinates, so a body away from the origin no longer spins the wrong way
+- Physics: `setAngle()` and angular velocity turn a body about its centre, not a corner, whatever its `anchorPoint`
+- Physics: a counter-clockwise polygon no longer collides with circles nowhere near it
+- Physics: a raycast no longer throws on `Point`, `Sphere` or `Box3d` shapes, and hits a rotated `Ellipse` where it is
+- Tiled: infinite maps place every chunk at its own column and row instead of wrapping tiles into other rows. `cellAt()` / `setTile()` take Tiled's tile coordinates, and `TMXLayer.startx` / `starty` give where the layer starts
+- Tiled: on staggered maps `getTile()` finds the right tile on every row, and a scrolled map draws again
+- Tiled: `getTile()` returns `null` just outside isometric, staggered and oblique maps
+- Tiled: no missing tiles at the view edges on staggered, hexagonal and oblique maps or with `left` / `up` render orders, and no hang when the view is outside a layer
+- Tiled: a tileset with a margin no longer takes the next tileset's tile ids, and an image collection covers all its tiles
+- Tiled: a map without `nextobjectid` no longer gives new objects the GUIDs of its own ([#1809](https://github.com/melonjs/melonJS/issues/1809))
+- Loader: assets on the game's own origin are requested with its cookies and HTTP auth ([#1801](https://github.com/melonjs/melonJS/issues/1801))
+- Loader: an asset on another origin loads whenever its server allows it (CORS), and one it blocks fails at load with an error naming it. `crossOrigin` now only applies to `<video>`, `<script>` and glTF images; `"use-credentials"` sends credentials, as `withCredentials` does
+- Loader: a `preload()` with no callback no longer calls the previous one's callback, and `reload()` works for custom asset types
+- Loader: progress restarts at each preload, and reaches 1 after a failed asset
+- Save: a key set again after `remove()` survives a reload
+- Tween: a path (array) tween no longer grows on each restart, nor turns `NaN` with `yoyo`
+- Tween: a repeating or `yoyo` tween repeats again when restarted
+- Math: `isPowerOfTwo()` rejects zero, negative and fractional values (thanks @mmporong)
+- Math: `round()` rounds negative values correctly and handles values past 2^31; `isPowerOfFour()` rejects fractions
+- Math: the observable vectors' `negateSelf()`, `floorSelf()`, `ceilSelf()` and `clampSelf()` return the vector and notify once
+- Color: `parseHex()` keeps the full alpha precision (thanks @mmporong)
+- Geometry: `Line#contains()` no longer reports points beyond the segment's ends (thanks @mmporong)
+- Geometry: `Ellipse#scale()` keeps the rotation
+- Pool: `purge()` keeps counting the instances still in use
+
+## [20.12.0] (melonJS 2) - _2026-10-30_
+
+### Added
+- State: a `"pixelate"` transition, `state.transition("pixelate", color, duration, size)`: the screen breaks into growing blocks and comes back sharp. Skipped on Canvas
+
+### Fixed
+- Rendering: with `subPixel` off, each draw snaps to whole pixels once, where it lands, the same on Canvas, WebGL and WebGPU ([#1765](https://github.com/melonjs/melonJS/issues/1765)). Something at a fractional position can draw one pixel over
+- Camera: with `subPixel` off, `worldView`, `localToWorld` and `worldToLocal` use the view position rounded to a whole pixel, where the world is drawn from
+- Geometry: the methods taking a point (`translate`, `shift`, `contains`) take any object with `x` and `y`, such as a renderable's `pos`, instead of returning `NaN`
+- Physics: a body with several shapes has the union of its shapes as its bounds; each shape added shifted them
+- Physics: `Body#setVertices` on one of several shapes keeps the body's bounds and `pseudoInertia` right (set it again if you set it by hand), and throws a `RangeError` past the last shape
+- Physics: a body that drops its last `Box3d` or `Sphere` no longer resolves along z
+- Loader: the default loading screen shows its progress bar and logo in the same frame
+- ImageLayer: a repeating layer keeps covering the screen however far the camera moves, instead of sliding off
+- Animation: a one-frame animation played once completes, so `onComplete` fires and `next` is followed
+- Audio: `audio.setListener(app.viewport)` hears from the center of the camera's view, not its top-left corner
+- Input: `input.bindPointer` keeps its bindings once the mouse enters the canvas
+- Audio: a clip with `preload: false` is fetched and streamed when first played; it never played ([#1784](https://github.com/melonjs/melonJS/issues/1784))
+- State: the first frame of a new stage or level shows its world, not the background alone
+- State: a `state.change()` asked for during a transition is made by that transition, instead of leaving the screen black ([#1787](https://github.com/melonjs/melonJS/issues/1787))
+- Effects: the built-in effects that place a pattern (sway, wave, vignette, gradient, scanline, shine) place it on the sprite, also cut from an atlas or with other effects after it ([#1407](https://github.com/melonjs/melonJS/issues/1407))
+- Effects: a renderable drawn through two or more effects keeps its opacity on WebGL and WebGPU ([#1791](https://github.com/melonjs/melonJS/issues/1791))
+- Effects: through two or more effects, widths, offsets and sizes are in the renderable's own pixels at any scale or zoom, as with one effect. Check widths tuned on a scaled renderable
+- Effects: a renderable drawn through two or more effects stays inside its clip, such as a minimap camera's view, instead of spilling over the canvas
+- Effects: on WebGPU, effects read their capture at the game's texture filter, as on WebGL, so pixel-art games stay crisp
+- Input: a gamepad unplugged while a button or the stick is held lets go of the keys bound to them, instead of leaving them pressed
+- Input: a stick with only one side bound lets go of its key when it returns to the centre or rests just past it, instead of holding it until pushed that way again
+- Lighting: a `Light2d`'s glow and the darkness around it compile when the light is added to the world, not inside the first frame that draws it
+- Typings: `TextureAtlas#createAnimationFromName` declares both of its arguments optional, as they are at runtime, and is documented again
+
+## [20.11.0] (melonJS 2) - _2026-10-27_
+
+### Added
+- Effects: colors take an alpha. Every color option and `setColor` takes `[r, g, b]` or `[r, g, b, a]`, the alpha being the color's opacity (`[r, g, b]` stays opaque), `RadialGradientEffect` honours the alpha of its `Color`, and `DropShadowEffect` gains the `setColor` the others have. Four values used to break an effect (WebGL rejected them, and on WebGPU the fourth overwrote the next setting, such as an outline's width); a color of any other length now throws a `TypeError` saying so
+- Effects: `SwayEffect` leans a sprite or a layer from side to side, as if in a breeze, its top swaying most and everything from its anchor row down staying put. It is a `WaveEffect`, which now takes an `anchor` for the row its wave fades out at, and it wraps its own time so it never stutters on a phone's medium-precision floats
+- Rendering: `Renderable#sortOffset` lines a renderable up as if it stood that many pixels lower (or higher) when its container sorts on `"y"` or `"x"`, without moving it: a torch drawn over the wall it hangs on, dust sorted with the door it rises from, or art of different heights sorted by its base
+- Lighting: `Light2d#softness` (0 to 1) fades the edge of a light's hole in the stage's ambient darkness, from a hard rim (0, the default, as before) to a darkness that thins straight from the center (1), along the same falloff as the glow. Hard and soft lights mix in one scene, overlapping lights multiply, and it works on every renderer
+- Particles: `tintOverLife` gives the tints a particle takes over its life, evenly spaced and blended from the first at birth to the last at the end, such as a flame turning from white hot to deep red. It sets the color only (the fade still sets the opacity), and the blend is taken in 32 steps, which keeps the Canvas renderer to 32 tinted copies of the texture
+- Animation: `setCurrentAnimation(name, { onFrame })` calls back with each frame index as playback reaches it, from frame 0 when the animation starts, so a footstep or a hit can land on its frame. It applies to the frame animations of a `Sprite` or a `Sprite3d`
+- Audio: `playTrack(name, { volume, sprite })` plays one region of a clip as the track and loops on it. A region of a loop's exact length keeps an MP3 loop gapless in Safari, which plays the padding an MP3 encoder adds to the end of the file
+- Tiled: a tile object with no class of its own is built by the class registered under its tile's class, as Tiled shows it, so a class set once on a tile in the tileset applies to every object placed from it, and `TMXTileset#getTileClass()` returns that class. The object's own class or registered name still comes first, and a tile classed like a built-in (`Sprite`, `Trigger`, `shape`...) stays a plain tile
+- Tiled: `TMXObject#resolvedProperty()` and `resolvedProperties()` return an object's custom properties together with those it inherits from its tile, the object's own winning, as the methods of the same names in Tiled's scripting API do. Only the object's own properties are set on it by name, as before
+- Tiled: a tileset, a tile of an image collection or an image layer whose image has a transparent color (`trans` in TMX, `transparentcolor` in JSON) is drawn with that color transparent, as Tiled shows it. The color is cleared once when the map loads, on a copy of the image
+- Typings: `TMXObject`, the settings a class registered with `registerTiledObjectClass` (or a factory registered with `registerTiledObjectFactory`) receives, is exported as a type, and both functions are typed with it. A class or factory typed with its own settings still compiles
+- Rendering: `textureFilter: "linear-mipmap"` samples a texture's mipmaps wherever it is drawn smaller than its size, so a zoomed-out camera, a minimap or a scaled-down sprite no longer shimmers as it moves; it covers sprites, text and tile layers on WebGL and WebGPU. A sprite cut from an atlas or a tileset keeps its samples inside its own frame, so its neighbours no longer streak along its edges, and a texture draws as under `"linear"` at its size or larger
+- Camera: `Renderable#visibilityLayer` and `Camera2d#cullMask` choose what each camera draws: a camera draws a renderable only if they share a bit, so a minimap can leave out the particles, or a `Light2d` can show in one camera only. By default every renderable is on layer 1 and every camera draws every layer; a container left out is left out with everything in it, and the layer can be set on a Tiled object as an `int` custom property
+- Application: the `syncToDisplay` setting keeps motion steady on a display that refreshes at `maxfps` (60 by default) or a whole multiple of it, such as 60 or 120 Hz. Frame times are counted in whole display frames, so a frame no longer runs no update and the next one two, which made scrolling stutter; it is off by default, and `timer.syncToDisplay` switches it at any time
+
+### Changed
+- Rendering: `renderer.uvOffset` and the `textureSeamFix` setting are removed. The Canvas renderer drew tiles a pixel larger to hide the seams between them, which no longer appear; code that added `uvOffset` to a size should drop it
+- Rendering: a container sorted on `"x"` or `"y"` keeps its children in order as they move. With `autoSort` on, the default, it checks the order at the end of every update and re-sorts when anything is out of place, so a walking character no longer needs a `sort()` call to pass in front of and behind things. A frame where nothing moved costs one pass over the children and causes no redraw; turn `autoSort` off to keep the order you set. A `"z"` sort is unchanged
+
+### Fixed
+- Loader: a `data:` URI is decoded in place instead of fetched, so it loads on a page whose Content-Security-Policy `connect-src` does not allow `data:` (sandboxed embeds, hardened sites), where the browser refused it. The default loading screen's logo, inlined as a `data:` URI, showed nothing on such pages; this covers a `data:` URI given to any asset type
+- Effects: a colored drop shadow below full opacity is no longer too bright, nor are the soft edges of an outline. Both added their color at full strength whatever its opacity
+- TextureAtlas: drawing part of an image, a bitmap font glyph or a repeating pattern no longer adds a region to the atlas for every new source rectangle, and on an atlas with pages of different sizes no longer reuses the UVs worked out for the same rectangle on another page. Those regions piled up for as long as the atlas lived, and turned up among the frames an animation is built from ([#1281](https://github.com/melonjs/melonJS/issues/1281), thanks @snowyukitty)
+- Tiled: objects on isometric maps are placed where Tiled draws them. Positions are measured in tile heights on both axes, which changes maps whose tiles are not 2:1, and tile objects are anchored at their bottom center, so a game that offset them to compensate should drop that offset (thanks @vtxe02023274)
+- Tiled: a tile object resized or flipped in Tiled is drawn on its own box, its tile stretched to fill it, and collides at that size. One from a tileset image was drawn and collided at the size of its tile, and one from an image collection was drawn above and to the left of its box when resized, and a whole tile width to the right when flipped (thanks @vtxe02023274)
+- Tiled: tile objects are placed by their tileset's object alignment, and a rotated one turns about that point, as in Tiled: the bottom left, or the bottom center on isometric maps, unless the tileset sets another. They were always anchored at the bottom left (bottom center on isometric maps), and a rotated one turned about another point, so it was drawn and collided away from where Tiled shows it
+- Tiled: a map with an animated tile object loads, and the object plays its animation. One from a tileset image threw "string parameters for addAnimation are not allowed for standard spritesheet based Texture", and one from an image collection threw a TypeError
+- Tiled: in a tile layer, tiles from an image collection whose images are not all the same height each sit on the bottom of their cell, as in Tiled. Every tile was placed as if it were as tall as the tallest image of the collection
+- Tiled: a collision object whose shape reaches left of or above its position, like every rectangle on an isometric map, is found by collision checks, `queryAABB` and `raycast` wherever its shape is. Parts of it were missed, so a character could walk through walls; such an object's `pos` is now the top left corner of its shape
+- Tiled: the collision shapes of objects on isometric maps are projected with the map's tile ratio, as Tiled does. Rectangles, polygons and polylines were projected as if the tiles were 2:1, squeezed or stretched across on a map with wider or narrower tiles so they no longer lined up with the walls they outline, and ellipses were not projected at all; a circle stays an `Ellipse`, and any other ellipse, which comes out tilted, becomes a polygon around it (thanks @vtxe02023274)
+- Tiled: a tile object on an isometric map collides over its image, as on other maps. Its default body was its image's box projected onto the map grid, a slanted shape hanging off the image
+- Physics: the builtin `raycast` measures a body from the frame its renderable draws in, as collisions have since 20.7. On a body whose anchor is not its top left corner, such as a `Sprite`'s default centre, a ray hit half the body's size away from where it collides, or missed it
+- Camera: a zoomed camera follows its target, stays within its bounds and centres on `focusOn` in world units, and `localToWorld` and `worldToLocal` take its zoom and its place on the screen (`screenX`, `screenY`) into account. Zoomed out, it kept the target off centre and scrolled past its bounds, zoomed in it stopped short of them, and a pointer on a zoomed camera, or on one drawn in a corner of the screen, hit the world somewhere else than it pointed
+- Effects: a glow, outline, blur, drop shadow, chromatic aberration, wave, squish, pixelate or bloom on a sprite cut from an atlas or a tileset keeps to the sprite's own frame. Along the frame's edges it picked up the neighbouring frames, and drew a glow or a line from pixels that are not part of the sprite
+- Effects: a glow, outline, blur, drop shadow, chromatic aberration, pixelate or bloom measures its width, offset or size in pixels of the texture it draws, as documented, with no `textureSize` to pass: a sprite's texture, the screen for a camera's effect, a mesh's texture. Each assumed a 256x256 texture (the screen for an outline or a bloom), so on any other texture it came out thinner or thicker than asked; a game that tuned its widths around that should check them, and an effect given a `textureSize` keeps it
+- Tiled: a tile layer drawn with smooth filtering, scaled or off the pixel grid, shows no seams between its tiles on WebGL and WebGPU. Along each tile's edge, filtering blended in the next tile of the tileset, or the spacing around it
+- Tiled: a pre-rendered tile layer holds every tile it draws, on hexagonal, staggered and oblique maps and with tiles larger than their cell or offset from it, and shows the tiles `setTile` and `clearTile` change. It was baked at an orthogonal layer's size, which cut off the last column of a hexagonal map, what an oblique map draws left of or above its origin and the parts of large tiles reaching past the edge; `setTile` left it as it was, and `clearTile` erased a rectangle placed as on an orthogonal map, cutting into the tiles around it
+- Tiled: an orthogonal tile layer with an opacity below 1, or inside a faded container, is drawn faded on WebGL and WebGPU. Its colors were drawn at full strength over what lies behind it, as bright as an opaque layer or brighter, and the container's fade was ignored
+- Rendering: on the Canvas renderer, a game created with `antiAlias: false` still draws unsmoothed after the canvas is resized, with no seams between its tiles. A resize reset the canvas's drawing state, which turned smoothing back on, and also reset the blend mode, the color and the line width, join and dash
+- Camera: a zoomed camera draws its floating renderables, such as a HUD or a `ColorLayer`, and a `ColorLayer` fills all of its view. It skipped them all, as a minimap does, on every renderer
+- Application: a `maxfps` above 120 no longer stops the game. Updates ran every `60 / maxfps` frames rounded to a whole number, which came out as 0, so none ran
+- Effects: changing the texture filter after an effect's texture was replaced with `setTexture`, or after the effect was destroyed, no longer raises a WebGL error. The deleted texture was still listed as bound, and the filter change bound it again
+- Camera: the follow deadzone has its edges on whole pixels, so a camera following a target on a whole pixel comes to rest on one. Its size, a sixth of the view by default, was kept as a fraction, so with `subPixel` on a camera following its target right or down stopped between two pixels
+- Camera: `offset` can shift the view for good, such as to look above the hero, and not only for a shake: a shake adds its jitter to the offset and gives it back when it ends, where it used to reset it to zero. Culling, the pointer (`localToWorld`, `worldToLocal`), tile layers and parallax `ImageLayer`s all count it, so a parallax background now shakes with the world, by its ratio
+- Lighting: on the Canvas renderer, a light's hole in the ambient darkness is cut where the light is, under a scrolled or zoomed camera and one drawn at an offset such as a minimap. Under a scrolled camera the mask kept the darkness inside the light and cleared it around it, and the holes of a zoomed or offset camera were cut as if it were neither
+- Lighting: the ambient darkness covers the whole view of a camera. Zoomed out, it covered only as much of the world as the camera is wide, and at a fractional position, such as a camera following its target with damping, it left the first column and row lit unless `subPixel` was set
+- Lighting: on the Canvas renderer, a lit game whose sprites have no normal map no longer warns that normal-map lighting needs a GPU backend. It warned as soon as a `Light2d` existed, though a sprite without a normal map is drawn unlit on every renderer; it now warns once, when it draws a sprite with a normal map under a light
+- Audio: a sprite region declared looping (`[start, duration, true]`) loops when played with `audio.play(name, { sprite })`. It played only once unless `loop: true` was passed as well
+- Text: a label whose text is empty or only spaces no longer blanks the whole frame on WebGPU. Its canvas was sized 0 pixels wide, which WebGPU refuses to upload
+- Typings: `TextureAtlas#getAnimationSettings()` is typed as the settings it returns, so they pass to a `Sprite` constructor from TypeScript without a cast. It returned `object`, and `Sprite3d` typed the named animations an aseprite atlas carries as an array
+- Typings: `CanvasRenderTarget#destroy(renderer)` is typed and documented with its `renderer`, which frees the copy of the canvas uploaded to the GPU as well. It was hidden, so only the parent's `destroy()` showed, and TypeScript refused the argument
+
+### Performance
+- Effects: sprites drawn one after the other through the same `ShaderEffect` share one draw call, as plain sprites do, even from different frames of an atlas. A uniform set to a new value draws the sprites queued before it first, so each sprite still draws with the values it was given; a `screen_texture` effect still draws each sprite on its own
+- Rendering: drawing a sprite, a glyph or a pattern computes its UVs from the image size instead of looking them up, with no string built and nothing allocated or kept. On the platformer, text and Jungle Rabbit examples a lookup took 34 to 58 ns and now takes 6 to 10, in Chrome and WebKit: 1 to 2% of a frame's CPU time on the text example, and too little to measure on the platformer
+
+## [20.10.1] (melonJS 2) - _2026-10-21_
+
+### Fixed
+- Rendering: entering a state no longer stalls its first frame compiling the shaders its stage had only started preparing. That frame now waits until they are ready, for at most 1.5s, and `STATE_CHANGE` and a transition's reveal come with it, so the reveal plays in full instead of running its course behind the stall
+- Rendering: the first frame of a scene whose camera uses fog no longer stalls compiling its meshes. The warm-up read the fog of whichever camera drew last, which after a state change is the previous screen's, so it prepared the variant without fog and the first frame then built the fogged one on the spot
+- Rendering: a camera's `colorMatrix`, and on WebGPU an `InstancedMesh` and its ground shadow, are now prepared when the stage is built, like every other renderable since 20.10, instead of compiling in the first frame that draws them
+- WebGL: an `ImageLayer` with a single post effect now draws through it. The layer's repeated image was drawn with the default shader, so the effect did nothing on WebGL while WebGPU applied it
+
+## [20.10.0] (melonJS 2) - _2026-10-20_
+
+**Highlights:** a game no longer stutters the first time an effect, a blend mode or a new kind of object appears. Shaders, pipelines and render targets are now prepared when the object is added, or during `loader.preload()`, rather than in the frame that first draws it, where a single first draw was measured at up to 140ms. Dropping a batch of meshes no longer stalls the frame either.
+
+### Added
+- Effects: `SquishEffect` bulges a sprite's middle out, or pinches it in, while its top and bottom rows stay where they are. Paired with a change of height it gives squash and stretch that keeps the sprite's volume, and it draws past the sprite's own frame, so the art needs no transparent margin
+
+### Fixed
+- WebGL: releasing retained geometry no longer stalls the frame, a stutter whenever a scene dropped a batch of meshes. Teardown asked a blocking `is*` query about every buffer and vertex array before deleting it, a round trip per object, and now only asks once the context has been lost, the only case where the answer can be no
+- WebGL: a `ShaderEffect` hosted on a `Mesh` is compiled during `loader.preload()`, on every call including a later one that brings a level's own effects, rather than on the frame it first draws. Preloading the shader built its standalone program, but a mesh host splices the body into the mesh shader, which is a different program again, so a game that declared every effect in its manifest still stuttered the first time each one appeared
+- WebGPU: a post effect's pipelines are compiled when the effect is attached (`addPostEffect`, assigning `shader`, or the tone curve `setToneMapping` builds), off the frame, rather than in the frame that first draws it, a stutter measured at up to 140ms per effect on desktop. Attaching effects when a pool or a stage is built, rather than when the object is shown, gives the compile time to finish
+- WebGL: a `ShaderEffect` hosted on a `Mesh` is also linked when it is attached, so an effect built inline and never preloaded no longer stalls its first draw either. The links are spread over the following frames, so a stage building a pool of effect-carrying meshes does not pay for all of them in one
+- Effects: switching a disabled effect on no longer creates a render target in that frame. A chain gets its targets for every effect attached to it, enabled or not, when the effect is attached
+- Rendering: adding a renderable to the world starts preparing its draw, so one added before it is first shown no longer pays for it on that frame. On WebGPU that is the pipeline for its blend mode, culling and transparency, compiled off the frame, and on both GPU backends an advanced blend mode (`overlay`, `difference` and the rest) gets its blend shader and offscreen target, a first draw measured at up to 136ms
+- WebGL and WebGPU: the shader warm-up runs again after a lost context or device is restored. It never did, so every shader went back to compiling on the frame it next drew
+- WebGPU: the mip-chain generator is built during `loader.preload()` when textures are filtered (`textureFilter` resolving to `"linear"`), instead of on the frame the first mipmapped texture is uploaded
+- Sprite: a video the browser refuses to start, as it does before the user has interacted with the page, no longer logs an uncaught error on every frame. The refusal is handled once, and playback starts on the next click, touch or key press
+- WebGL: ETC1 compressed textures no longer draw black. They were uploaded with a call ETC1 does not accept, which left the texture empty; they now upload as ETC2, which reads the same data, or level by level when the browser only supports ETC1
+- WebGPU: the smallest mip levels of a compressed texture (the 2×2 and 1×1 levels of a 4×4-block format) are no longer rejected and left empty. Each upload now covers whole blocks, as WebGPU requires
+- Tween: a tween stopped while the game updates (replaced by a new one, say) no longer takes one more step and fires its `onComplete` in that same frame
+
+## [20.9.0] (melonJS 2) - _2026-10-18_
+
+### Added
+- **`scaleRounding` application setting**: optional, and `"fractional"` by default, so nothing existing changes. `"integer"` constrains the automatic scale factor to a whole number of device pixels per source pixel and letterboxes the remainder, which is what stops pixel art showing uneven stems and shimmering edges; it applies to `scaleMethod: "fit"` only
 - **Sprite-sheet particles** (`framewidth`, `frameheight`, `frames`, `randomFrame` on `ParticleEmitter`): a particle plays a frame sequence once over its own lifetime, or holds one frame picked at random when it is born. One sheet is one image, so a burst of varied debris still batches into a single draw call ([#1610](https://github.com/melonjs/melonJS/issues/1610), thanks @snowyukitty)
 - **`slerp(v, alpha)` on all four vector classes**: interpolate along the ARC between two directions at a constant angular rate, where `lerp` slows at the ends and shortens the vector through the middle. 2D takes the shorter way round, and the same and opposite cases are handled rather than returning `NaN`
 - **`Trail3d`**: a fading, tapering ribbon that recedes properly into a 3D scene, for an exhaust streak, a speed trail or a spell arc. It is a `Mesh`, so unlike the 2D `Trail` it narrows along its own length, takes a post effect and a `tint`, and costs one indexed draw call rather than a filled path per segment. It needs a `Camera3d` ([#1621](https://github.com/melonjs/melonJS/issues/1621))

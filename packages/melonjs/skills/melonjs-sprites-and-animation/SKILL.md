@@ -59,6 +59,10 @@ hero.setCurrentAnimation("walk");
 hero.setCurrentAnimation("die", "idle");                          // chain to idle when it ends
 hero.setCurrentAnimation("die", { loop: false });                 // play once, hold the last frame
 hero.setCurrentAnimation("die", { loop: false, onComplete: fn }); // …and call fn when it does
+hero.setCurrentAnimation("use", { next: "idle", onComplete: fn }); // call fn, then chain to idle
+hero.setCurrentAnimation("run", { onFrame: (frame) => {            // each frame playback reaches
+    if (frame === 3 || frame === 8) footstep();
+} });
 
 if (hero.isCurrentAnimation("walk")) { /* … */ }
 ```
@@ -71,13 +75,34 @@ accepted — passing region names throws.
 
 The second argument to `setCurrentAnimation` is polymorphic. A **string** chains
 to that animation when this one ends. An **options object** takes
-`{ loop, next, speed, onComplete }`, and only an explicit `loop: false` stops the
-looping. A **bare function** is the legacy form: it fires at *every* cycle end,
+`{ loop, next, speed, onComplete, onFrame }`, and only an explicit `loop: false`
+stops the looping. A **bare function** is the legacy form: it fires at *every* cycle end,
 and only holds the last frame if it returns `false`. Omit the argument entirely
 and the animation loops forever.
 
+`onFrame(frame)` is called with frame 0 when the animation starts, then with each
+frame playback reaches, so a footstep or a hit lands on its frame without polling
+`getCurrentAnimationFrame()`. A long tick reports every frame it goes past. It is
+not called for a frame set with `setAnimationFrame`, nor for the frame 0 a
+play-once animation would wrap to. Keep the callback in a field when you call
+`setCurrentAnimation` every frame: re-selecting keeps the first one anyway.
+
+With both `next` and `onComplete`, the callback runs first and the chained
+animation starts with none of its own, so a one-off action (a pickup, an
+attack) needs no manual switch back to idle.
+
 Re-selecting the animation that is already current is a no-op, so calling
-`setCurrentAnimation` every frame is safe. An unknown id throws.
+`setCurrentAnimation` every frame is safe, and an `isCurrentAnimation` check
+around it adds nothing. An unknown id throws.
+
+`addAnimation` with an id that exists replaces it, which is how you change an
+animation's frames or speed (`hero.addAnimation("walk", [4, 5, 6, 7], 200)`).
+Redefining the one that is playing takes effect at once: the playing frame is
+kept if the new strip still has it, playback restarts on frame 0 if not, a
+finished `loop: false` run holds the new last frame, and the
+`setCurrentAnimation` options stay. Before 20.13 it kept the old frame count, so
+a shorter strip threw on the next `update()` and a longer one never reached its
+new frames.
 
 ## Texture atlases
 
@@ -109,6 +134,9 @@ sprite.flipX(true);                   // mirror horizontally
 sprite.flipY(true);
 sprite.blendMode = "additive";        // see the effects skill for the full list
 sprite.scale(2, 2);                   // ← multiplicative, see below
+sprite.flicker(1000, function () {    // blink for a second, then…
+    this.ancestor.removeChild(this);  // …`this` is the sprite; the flicker has ended
+});
 ```
 
 **`scale()` is multiplicative, not absolute.** Calling it every frame compounds.
@@ -169,6 +197,8 @@ Two consequences:
 | event handlers leak on pooled objects | bound in the constructor rather than `onActivateEvent` |
 | animation never advances | no `framewidth`/`frameheight`, so the sheet is one frame |
 | animation plays once and stops | `{ loop: false }`, or a callback that returned `false` |
+| `TypeError` reading `offset` or `delay` in `update()` after re-adding the playing animation with fewer frames, or a longer one never shows its new frames | before 20.13 redefining the current animation kept its old frame count; upgrade |
+| `this` is wrong in a `flicker(ms, callback)` callback, or a flicker started from it stops at once | before 20.13.0 the callback ran on an internal object and the flicker was stopped after it; now `this` is the sprite and the flicker has already ended |
 | sprites do not batch | more distinct textures in one frame than `renderer.maxTextures` |
 | nine-slice corners stretch anyway | `insetX`/`insetY` instead of `insetx`/`insety` |
 

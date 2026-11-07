@@ -7,6 +7,7 @@ import Camera3d from "./camera/camera3d.ts";
 import CameraEffect from "./camera/effects/camera_effect.ts";
 import FadeEffect from "./camera/effects/fade_effect.ts";
 import MaskEffect from "./camera/effects/mask_effect.ts";
+import PixelateTransitionEffect from "./camera/effects/pixelate_transition_effect.ts";
 import ShakeEffect from "./camera/effects/shake_effect.ts";
 import Frustum from "./camera/frustum.ts";
 import Pointer from "./input/pointer.ts";
@@ -54,7 +55,9 @@ import Trail3d from "./renderable/trail3d.js";
 import Trigger from "./renderable/trigger.js";
 import ProgressBar from "./renderable/ui/progressbar.ts";
 import UIBaseElement from "./renderable/ui/uibaseelement.ts";
+import UICheckbox from "./renderable/ui/uicheckbox.ts";
 import UIPanel from "./renderable/ui/uipanel.ts";
+import UISlider from "./renderable/ui/uislider.ts";
 import UISpriteElement from "./renderable/ui/uispriteelement.ts";
 import UITextButton from "./renderable/ui/uitextbutton.ts";
 import Stage from "./state/stage.ts";
@@ -84,6 +87,8 @@ import ScanlineEffect from "./video/effects/scanline.js";
 import SepiaEffect from "./video/effects/sepia.js";
 import ShaderEffect from "./video/effects/shadereffect.js";
 import ShineEffect from "./video/effects/shine.js";
+import SquishEffect from "./video/effects/squish.js";
+import SwayEffect from "./video/effects/sway.js";
 import TintPulseEffect from "./video/effects/tintPulse.js";
 import ToneMappingEffect from "./video/effects/tonemap.js";
 import VignetteEffect from "./video/effects/vignette.js";
@@ -124,6 +129,7 @@ export type {
 	PannerAttributes,
 	PlayOptions,
 	SoundEvents,
+	TrackOptions,
 } from "./audio/types.ts";
 // export all public constants
 export * from "./const.ts";
@@ -141,6 +147,7 @@ export * as input from "./input/input.ts";
 export * from "./lang/deprecated.js";
 export type { LevelLoadOptions } from "./level/level.js";
 export { level } from "./level/level.js";
+export type { default as TMXObject } from "./level/tiled/TMXObject.js";
 export {
 	registerTiledObjectClass,
 	registerTiledObjectFactory,
@@ -191,11 +198,35 @@ export type {
 	InstancedMeshSettings,
 } from "./renderable/instanced_mesh.js";
 export type { MeshSettings } from "./renderable/mesh.js";
+export type { Paint } from "./renderable/ui/panelpaint.js";
 export type {
 	ProgressBarDirection,
 	ProgressBarSettings,
 } from "./renderable/ui/progressbar.js";
-export type { UIPanelSettings } from "./renderable/ui/uipanel.js";
+export type { UIJuiceSettings } from "./renderable/ui/uibaseelement.js";
+export type {
+	UICheckboxSettings,
+	UICheckboxSkin,
+} from "./renderable/ui/uicheckbox.js";
+export type { UINavAction } from "./renderable/ui/uifocus.js";
+export type { UILabel } from "./renderable/ui/uilabel.js";
+export type {
+	UIPanelAlign,
+	UIPanelLayout,
+	UIPanelScroll,
+	UIPanelSettings,
+	UIPanelSkin,
+} from "./renderable/ui/uipanel.js";
+export type { UISkin } from "./renderable/ui/uiskin.js";
+export type {
+	UISliderSettings,
+	UISliderSkin,
+} from "./renderable/ui/uislider.js";
+export type { UISpriteElementSettings } from "./renderable/ui/uispriteelement.js";
+export type {
+	UITextButtonSettings,
+	UITextButtonSkin,
+} from "./renderable/ui/uitextbutton.js";
 export * as device from "./system/device.js";
 export * as event from "./system/event.ts";
 // and the two types it names, so a game can declare a field holding one
@@ -258,6 +289,7 @@ export {
 	ParticleEmitter,
 	ParticleEmitterSettings,
 	PixelateEffect,
+	PixelateTransitionEffect,
 	PORTABLE_TOPOLOGIES,
 	Pointer,
 	PrimitiveBatcher,
@@ -278,7 +310,9 @@ export {
 	ShineEffect,
 	Sprite,
 	Sprite3d,
+	SquishEffect,
 	Stage,
+	SwayEffect,
 	save,
 	state,
 	Text,
@@ -303,7 +337,9 @@ export {
 	Tween,
 	timer,
 	UIBaseElement,
+	UICheckbox,
 	UIPanel,
+	UISlider,
 	UISpriteElement,
 	UITextButton,
 	VignetteEffect,

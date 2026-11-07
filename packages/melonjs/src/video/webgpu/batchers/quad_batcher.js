@@ -1,13 +1,21 @@
+import { Color } from "../../../math/color.ts";
 import IndexBuffer from "../../buffer/index.js";
-import { transformQuadCorners } from "../../gpu/quadcorners.ts";
+import { FRAME_UNBOUNDED, isFramed } from "../../gpu/frame.js";
+import { scaleQuad, transformQuadCorners } from "../../gpu/quadcorners.ts";
 import { TextureSlotTable } from "../../gpu/textureslots.js";
 import { prepareEffectBinding } from "../effect_binding.js";
 import { MAX_QUAD_TEXTURES } from "../pipeline/cache.js";
 import WebGPUBatcher from "./webgpu_batcher.js";
 
 /**
+ * the blit's tint: white, at the opacity the blit composites at
+ * @ignore
+ */
+const blitTint = new Color(255, 255, 255);
+
+/**
  * The WebGPU quad batcher — textured-quad accumulation with the same
- * frozen 28-byte vertex layout as the WebGL `QuadBatcher` and the same
+ * frozen 36-byte vertex layout as the WebGL `QuadBatcher` and the same
  * static 6-indices-per-quad pattern.
  *
  * Texture batching is single-texture-per-draw-segment in this first
@@ -35,7 +43,7 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 				attributes: [
 					{
 						// vec3: (x, y, z). z carries `renderable.depth` for
-						// perspective projection (Camera3d). Stride = 28 bytes.
+						// perspective projection (Camera3d). Stride = 36 bytes.
 						name: "aVertex",
 						format: "float32x3",
 						offset: 0 * Float32Array.BYTES_PER_ELEMENT,
@@ -55,6 +63,15 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 						format: "float32",
 						offset: 6 * Float32Array.BYTES_PER_ELEMENT,
 					},
+					{
+						// the UV of the quad's opposite corner: the frame the
+						// quad draws (see quad.wgsl). After the attributes a
+						// module declares, so those keep their locations; the
+						// lit layout keeps it here too, its extra after it
+						name: "aFrame",
+						format: "float32x2",
+						offset: 7 * Float32Array.BYTES_PER_ELEMENT,
+					},
 				],
 			},
 		);
@@ -69,6 +86,18 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 		// quad draws through the effect's pipeline, composited live against
 		// the backdrop (no offscreen target)
 		this.currentEffect = null;
+
+		/**
+		 * draws the quads queued through the current effect: what one of
+		 * its uniforms calls before taking a new value (see `adoptEffect`)
+		 * @ignore
+		 * @internal
+		 */
+		this.drawQueuedEffectQuads = () => {
+			if (this.vertexData.vertexCount > 0) {
+				this.flush();
+			}
+		};
 
 		// multi-texture segment state: up to MAX_QUAD_TEXTURES distinct
 		// (texture view, sampler) pairs share one draw segment, selected
@@ -99,7 +128,7 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 		/** @type {{view: GPUTextureView, sampler: GPUSampler}[]} indexed by slot */
 		this.segmentEntries = [];
 		/**
-		 * last (view, filter, wrap) resolved to a segment slot
+		 * last (view, filter, wrap, mipmaps) resolved to a segment slot
 		 * @ignore
 		 * @internal
 		 */
@@ -114,6 +143,11 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 		 * @internal
 		 */
 		this._memoWrap = null;
+		/**
+		 * @ignore
+		 * @internal
+		 */
+		this._memoMipmaps = false;
 		/**
 		 * @ignore
 		 * @internal
@@ -176,7 +210,7 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 		const effect = renderer.customShader ?? null;
 		if (effect !== this.currentEffect) {
 			this.flush();
-			this.currentEffect = effect;
+			this.adoptEffect(effect);
 		}
 
 		if (effect !== null) {
@@ -192,6 +226,7 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 			// its own anyway
 			const bindGroup = renderer.textureStore.getBinding(texture, {
 				force: reupload,
+				mipmaps: this.wantsMipmaps(texture),
 			});
 			if (bindGroup !== this.currentMaterial) {
 				this.flush();
@@ -201,21 +236,51 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 			// feed the effect's `noise_uv` builtin with this quad's frame
 			// rect — min() normalizes flipped (swapped) UVs
 			const source = texture.getTexture();
+			const sourceWidth = source.width || source.videoWidth || 1;
+			const sourceHeight = source.height || source.videoHeight || 1;
 			effect._setNoiseUVRect?.(
-				source.width || source.videoWidth || 1,
-				source.height || source.videoHeight || 1,
+				sourceWidth,
+				sourceHeight,
 				w,
 				h,
 				Math.min(u0, u1),
 				Math.min(v0, v1),
 			);
+			// and keep its samples inside that frame: on an atlas, the
+			// texture goes on into the neighbouring frames
+			effect._setFrameTexel?.(sourceWidth, sourceHeight);
 
-			this.pushQuadVertices(x, y, w, h, u0, v0, u1, v1, tint, 0);
+			// the effect's vertex stage, AFTER the frame rect above, which
+			// must stay the sprite's own
+			const scale = effect._vertexScale;
+			const framed = isFramed(texture);
+			if (scale !== undefined && (scale.x !== 1 || scale.y !== 1)) {
+				const q = scaleQuad(x, y, w, h, scale.x, scale.y);
+				this.pushQuadVertices(
+					q[0],
+					q[1],
+					q[2],
+					q[3],
+					u0,
+					v0,
+					u1,
+					v1,
+					tint,
+					0,
+					framed,
+				);
+			} else {
+				this.pushQuadVertices(x, y, w, h, u0, v0, u1, v1, tint, 0, framed);
+			}
 
-			// per-quad draw under the fast path: each sprite needs its own
-			// capture state, noise rect and uniform snapshot (draw-time
-			// setUniform mutation included)
-			this.flush();
+			// the next sprite drawn through the same effect joins this draw:
+			// a new uniform value, noise rect or texture draws the queued
+			// quads first (see `adoptEffect`). Only a `screen_texture` effect
+			// draws each sprite on its own, as each one samples a capture of
+			// everything drawn before it
+			if (effect._screenTextureUniforms?.length > 0) {
+				this.flush();
+			}
 			return;
 		}
 
@@ -232,7 +297,49 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 			v1,
 			tint,
 			this.segmentSlotFor(texture, reupload),
+			isFramed(texture),
 		);
+	}
+
+	/**
+	 * Make `effect` the one the pending quads draw through (or none), and
+	 * have a change to its uniforms draw the quads queued under the old
+	 * values first: its uniforms are uploaded when the quads draw, so they
+	 * would otherwise all draw with the last value set.
+	 * @param {object|null} effect - the ShaderEffect, or null
+	 * @ignore
+	 * @internal
+	 */
+	adoptEffect(effect) {
+		const previous = this.currentEffect?.wgslRealization;
+		if (previous && previous.onUniformChange === this.drawQueuedEffectQuads) {
+			previous.onUniformChange = null;
+		}
+		this.currentEffect = effect;
+		const realization = effect?.wgslRealization;
+		if (realization) {
+			realization.onUniformChange = this.drawQueuedEffectQuads;
+		}
+	}
+
+	/**
+	 * Whether a quad's texture samples its mipmaps: the `"linear-mipmap"`
+	 * filter, over a linear texture whose source keeps a chain.
+	 * @param {object} texture - the texture atlas drawn
+	 * @returns {boolean} true to ask the store for the mip chain
+	 * @ignore
+	 * @internal
+	 */
+	wantsMipmaps(texture) {
+		const renderer = this.renderer;
+		if (!renderer.wantsMipmaps(texture)) {
+			return false;
+		}
+		const filter =
+			typeof texture.filter === "string"
+				? texture.filter
+				: renderer.getDefaultTextureFilter();
+		return filter === "linear";
 	}
 
 	/**
@@ -255,7 +362,11 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 		// against `texture.getTexture()` and re-uploads when the source has
 		// changed underneath (a video frame, an animated canvas, a swapped
 		// atlas). Memoizing past it would serve stale pixels.
-		const record = store.getResidentRecord(texture, { force: reupload });
+		const mipmaps = this.wantsMipmaps(texture);
+		const record = store.getResidentRecord(texture, {
+			force: reupload,
+			mipmaps,
+		});
 		const wrap = texture.repeat ?? "no-repeat";
 		const filter =
 			typeof texture.filter === "string"
@@ -276,20 +387,25 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 		if (
 			record.view === this._memoView &&
 			filter === this._memoFilter &&
-			wrap === this._memoWrap
+			wrap === this._memoWrap &&
+			mipmaps === this._memoMipmaps
 		) {
 			return this._memoSlot;
 		}
 
-		const slotKey = `${this.resourceId(record.view)}|${filter}|${wrap}`;
+		// the view and sampler the store pairs for this use: the mip chain
+		// only for a linear texture that has one (a compressed texture's
+		// authored chain is a separate view)
+		const pair = store.viewAndSampler(record, texture, wrap, mipmaps);
+		const slotKey = `${this.resourceId(pair.view)}|${pair.key}`;
 		// a hit returns the live slot; a miss claims one, flushing the pending
 		// segment first when the table is full (the `onOverflow` above)
 		let resolved = this.slotTable.peek(slotKey);
 		if (resolved === undefined) {
 			resolved = this.slotTable.slotFor(slotKey);
 			this.segmentEntries[resolved] = {
-				view: record.view,
-				sampler: store.getSampler(filter, wrap),
+				view: pair.view,
+				sampler: pair.sampler,
 			};
 			this.segmentGroup = null;
 		}
@@ -297,6 +413,7 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 		this._memoView = record.view;
 		this._memoFilter = filter;
 		this._memoWrap = wrap;
+		this._memoMipmaps = mipmaps;
 		this._memoSlot = resolved;
 		return resolved;
 	}
@@ -387,12 +504,24 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 	 * the vertex; for 2D-only matrices the z column is identity, so the
 	 * output (x, y) is bit-identical and z passes through. textureId is the
 	 * quad's segment slot (constant across its four corners); the lit and
-	 * fast paths pass 0 (single-texture bind groups).
+	 * fast paths pass 0 (single-texture bind groups). Each corner carries the
+	 * UV of the opposite one, the quad's frame, unless `framed` is false.
 	 * @ignore
 	 * @internal
 	 */
-	pushQuadVertices(x, y, w, h, u0, v0, u1, v1, tint, textureId = 0) {
-		const vertexData = this.vertexData;
+	pushQuadVertices(
+		x,
+		y,
+		w,
+		h,
+		u0,
+		v0,
+		u1,
+		v1,
+		tint,
+		textureId = 0,
+		framed = true,
+	) {
 		const [vec0, vec1, vec2, vec3] = transformQuadCorners(
 			this.renderer.currentTransform,
 			x,
@@ -403,10 +532,19 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 		);
 
 		// 4 vertices per quad; the index buffer provides the 6 indices
-		vertexData.push(vec0.x, vec0.y, vec0.z, u0, v0, tint, textureId);
-		vertexData.push(vec1.x, vec1.y, vec1.z, u1, v0, tint, textureId);
-		vertexData.push(vec2.x, vec2.y, vec2.z, u0, v1, tint, textureId);
-		vertexData.push(vec3.x, vec3.y, vec3.z, u1, v1, tint, textureId);
+		this.vertexData.pushSpriteQuad(
+			vec0,
+			vec1,
+			vec2,
+			vec3,
+			u0,
+			v0,
+			u1,
+			v1,
+			tint,
+			textureId,
+			framed,
+		);
 	}
 
 	/**
@@ -424,10 +562,11 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 	 * @param {number} h - destination height
 	 * @param {ShaderEffect} [effect] - the effect to composite with
 	 * @param {boolean} [keepBlend=false] - keep the current blend mode (else replace)
+	 * @param {number} [alpha=1] - the opacity to composite at (0.0 to 1.0)
 	 * @ignore
 	 * @internal
 	 */
-	blitTexture(source, x, y, w, h, effect, keepBlend = false) {
+	blitTexture(source, x, y, w, h, effect, keepBlend = false, alpha = 1) {
 		// drain pending quads under their own material first
 		this.flush();
 		const renderer = this.renderer;
@@ -435,6 +574,17 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 		// identity noise_uv rect for the fullscreen quad (GL parity), BEFORE
 		// the uniform snapshot below
 		effect?._setNoiseUVRect?.(w, h, w, h, 0, 0);
+		// and the whole texture is the frame: sampling stays unbounded. The
+		// texture is the pass's render target, the size of the quad, and a
+		// renderable's chain measures in the renderable's own pixels
+		effect?._clearFrameRect?.(
+			source.width ?? w,
+			source.height ?? h,
+			renderer._chainScale,
+		);
+		// a pass of a renderable's chain: where the renderable is, for the
+		// effects that place a pattern on it (local_space.js)
+		effect?._setLocalSpace?.(renderer._chainSpace);
 		const binding = effect ? prepareEffectBinding(renderer, effect) : null;
 
 		const pass = renderer.ensurePass();
@@ -462,12 +612,15 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 		}
 
 		// one quad, UNFLIPPED UVs (WebGPU texture row 0 is the top — the GL
-		// blit flips V because GL FBOs are bottom-up), white tint
+		// blit flips V because GL FBOs are bottom-up), white tint, and the
+		// whole target drawn: no frame
 		const vertexData = this.vertexData;
-		vertexData.push(x, y, 0, 0, 0, 0xffffffff, 0);
-		vertexData.push(x + w, y, 0, 1, 0, 0xffffffff, 0);
-		vertexData.push(x, y + h, 0, 0, 1, 0xffffffff, 0);
-		vertexData.push(x + w, y + h, 0, 1, 1, 0xffffffff, 0);
+		const open = FRAME_UNBOUNDED;
+		const tint = blitTint.toUint32(alpha);
+		vertexData.pushSprite(x, y, 0, 0, 0, tint, 0, open, open);
+		vertexData.pushSprite(x + w, y, 0, 1, 0, tint, 0, open, open);
+		vertexData.pushSprite(x, y + h, 0, 0, 1, tint, 0, open, open);
+		vertexData.pushSprite(x + w, y + h, 0, 1, 1, tint, 0, open, open);
 		const byteLength = 4 * this.stride;
 		const region = renderer.vertexArena.alloc(byteLength);
 		this.device.queue.writeBuffer(
@@ -481,6 +634,8 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 		pass.setIndexBuffer(this.indexBuffer, "uint32");
 		pass.drawIndexed(6);
 		vertexData.clear();
+		// drawn, its values uploaded: back to the space `uv` always was
+		effect?._setLocalSpace?.(null);
 	}
 
 	/**
@@ -598,7 +753,7 @@ export default class WebGPUQuadBatcher extends WebGPUBatcher {
 	 */
 	reset() {
 		super.reset();
-		this.currentEffect = null;
+		this.adoptEffect(null);
 		this.currentMaterial = null;
 		this.resetSegment();
 		this.composedGroups.clear();

@@ -16,6 +16,10 @@ import Renderable from "./renderable.js";
 // flicker interval in ms (~15 flashes per second)
 const FLICKER_INTERVAL_MS = 33;
 
+// the gestures a browser counts as the user allowing playback, the same set
+// the audio backend listens for to unlock sound
+const VIDEO_GESTURES = ["touchstart", "touchend", "click", "keydown"];
+
 /**
  * additional import for TypeScript
  * @import {TextureAtlas} from "./../video/texture/atlas.js";
@@ -265,6 +269,9 @@ export default class Sprite extends Renderable {
 				 */
 				this.removeStatePauseListener = on(STATE_PAUSE, () => {
 					this.image.pause();
+					// a paused game starts nothing: update() asks again once
+					// it runs, as it always has
+					this._cancelVideoPlay();
 				});
 
 				// Keep a video-frame callback pending while this sprite is
@@ -282,6 +289,24 @@ export default class Sprite extends Renderable {
 				 * @internal
 				 */
 				this._lastVideoFrameVersion = -1;
+				/**
+				 * a `play()` is in flight, or was refused until a user gesture
+				 * @ignore
+				 * @internal
+				 */
+				this._videoPlayPending = false;
+				/**
+				 * bumped to orphan an in-flight `play()` request
+				 * @ignore
+				 * @internal
+				 */
+				this._videoPlayRequest = 0;
+				/**
+				 * the document listener waiting for that gesture, while armed
+				 * @ignore
+				 * @internal
+				 */
+				this._videoGestureListener = undefined;
 				if (typeof this.image.requestVideoFrameCallback === "function") {
 					this.image.version ??= 0;
 					const tick = () => {
@@ -631,13 +656,15 @@ export default class Sprite extends Renderable {
 	/**
 	 * make the object flicker
 	 * @param {number} duration - expressed in milliseconds
-	 * @param {Function} [callback] - Function to call when flickering ends
+	 * @param {Function} [callback] - Function to call when flickering ends,
+	 * with `this` set to the sprite. The flicker has already stopped when it
+	 * runs, so the callback can start another one.
 	 * @returns {Sprite} Reference to this object for method chaining
 	 * @example
 	 * // make the object flicker for 1 second
 	 * // and then remove it
 	 * this.flicker(1000, function () {
-	 *     world.removeChild(this);
+	 *     this.ancestor.removeChild(this);
 	 * });
 	 */
 	flicker(duration, callback = undefined) {
@@ -691,18 +718,33 @@ export default class Sprite extends Renderable {
 	/**
 	 * set the current animation, and reset the frame to zero. Selecting the
 	 * animation that is already current is a no-op unless it had completed.
+	 * A one-frame animation played once (`loop: false`, `next`, or a callback
+	 * returning `false`) completes after its frame delay, like any other; a
+	 * looping one-frame animation does not step and never fires its per-cycle
+	 * `onComplete`.
 	 * @param {string} name - animation id
-	 * @param {string|Function|object} [resetAnim] - animation id to switch to when complete, a callback, or an options object (`{ loop, next, speed, onComplete }`)
+	 * @param {string|Function|object} [resetAnim] - animation id to switch to when complete, a callback, or an options object (`{ loop, next, speed, onComplete, onFrame }`)
 	 * @param {boolean} [preserve_dt=false] - if false will reset the elapsed time counter since last frame
 	 * @returns {Sprite} Reference to this object for method chaining
 	 * @example
 	 * // set "walk" animation
 	 * this.setCurrentAnimation("walk");
 	 *
-	 * // set "walk" animation if it is not the current animation
-	 * if (!this.isCurrentAnimation("walk")) {
-	 *     this.setCurrentAnimation("walk");
-	 * }
+	 * // calling it every frame is fine: selecting the animation that is
+	 * // already playing does nothing, so it is never restarted
+	 * this.setCurrentAnimation(moving ? "walk" : "stand");
+	 *
+	 * // a footstep on the frames where a foot touches the ground
+	 * this.setCurrentAnimation("walk", {
+	 *     onFrame: (frame) => {
+	 *         if (frame === 3 || frame === 8) {
+	 *             audio.play("step");
+	 *         }
+	 *     },
+	 * });
+	 *
+	 * // pick something up, then stand still
+	 * this.setCurrentAnimation("pickup", { next: "stand", onComplete: () => this.take() });
 	 *
 	 * // set "eat" animation, and switch to "walk" when complete
 	 * this.setCurrentAnimation("eat", "walk");
@@ -714,11 +756,12 @@ export default class Sprite extends Renderable {
 	 * });
 	 *
 	 * // set "attack" animation, and pause for a short duration
-	 * this.setCurrentAnimation("die", () => {
+	 * this.setCurrentAnimation("attack", () => {
 	 *    this.animationpause = true;
 	 *
 	 *    // back to "standing" animation after 1 second
-	 *    setTimeout(function () {
+	 *    setTimeout(() => {
+	 *        this.animationpause = false;
 	 *        this.setCurrentAnimation("standing");
 	 *    }, 1000);
 	 *
@@ -877,8 +920,8 @@ export default class Sprite extends Renderable {
 		if (this.isVideo) {
 			if (this.animationpause) {
 				this.image.pause();
-			} else if (this.image.paused) {
-				this.image.play();
+			} else if (this.image.paused && this._videoPlayPending !== true) {
+				this._playVideo();
 			}
 			// set-only (never assign false — that would stomp a dirty flag
 			// set earlier in the tick, e.g. by a tween on a paused sprite)
@@ -904,10 +947,15 @@ export default class Sprite extends Renderable {
 		if (this._flicker.isFlickering) {
 			this._flicker.elapsed += dt;
 			if (this._flicker.elapsed >= this._flicker.duration) {
-				if (typeof this._flicker.callback === "function") {
-					this._flicker.callback();
-				}
+				// stop first, then call back: a callback that starts a new
+				// flicker must not be cancelled the moment it returns, and it
+				// runs as a method of this sprite (as `flicker` documents),
+				// not of the internal settings object it is stored on
+				const callback = this._flicker.callback;
 				this.flicker(-1);
+				if (typeof callback === "function") {
+					callback.call(this);
+				}
 			}
 			this.isDirty = true;
 		}
@@ -1010,6 +1058,93 @@ export default class Sprite extends Renderable {
 	}
 
 	/**
+	 * Start the video and handle the browser's answer. Before the user has
+	 * interacted with the page, browsers refuse playback: calling `play()`
+	 * again on every frame only logged an uncaught error per frame, so a
+	 * refusal now waits for the next gesture instead. Any other failure
+	 * (e.g. a `pause()` interrupting the request) retries on the next frame.
+	 * @ignore
+	 * @internal
+	 */
+	_playVideo() {
+		const request = ++this._videoPlayRequest;
+		this._videoPlayPending = true;
+		// `Promise.resolve`: browsers before the promise-returning `play()`
+		// return undefined
+		Promise.resolve(this.image.play()).then(
+			() => {
+				this._videoPlayPending = false;
+			},
+			(error) => {
+				if (request !== this._videoPlayRequest) {
+					// orphaned by a pause or destroy() while it was pending
+					return;
+				}
+				if (error?.name === "NotAllowedError") {
+					this._awaitVideoGesture();
+				} else {
+					this._videoPlayPending = false;
+				}
+			},
+		);
+	}
+
+	/**
+	 * Wait for the next user gesture and start the video from inside its
+	 * handler, the moment a browser that refused playback allows it.
+	 * @ignore
+	 * @internal
+	 */
+	_awaitVideoGesture() {
+		if (this._videoGestureListener !== undefined) {
+			return;
+		}
+		this._videoGestureListener = () => {
+			this._removeVideoGestureListener();
+			this._videoPlayPending = false;
+			if (this.animationpause !== true && this.image.paused) {
+				this._playVideo();
+			}
+		};
+		for (const type of VIDEO_GESTURES) {
+			globalThis.document.addEventListener(
+				type,
+				this._videoGestureListener,
+				true,
+			);
+		}
+	}
+
+	/**
+	 * Drop a pending `play()` request and stop waiting for a gesture.
+	 * @ignore
+	 * @internal
+	 */
+	_cancelVideoPlay() {
+		this._videoPlayRequest++;
+		this._videoPlayPending = false;
+		this._removeVideoGestureListener();
+	}
+
+	/**
+	 * @ignore
+	 * @internal
+	 */
+	_removeVideoGestureListener() {
+		if (this._videoGestureListener === undefined) {
+			return;
+		}
+		for (const type of VIDEO_GESTURES) {
+			globalThis.document.removeEventListener(
+				type,
+				this._videoGestureListener,
+				true,
+			);
+		}
+		this._videoGestureListener = undefined;
+	}
+
+	/**
 	 * Destroy function<br>
 	 * @ignore
 	 * @internal
@@ -1021,6 +1156,7 @@ export default class Sprite extends Renderable {
 		this.offset = undefined;
 		if (this.isVideo) {
 			this.removeStatePauseListener();
+			this._cancelVideoPlay();
 			if (typeof this._videoFrameHandle !== "undefined") {
 				this.image.cancelVideoFrameCallback(this._videoFrameHandle);
 				// drop the frame-counter stamp so a later non-Sprite consumer

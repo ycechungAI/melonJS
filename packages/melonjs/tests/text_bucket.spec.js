@@ -14,10 +14,10 @@ import {
  * (the pre-existing grow-only rule). Replaces the power-of-two rounding,
  * whose waste was multiplicative instead of ≤31px per axis.
  *
- * Height is bucketed from the layout box PLUS the ink padding, not from the
- * layout box alone — the padding is canvas the glyphs genuinely occupy, so
- * measuring waste against `metrics.height` would call it waste and would go
- * red the moment the padding crossed a bucket boundary.
+ * Both sides are bucketed from the layout box PLUS the ink padding, not from
+ * the layout box alone — the padding is canvas the glyphs genuinely occupy, so
+ * measuring waste against `metrics.width` / `metrics.height` would call it
+ * waste and would go red the moment the padding crossed a bucket boundary.
  */
 describe("Text — 32px canvas buckets", () => {
 	// borrow the session's single shared renderer — specs must never boot
@@ -49,9 +49,13 @@ describe("Text — 32px canvas buckets", () => {
 	};
 
 	// everything the canvas has to hold: the layout box and the ink that
-	// escapes it top and bottom
+	// escapes it top and bottom...
 	const baked = (t) => {
 		return t.metrics.height + t.metrics.inkPadTop + t.metrics.inkPadBottom;
+	};
+	// ...and left and right
+	const bakedWidth = (t) => {
+		return t.metrics.width + t.metrics.inkPadLeft + t.metrics.inkPadRight;
 	};
 
 	it("the canvas lands exactly on the metric's 32px bucket (no power-of-two jumps)", (ctx) => {
@@ -60,10 +64,10 @@ describe("Text — 32px canvas buckets", () => {
 		const c = t.canvasTexture;
 		expect(c.width % 32).toBe(0);
 		expect(c.height % 32).toBe(0);
-		expect(c.width).toBe(bucket(t.metrics.width));
+		expect(c.width).toBe(bucket(bakedWidth(t)));
 		expect(c.height).toBe(bucket(baked(t)));
 		// waste is bounded additively — the whole point of the change
-		expect(c.width - t.metrics.width).toBeLessThan(32);
+		expect(c.width - bakedWidth(t)).toBeLessThan(32);
 		expect(c.height - baked(t)).toBeLessThan(32);
 	});
 
@@ -89,13 +93,28 @@ describe("Text — 32px canvas buckets", () => {
 			const c = t.canvasTexture;
 			expect(c.width % 32, str).toBe(0);
 			expect(c.height % 32, str).toBe(0);
-			expect(c.width, str).toBeGreaterThanOrEqual(Math.ceil(t.metrics.width));
-			expect(c.width - t.metrics.width, str).toBeLessThan(32);
+			expect(c.width, str).toBeGreaterThanOrEqual(Math.ceil(bakedWidth(t)));
+			expect(c.width - bakedWidth(t), str).toBeLessThan(32);
 			// the canvas must FIT the padded box — one pixel short of this is
 			// the top row of a stroke sheared off
 			expect(c.height, str).toBeGreaterThanOrEqual(Math.ceil(baked(t)));
 			expect(c.height - baked(t), str).toBeLessThan(32);
 		}
+	});
+
+	it("an empty or blank label still gets a canvas with no zero side", (ctx) => {
+		requireWebGL(ctx, renderer);
+		// a blank string measures 0 wide, and WebGPU throws on a 0-sized canvas
+		for (const str of ["", " ", "   ", "\n"]) {
+			const t = makeText(str);
+			expect(t.canvasTexture.width, JSON.stringify(str)).toBeGreaterThan(0);
+			expect(t.canvasTexture.height, JSON.stringify(str)).toBeGreaterThan(0);
+		}
+		// blanking a label keeps its canvas
+		const t = makeText("Chests 3 / 8");
+		const w = t.canvasTexture.width;
+		t.setText(" ");
+		expect(t.canvasTexture.width).toBe(w);
 	});
 
 	it("a ticking counter stays in the SAME bucket: same dimensions, same canvas element", (ctx) => {
@@ -130,8 +149,8 @@ describe("Text — 32px canvas buckets", () => {
 		const grown = t.canvasTexture.width;
 		expect(grown).toBeGreaterThan(first);
 		expect(grown % 32).toBe(0);
-		expect(grown).toBe(bucket(t.metrics.width));
-		expect(grown - t.metrics.width).toBeLessThan(32);
+		expect(grown).toBe(bucket(bakedWidth(t)));
+		expect(grown - bakedWidth(t)).toBeLessThan(32);
 	});
 
 	it("the canvas NEVER shrinks (grow-only hysteresis preserved)", (ctx) => {
@@ -174,7 +193,7 @@ describe("Text — 32px canvas buckets", () => {
 		const t = makeText("BIG", 180);
 		const c = t.canvasTexture;
 		expect(c.width % 32).toBe(0);
-		expect(c.width - t.metrics.width).toBeLessThan(32);
+		expect(c.width - bakedWidth(t)).toBeLessThan(32);
 		expect(c.height - t.metrics.height).toBeLessThan(32);
 		// sanity: POT would have padded up to nearly 2× in the worst case;
 		// the bucket keeps total waste under one row/column of 32

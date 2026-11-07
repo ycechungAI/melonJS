@@ -51,8 +51,20 @@ export interface SoundAsset {
 	/** Start muted. Defaults to `false`. */
 	mute?: boolean;
 	/**
-	 * Whether to begin downloading on load. `"metadata"` fetches only enough to
-	 * report duration. Defaults to `true`.
+	 * When the clip is downloaded. Defaults to `true`.
+	 *
+	 * - `true`: during the preload, so it plays the moment it is asked to.
+	 * - `false`: when it is first played (`audio.play`, `audio.playTrack`, or
+	 *   `autoplay`). That play fetches it and streams it, as `stream: true`
+	 *   does, so the sound starts as soon as enough of the file has arrived
+	 *   rather than once all of it has. A clip never played is never
+	 *   downloaded: for music a player may not reach, such as a boss or an
+	 *   ending theme, that keeps the wait before the game starts short. As a
+	 *   streamed clip it plays through an `<audio>` element, so positional
+	 *   sound (`follow`, `at`, `stereo`) does not apply to it.
+	 * - `"metadata"`: on a streamed clip, only enough to know its duration
+	 *   during the preload, the rest when it plays. A buffered clip is
+	 *   downloaded whole either way.
 	 */
 	preload?: boolean | "metadata";
 	/**
@@ -71,7 +83,10 @@ export interface SoundAsset {
 	loop?: boolean;
 	/**
 	 * Stream the resource instead of fully decoding upfront — preferred
-	 * for long music tracks. Defaults to `false`.
+	 * for long music tracks. It is still fetched during the preload; add
+	 * `preload: false` to fetch it only when it is first played. Plays
+	 * through an `<audio>` element, so positional sound (`follow`, `at`,
+	 * `stereo`) does not apply to it. Defaults to `false`.
 	 */
 	stream?: boolean;
 	/**
@@ -298,7 +313,10 @@ export interface PlayOptions {
 	 * whole clip.
 	 */
 	sprite?: string | undefined;
-	/** Loop playback when the region ends. Defaults to `false`. */
+	/**
+	 * Loop playback when the region ends. Defaults to the region's own loop
+	 * flag (the third element of its `sprite` entry), else `false`.
+	 */
 	loop?: boolean | undefined;
 	/** Called when this instance finishes playing. */
 	onend?: (() => void) | undefined;
@@ -312,6 +330,13 @@ export interface PlayOptions {
 	 * melonJS; the Y flip Web Audio wants is applied for you. Sounds placed
 	 * this way are given the pixel-shaped panner defaults, which
 	 * `audio.setSpatialDefaults()` can change and `audio.panner()` overrides.
+	 *
+	 * The sound sits at the renderable's `getAbsolutePosition()`, which is
+	 * where its `anchorPoint` sits: its center under the `(0.5, 0.5)` default
+	 * of a `Renderable` or a `Sprite`, but its TOP-LEFT corner under the
+	 * `(0, 0)` of an `Entity` or of any object loaded from Tiled. For a large
+	 * entity, such as a boss, that puts the sound half its size up and to the
+	 * left of where it looks to be.
 	 */
 	follow?: Renderable | undefined;
 	/**
@@ -360,4 +385,20 @@ export interface SoundEvents {
 	mute?: (() => void) | undefined;
 	/** Audio was unlocked by a user gesture. */
 	unlock?: (() => void) | undefined;
+}
+
+/**
+ * Options accepted by {@link audio.playTrack | `audio.playTrack`} in place of its `volume` argument.
+ * @category Audio
+ */
+export interface TrackOptions {
+	/** Playback volume, `0.0..1.0`. Defaults to the current global volume. */
+	volume?: number | undefined;
+	/**
+	 * Name of a region declared in the clip's `sprite` map: the track loops on
+	 * that region instead of the whole clip. A region of a loop's exact length
+	 * keeps it gapless where a decoder pads the end of the clip (Safari, on
+	 * MP3).
+	 */
+	sprite?: string | undefined;
 }

@@ -47,6 +47,40 @@ These assets are released under **CC0 1.0 Universal (Public Domain
 Dedication)** — no attribution legally required, but provided here as a
 courtesy to the original creator.
 
+### `isometricDungeon` example
+
+The dungeon tileset (`public/assets/isometricDungeon/dungeon.png`) and the hero
+atlas (`hero.png` / `hero.json`) are built from **"Isometric Miniature
+Dungeon"** published by Kenney:
+
+<https://www.kenney.nl/assets/isometric-miniature-dungeon>
+
+The pieces and the character frames are scaled to half size and packed into
+one tileset image and one trimmed atlas; the map (`dungeon.tmx`) was generated
+for this example and can be edited in Tiled. Released under **CC0 1.0
+Universal (Public Domain Dedication)** — no attribution legally required,
+credited here as a courtesy.
+
+The wall torch (the last two pieces of the tileset) is not Kenney's: it was
+modelled and rendered for this example in the same projection and light as
+the pack, and is released under the same CC0 terms. Its flame is particles,
+drawn by the example.
+
+The sound effects in `public/assets/isometricDungeon/sfx/` (footsteps, the
+door, the chest's latch and coins, the gate) are from Kenney's **"RPG
+Audio"** and **"Impact Sounds"** packs, also CC0:
+
+<https://www.kenney.nl/assets/rpg-audio> ·
+<https://www.kenney.nl/assets/impact-sounds>
+
+The dungeon's ambience (`sfx/dungeonAmbience`, the draught and the water
+drips) was synthesised for this example rather than recorded, and is released
+under the same CC0 terms.
+
+The Kenney logo (`kenney-logo.png`), shown in the corner of the game to credit
+the assets, is Kenney's own (<https://www.kenney.nl>) and is not covered by
+the CC0 terms above.
+
 ### `multiMaterialMesh` example
 
 Spacecraft 3D models (`craft_speederA`, `craft_speederB`, `craft_racer`,
@@ -107,6 +141,72 @@ same folder are from UI packs published by **Kenney** (<https://www.kenney.nl>),
 released under **CC0 1.0 Universal (Public Domain Dedication)** — no attribution
 legally required, credited here as a courtesy.
 
+### `earthDefender` example
+
+The Earth, the hexagonal glass dome and the five asteroid shapes in
+`public/assets/earthDefender/` were modelled for this example and are covered
+by the MIT license above, as are the rock colour and normal maps, the nebula,
+and everything else the example generates at run time. The saucer, the bomb
+and the drone sound come from elsewhere and are credited below.
+
+The flying saucer `ufo.glb` is derived from a model by **RayB2**, released
+into the public domain under **CC0 1.0**
+(<https://creativecommons.org/publicdomain/zero/1.0/>). It was re-exported for
+this example: the open edges filled, and its materials rebuilt as Principled
+BSDF so they survive the glTF round trip.
+
+The bomb `bomb.glb` is derived from the **KayKit Mini-Game Variety Pack** by
+**Kay Lousberg** (<https://kaylousberg.com>), released under **CC0 1.0**. It was
+cut below the band and re-exported so that it stands flat where it lands.
+
+The sound effects in `sfx/` are from the **Sci-Fi Sounds** pack by **Kenney**
+(<https://www.kenney.nl>), released under **CC0 1.0**: the saucer's engine note
+`earthDefenderUfoDrone.*` is `spaceEngine_003`, and the gun's five takes
+`earthDefenderLaser0-4.*` are `laserLarge_000` to `laserLarge_004`, played at
+random so the same shot is never heard twice running. Crediting Kenney is explicitly not mandatory and
+it is done anyway, as with the other CC0 work here.
+
+It is not the published file: the saucer's drone loops for as long as it is in
+the sky, and the original is a one-shot with an attack at the front and a fade
+at the back, so looping it pumped. The sustained body was taken, its tail
+folded back over its head with an EQUAL-POWER crossfade, and the result
+normalised. Equal power rather than linear because the two ends are
+uncorrelated noise and a linear fade leaves an audible dip exactly at the loop
+point.
+
+The title screen's music `bgm/earthDefenderMenu.*` is the "menu/industry"
+track from **"Atmospheric puzzles"** by **legoluft**, the music of the Krank
+game, submitted to OpenGameArt by qubodup and released under **CC0 1.0**:
+
+<https://opengameart.org/content/atmospheric-puzzles>
+
+CC0 asks for nothing and it is named anyway. Converted from the pack's OGG to
+an additional MP3 for the browsers without Vorbis; neither was otherwise
+edited.
+
+The game's music `bgm/earthDefenderBattle.*` is **"Space Boss Battle Theme"**
+(Orbital Colossus) by **Matthew Pablo** (<https://www.matthewpablo.com>),
+licensed under **Creative Commons Attribution 3.0**
+(<https://creativecommons.org/licenses/by/3.0/>):
+
+<https://opengameart.org/content/space-boss-battle-theme>
+
+That license REQUIRES attribution, and the author asks to be credited as
+"Music by Matthew Pablo, www.matthewpablo.com", which is why he is named in
+the example's Credits panel as well as here. The source MP3 was re-encoded
+to a lower bit rate and transcoded to OGG; it was not otherwise edited. Note
+the author states the track does not loop seamlessly as published and offers
+a loopable version on request.
+
+The display face `font/future-earth.ttf` is the FontStruction **"Future
+Earth"** by **V. Sarela**:
+
+<https://fontstruct.com/fontstructions/show/477551>
+
+licensed under **Creative Commons Attribution-NoDerivatives 3.0**
+(<http://creativecommons.org/licenses/by-nd/3.0/>). The archive's own
+`license.txt` and `readme.txt` ship alongside it, as that license requires.
+
 ### `jungleRabbit` example
 
 The 3D models in `public/assets/jungleRabbit/` — boat, carrot, log, rock, palm,
@@ -122,7 +222,8 @@ Pixabay:
 
 Released under the **Pixabay Content License** — free for commercial and
 non-commercial use, no attribution required. Credited on the example's title
-screen and here as a courtesy.
+screen and here as a courtesy, unlike the display face below, whose credit is
+a condition of using it.
 
 The display face `font/Crang.woff2` was created by **Caveras** with FontStruct:
 
@@ -133,4 +234,13 @@ The display face `font/Crang.woff2` was created by **Caveras** with FontStruct:
 free for commercial reuse: if you copy this example into a commercial game, you
 must replace this font or obtain a commercial license from the author
 (cava@caveras.net). The full license text ships alongside the font as
-`font/Crang-LICENSE.txt`.
+`font/Crang-LICENSE.txt`, and the attribution the license calls for is on the
+example's own title screen, not only here.
+
+The bitmap atlases beside it — `font/Crang.{fnt,png}`, `font/CrangHot.png`,
+`font/CrangTitle.{fnt,png}` and `font/CrangSmall.{fnt,png}` — are **adaptations
+of that face**, rendered from `Crang.woff2` at 30, 15 and 9 pixels with the
+glyph coverage thresholded to hard edges and the game's own ramp and outline
+baked in. CC BY-NC-SA 4.0 permits the adaptation and requires it to carry the
+same license, which it does: the same attribution, share-alike and
+non-commercial terms apply to them as to the face they come from.

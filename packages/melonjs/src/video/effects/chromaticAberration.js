@@ -1,3 +1,4 @@
+import { FRAME_GLSL, FRAME_WGSL, FRAME_WGSL_MEMBERS } from "./frame.js";
 import ShaderEffect from "./shadereffect.js";
 
 /**
@@ -12,15 +13,15 @@ import ShaderEffect from "./shadereffect.js";
 const wgslFragment = `
 struct AberrationUniforms {
 	uOffset : f32,
-	uTextureSize : vec2f,
+	uTextureSize : vec2f,${FRAME_WGSL_MEMBERS}
 };
 @group(3) @binding(0) var<uniform> fx : AberrationUniforms;
-
+${FRAME_WGSL}
 fn apply(color : vec4f, uv : vec2f) -> vec4f {
 	let texel = fx.uOffset / fx.uTextureSize;
-	let r = textureSample(uTexture, uSampler, uv + vec2f(texel.x, 0.0)).r;
+	let r = frameTexel(uv + vec2f(texel.x, 0.0)).r;
 	let g = textureSample(uTexture, uSampler, uv).g;
-	let b = textureSample(uTexture, uSampler, uv - vec2f(texel.x, 0.0)).b;
+	let b = frameTexel(uv - vec2f(texel.x, 0.0)).b;
 	let a = textureSample(uTexture, uSampler, uv).a;
 	return vec4f(r, g, b, a) * vColor;
 }
@@ -44,18 +45,19 @@ export default class ChromaticAberrationEffect extends ShaderEffect {
 	 * @param {Renderer} renderer - the current renderer instance
 	 * @param {object} [options] - effect options
 	 * @param {number} [options.offset=3.0] - channel offset in texels
-	 * @param {number[]} [options.textureSize=[256, 256]] - texture dimensions [width, height]
+	 * @param {number[]} [options.textureSize] - the size, `[width, height]`, of the texture its offset is measured in; by default the texture it draws: a sprite's own, alone or with other effects and at any scale or zoom, the screen for a camera's effect
 	 */
 	constructor(renderer, options = {}) {
 		super(renderer, {
 			glsl: `
 			uniform float uOffset;
 			uniform vec2 uTextureSize;
+			${FRAME_GLSL}
 			vec4 apply(vec4 color, vec2 uv) {
 				vec2 texel = uOffset / uTextureSize;
-				float r = texture2D(uSampler, uv + vec2(texel.x, 0.0)).r;
+				float r = frameTexel(uv + vec2(texel.x, 0.0)).r;
 				float g = texture2D(uSampler, uv).g;
-				float b = texture2D(uSampler, uv - vec2(texel.x, 0.0)).b;
+				float b = frameTexel(uv - vec2(texel.x, 0.0)).b;
 				float a = texture2D(uSampler, uv).a;
 				return vec4(r, g, b, a) * vColor;
 			}
@@ -64,10 +66,10 @@ export default class ChromaticAberrationEffect extends ShaderEffect {
 		});
 
 		this.offset = options.offset ?? 3.0;
-		const texSize = options.textureSize ?? [256, 256];
 
 		this.setUniform("uOffset", this.offset);
-		this.setUniform("uTextureSize", new Float32Array(texSize));
+		// its offset is in texels: of the texture it draws, unless given one
+		this._initTextureSize(options.textureSize, [256, 256]);
 	}
 
 	/**
@@ -80,7 +82,8 @@ export default class ChromaticAberrationEffect extends ShaderEffect {
 	}
 
 	/**
-	 * set the texture size
+	 * Measure the effect's offset in the texels of a texture of this size,
+	 * rather than of the texture it draws (the default)
 	 * @param {number} width - texture width in pixels
 	 * @param {number} height - texture height in pixels
 	 */

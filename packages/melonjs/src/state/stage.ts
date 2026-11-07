@@ -7,6 +7,15 @@ import type World from "./../physics/world.js";
 import { emit, STAGE_RESET } from "../system/event.ts";
 import type Renderer from "./../video/renderer.js";
 
+/**
+ * what a camera's cull mask is checked against, up a renderable's ancestors
+ * @ignore
+ */
+type Layered = {
+	visibilityLayer?: number;
+	ancestor?: Layered | null;
+};
+
 interface StageSettings {
 	cameras: Camera2d[];
 	/**
@@ -83,6 +92,14 @@ export default class Stage {
 	_activeLights: Set<Light2d>;
 
 	/**
+	 * The active lights the camera being drawn draws, refilled by
+	 * {@link Stage#_lightsFor} for each camera (never reallocated).
+	 * @ignore
+	 * @internal
+	 */
+	_cameraLights: Light2d[];
+
+	/**
 	 * Internal set of active 3D lights, auto-populated by `Light3d`'s
 	 * `onActivateEvent` / `onDeactivateEvent` hooks. Read by the lit mesh
 	 * batcher each frame to shade `lit` meshes under a `Camera3d`.
@@ -95,6 +112,9 @@ export default class Stage {
 	 * an ambient light that will be added to the stage rendering. Its alpha
 	 * is what gates the lighting pass: at alpha 0 (the default) `drawLighting`
 	 * returns early and the lights still draw as additive glows.
+	 *
+	 * Every active {@link Light2d} cuts a hole in it, hard-edged unless the
+	 * light has a {@link Light2d#softness}.
 	 * @default rgba(0,0,0,0)
 	 * @see Light2d
 	 * @see {@link Stage#ambientLightingColor} for the other, easily confused knob
@@ -148,6 +168,7 @@ export default class Stage {
 		this.cameras = new Map();
 		this.lights = new Map();
 		this._activeLights = new Set();
+		this._cameraLights = [];
 		this._activeLights3d = new Set();
 		this.ambientLight = new Color(0, 0, 0, 0);
 		this.ambientLightingColor = new Color(0, 0, 0, 1);
@@ -238,6 +259,17 @@ export default class Stage {
 				}
 				this.cameras.set("default", default_camera);
 			}
+		}
+
+		// Whether each camera starts its view on a whole pixel, from this
+		// application's `subPixel`: a view read before the first frame
+		// (`worldView`, `localToWorld`) already follows it, and from then on
+		// each camera takes it from the renderer that draws it
+		if (app) {
+			const snapView = !app.settings.subPixel;
+			this.cameras.forEach((camera) => {
+				camera._snapView = snapView;
+			});
 		}
 
 		// Re-apply the chosen camera's `defaultSortOn` to the world on
@@ -350,9 +382,53 @@ export default class Stage {
 	 * @param world - the world object to draw
 	 */
 	draw(renderer: Renderer, world: World): void {
+		let first = true;
 		this.cameras.forEach((camera) => {
+			// A camera after the first draws over the ones before it, post
+			// effects or not: a background camera first, the game's camera
+			// over it. Its post-effect pass is then blended over the frame
+			// instead of starting it, cleared to the background colour and
+			// copied over the whole screen, which would wipe out everything
+			// the cameras before it drew.
+			camera._postEffectOver = !first;
+			first = false;
 			camera.draw(renderer, world);
 		});
+	}
+
+	/**
+	 * The active lights a camera draws: those on a layer in its
+	 * {@link Camera2d#cullMask}, in containers that are too, as the camera
+	 * leaves out a container with everything in it. A light it leaves out
+	 * neither glows, nor cuts its hole in the darkness, nor lights
+	 * normal-mapped sprites in that camera. The list is reused, so read it
+	 * before the next camera asks.
+	 * @param camera - the camera being drawn
+	 * @returns the lights that camera draws
+	 * @ignore
+	 * @internal
+	 */
+	_lightsFor(camera: Camera2d): Light2d[] {
+		const mask = camera.cullMask;
+		const lights = this._cameraLights;
+		lights.length = 0;
+		for (const light of this._activeLights) {
+			let shown = true;
+			for (
+				let node: Layered | null | undefined = light;
+				node !== undefined && node !== null;
+				node = node.ancestor
+			) {
+				if (((node.visibilityLayer ?? 1) & mask) === 0) {
+					shown = false;
+					break;
+				}
+			}
+			if (shown) {
+				lights.push(light);
+			}
+		}
+		return lights;
 	}
 
 	/**
@@ -362,22 +438,27 @@ export default class Stage {
 	 * Renderables); this pass only paints the dark fill that the lights cut
 	 * holes through.
 	 *
+	 * A light with a {@link Light2d#softness} takes the whole pass to the
+	 * renderer's soft path, which fades each hole along the light's falloff.
+	 *
 	 * Subclasses can override this method to implement custom lighting (e.g.
-	 * per-pixel normal-mapped lighting via a custom shader). Called once per
-	 * camera per frame.
+	 * per-pixel normal-mapped lighting via a custom shader), or to skip a
+	 * camera (a minimap showing the level lit). Called once per camera per
+	 * frame.
 	 * @param renderer - the active renderer
 	 * @param camera - the camera currently rendering this stage
 	 * @param translateX - the same world-to-screen X translate that
 	 *   `Camera2d.draw()` applies to the world container (i.e.
-	 *   `camera.pos.x + camera.offset.x` for the default camera, plus
-	 *   the container's own offset for non-default cameras)
+	 *   `camera.pos.x + camera.offset.x` for the default camera, on a whole
+	 *   pixel unless `subPixel` is set, plus the container's own offset for
+	 *   non-default cameras)
 	 * @param translateY - the world-to-screen Y translate (see `translateX`)
 	 */
 	drawLighting(
 		renderer: Renderer,
 		camera: Camera2d,
-		translateX: number = camera.pos.x + camera.offset.x,
-		translateY: number = camera.pos.y + camera.offset.y,
+		translateX: number = camera._viewOrigin(camera.pos.x + camera.offset.x),
+		translateY: number = camera._viewOrigin(camera.pos.y + camera.offset.y),
 	): void {
 		if (this.ambientLight.alpha === 0) {
 			return;
@@ -398,15 +479,48 @@ export default class Stage {
 		if (tx !== 0 || ty !== 0) {
 			r.translate(-tx, -ty);
 		}
+		// the darkness covers the camera's view in the (now world-space)
+		// renderer: from the camera origin, as wide as the world it shows
+		// (`width / zoom`: zoomed out, a camera-sized fill left part of the
+		// view lit), and a unit more on every side. Unless `subPixel` is set,
+		// the fill is snapped to whole pixels as any draw is, which moves its
+		// edges by up to half a unit: without the margin, a camera at a
+		// fractional position (any smoothed follow) left its first column and
+		// row lit. The camera clips what reaches past its view. A whole number
+		// of pixels, so a renderer drawing the darkness at screen resolution
+		// keeps it on the screen's pixel grid
+		const margin = Math.ceil(camera.zoom) / camera.zoom;
+		const x = tx - margin;
+		const y = ty - margin;
+		const width = camera.width / camera.zoom + margin * 2;
+		const height = camera.height / camera.zoom + margin * 2;
+		// the lights this camera draws (see `cullMask`)
+		const lights = this._lightsFor(camera);
+		// any light with a soft edge: the renderer draws the darkness with
+		// every light's falloff
+		for (const light of lights) {
+			if (light.softness > 0) {
+				r.drawAmbientLight(
+					this.ambientLight,
+					lights,
+					x,
+					y,
+					width,
+					height,
+					width * camera.zoom,
+					height * camera.zoom,
+				);
+				r.restore();
+				return;
+			}
+		}
 		// punch out each active light's visible area so the ambient fill
 		// doesn't darken what the light is illuminating
-		this._activeLights.forEach((light) => {
+		for (const light of lights) {
 			r.setMask(light.getVisibleArea(), true);
-		});
+		}
 		r.setColor(this.ambientLight);
-		// fillRect must cover the camera's view in the (now world-space)
-		// renderer — offset by the camera origin so it matches the viewport.
-		r.fillRect(tx, ty, camera.width, camera.height);
+		r.fillRect(x, y, width, height);
 		r.clearMask();
 		r.restore();
 	}

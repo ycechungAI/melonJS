@@ -6,7 +6,7 @@ import { Gradient } from "../../video/gradient.js";
 import CanvasRenderTarget from "../../video/rendertarget/canvasrendertarget.js";
 import { resolveAnchorPoint } from "../anchorPoint.ts";
 import Renderable, { resetRenderableState } from "../renderable.js";
-import TextMetrics from "./textmetrics.js";
+import TextMetrics, { sameLines, toLines } from "./textmetrics.js";
 import setContextStyle from "./textstyle.js";
 
 /**
@@ -51,7 +51,9 @@ const genericFontFamilies = new Set([
  * a Text object: draws a string using a system or web font.
  *
  * The text is rasterised to a cached texture, so it draws as fast as a sprite
- * while staying fully styleable — `fillStyle`, `strokeStyle` + `lineWidth`, and
+ * while staying fully styleable — `fillStyle`, `strokeStyle` + `lineWidth`
+ * (with the outline behind or over the glyphs by `paintOrder`, and its corners
+ * set by `lineJoin` / `miterLimit`), and
  * per-object opacity — with multi-line text (embedded `\n`), optional
  * `wordWrapWidth` word-wrapping, and chainable {@link Text#bold} /
  * {@link Text#italic}. `font` accepts any CSS family, including the generic
@@ -73,6 +75,9 @@ export default class Text extends Renderable {
 	 * @param {boolean} [settings.gradientPerLine=true] - restart a gradient fill on every line; `false` spans one ramp across the whole block, as a plain canvas does
 	 * @param {Color|string} [settings.strokeStyle="#000000"] - a CSS color value used for the glyph outline (drawn when `lineWidth` > 0)
 	 * @param {number} [settings.lineWidth=0] - outline width in pixels (0 = no stroke)
+	 * @param {"round"|"bevel"|"miter"} [settings.lineJoin="round"] - the shape of the outline's corners: "round", "bevel" or "miter" (pointed, as a plain canvas draws them)
+	 * @param {number} [settings.miterLimit=10] - with a "miter" join, how far a corner may point, in half line widths, before it is cut flat
+	 * @param {"stroke"|"fill"} [settings.paintOrder="stroke"] - what is painted first: "stroke" puts the outline behind the glyphs, so it shows only around them; "fill" puts it over them, where its inner half covers the glyph
 	 * @param {string} [settings.textAlign="left"] - horizontal text alignment ("left", "center", "right")
 	 * @param {string} [settings.textBaseline="top"] - the text baseline ("top", "hanging", "middle", "alphabetic", "ideographic", "bottom")
 	 * @param {number} [settings.lineHeight=1.0] - line spacing height
@@ -115,6 +120,52 @@ export default class Text extends Renderable {
 	 *     // gradientPerLine: false,   // ...or span ONE ramp across both lines
 	 * }));
 	 * @example
+	 * // outlined text and its corners: the outline is centred on the glyph
+	 * // edge and drawn behind it (see `paintOrder`), and its corners are set
+	 * // by `lineJoin`
+	 * const outline = {
+	 *     font: "sans-serif",
+	 *     size: 48,
+	 *     fillStyle: "#ffffff",
+	 *     strokeStyle: "#1d3557",
+	 *     lineWidth: 6,
+	 * };
+	 *
+	 * // "round" (the default): the outline is the same width all around
+	 * app.world.addChild(new Text(10, 10, { ...outline, text: "ROUND" }));
+	 *
+	 * // "bevel": corners cut flat
+	 * app.world.addChild(new Text(10, 70, { ...outline, lineJoin: "bevel", text: "BEVEL" }));
+	 *
+	 * // "miter": pointed corners, as a plain canvas strokes text. At the
+	 * // canvas's default limit of 10 a sharp glyph ("A", "V", "M") grows a
+	 * // long spike...
+	 * app.world.addChild(new Text(10, 130, { ...outline, lineJoin: "miter", text: "MITER" }));
+	 *
+	 * // ...which `miterLimit` caps: a corner that would point further than
+	 * // this many half line widths is cut flat instead
+	 * app.world.addChild(new Text(10, 190, { ...outline, lineJoin: "miter", miterLimit: 3, text: "MITER 3" }));
+	 *
+	 * // whichever is set, the whole outline is drawn: the label's texture
+	 * // grows to hold it, while its position and bounds stay the same
+	 * @example
+	 * // the outline behind the glyphs, or over them, with `paintOrder`
+	 * const label = {
+	 *     font: "sans-serif",
+	 *     size: 48,
+	 *     fillStyle: "#ffd23f",
+	 *     strokeStyle: "#1b1b1b",
+	 *     lineWidth: 6,
+	 * };
+	 *
+	 * // "stroke" (the default): the outline is painted first, behind the
+	 * // glyphs, so they stay whole and it shows only around them
+	 * app.world.addChild(new Text(10, 10, { ...label, text: "BEHIND" }));
+	 *
+	 * // "fill": the glyphs first and the outline over them, centred on their
+	 * // edge, so its inner half covers them: a thick one hides them
+	 * app.world.addChild(new Text(10, 70, { ...label, paintOrder: "fill", text: "OVER" }));
+	 * @example
 	 * // a web font (loaded via the fontface loader) is used by its family name
 	 * loader.preload(
 	 *     [{ name: "kenpixel", type: "fontface", src: "data/font/kenvector.woff2" }],
@@ -151,6 +202,89 @@ export default class Text extends Renderable {
 		this.lineWidth = 0;
 
 		/**
+		 * The shape of the outline's corners, where the stroke turns on a
+		 * glyph: "round", "bevel" (cut flat) or "miter" (pointed). The
+		 * canvas's own default is "miter", which on a thick outline grows
+		 * long spikes from sharp glyphs such as "A", "V" or "M"; "round"
+		 * keeps the outline the same width all around, as most game text
+		 * outlines are.
+		 *
+		 * The text is baked with room for whichever is set, so no corner is
+		 * cut: "miter" takes more, up to {@link Text#miterLimit} half line
+		 * widths around the text.
+		 *
+		 * Like the other style properties, a change shows from the next
+		 * {@link Text#setText}.
+		 * @type {"round"|"bevel"|"miter"}
+		 * @default "round"
+		 * @example
+		 * // sharp, pointed corners, as a plain canvas strokes them
+		 * const title = new Text(0, 0, {
+		 *     font: "sans-serif",
+		 *     size: 48,
+		 *     fillStyle: "#ffffff",
+		 *     strokeStyle: "#000000",
+		 *     lineWidth: 6,
+		 *     lineJoin: "miter",
+		 *     miterLimit: 3,              // and no spike past 3 half widths
+		 *     text: "VICTORY",
+		 * });
+		 */
+		this.lineJoin = "round";
+
+		/**
+		 * With a "miter" {@link Text#lineJoin}: how far a corner of the
+		 * outline may point, in half line widths, before it is cut flat
+		 * instead. The canvas's default, 10, lets sharp glyphs grow long
+		 * spikes; 2 to 4 keeps most corners pointed and the spikes short.
+		 * Has no effect with "round" or "bevel" joins. A value the canvas
+		 * would refuse (zero, negative, infinite or NaN) draws with 10.
+		 *
+		 * Like the other style properties, a change shows from the next
+		 * {@link Text#setText}.
+		 * @type {number}
+		 * @default 10
+		 * @example
+		 * // pointed corners with short spikes
+		 * label.lineJoin = "miter";
+		 * label.miterLimit = 2;
+		 * label.setText("VICTORY"); // re-bakes with the new corners
+		 */
+		this.miterLimit = 10;
+
+		/**
+		 * What is painted first, the outline ("stroke") or the glyphs
+		 * ("fill"), as the CSS and SVG `paint-order` property says it.
+		 *
+		 * The outline is centred on the glyph's edge, so half of it lies
+		 * inside the glyph. With "stroke", the default, the outline is
+		 * painted first and the glyphs over it: they stay whole, and the
+		 * outline shows only around them, at half its `lineWidth`. With
+		 * "fill", the glyphs are painted first and the outline over them,
+		 * as a plain canvas does with `fillText` then `strokeText`: its inner
+		 * half covers the glyph, so a thick outline, or a thin face, hides
+		 * the letters.
+		 *
+		 * Either way the outline reaches as far out, and the label's size and
+		 * bounds are the same. Like the other style properties, a change
+		 * shows from the next {@link Text#setText}.
+		 * @type {"stroke"|"fill"}
+		 * @default "stroke"
+		 * @example
+		 * // the outline over the glyphs, as melonJS drew it before 20.13
+		 * const label = new Text(0, 0, {
+		 *     font: "sans-serif",
+		 *     size: 32,
+		 *     fillStyle: "#ffffff",
+		 *     strokeStyle: "#000000",
+		 *     lineWidth: 2,
+		 *     paintOrder: "fill",
+		 *     text: "SCORE",
+		 * });
+		 */
+		this.paintOrder = "stroke";
+
+		/**
 		 * Set the default text alignment (or justification),<br>
 		 * possible values are "left", "right", and "center".<br>
 		 * @type {string}
@@ -161,6 +295,8 @@ export default class Text extends Renderable {
 		/**
 		 * Set the text baseline (e.g. the Y-coordinate for the draw operation), <br>
 		 * possible values are "top", "hanging", "middle", "alphabetic", "ideographic", "bottom"<br>
+		 * A multi-line text is placed as one block: its top, middle or bottom is at
+		 * `pos.y` ("alphabetic" and "ideographic" place it like "bottom").
 		 * @type {string}
 		 * @default "top"
 		 */
@@ -177,6 +313,8 @@ export default class Text extends Renderable {
 		/**
 		 * the maximum length in CSS pixel for a single segment of text.
 		 * (use -1 to disable word wrapping)
+		 * Each `\n`-separated line is wrapped on its own, so explicit line breaks
+		 * are kept; a word wider than this gets a line of its own.
 		 * @type {number}
 		 * @default -1
 		 */
@@ -314,6 +452,10 @@ export default class Text extends Renderable {
 		}
 
 		this.lineWidth = settings.lineWidth || 0;
+		// set every time, for a recycled label not to keep the last one's
+		this.lineJoin = settings.lineJoin ?? "round";
+		this.miterLimit = settings.miterLimit ?? 10;
+		this.paintOrder = settings.paintOrder ?? "stroke";
 		this.textAlign = settings.textAlign || "left";
 		this.textBaseline = settings.textBaseline || "top";
 		this.lineHeight = settings.lineHeight || 1.0;
@@ -463,18 +605,16 @@ export default class Text extends Renderable {
 	 * @returns {Text} this object for chaining
 	 */
 	setText(value = "") {
-		const bounds = this.getBounds();
-
-		// set the next text
-		if (this._text.toString() !== value.toString()) {
-			if (!Array.isArray(value)) {
-				this._text = ("" + value).split("\n");
-			} else {
-				// copy — storing the caller's array by reference would let
-				// destroy() (`_text.length = 0`) wipe it, and external
-				// mutation would change the rendered text without isDirty
-				this._text = value.slice();
-			}
+		// set the next text, compared as lines rather than through
+		// `toString()`: an array's joins with commas, so `setText("1,000")`
+		// after `["1", "000"]` (or the other way round) looked like no change
+		// and the old lines stayed. `toLines` copies an array — storing the
+		// caller's by reference would let destroy() (`_text.length = 0`) wipe
+		// it, and external mutation would change the rendered text without
+		// isDirty
+		const lines = toLines(value);
+		if (!sameLines(this._text, lines)) {
+			this._text = lines;
 		}
 
 		// word wrap if necessary
@@ -486,11 +626,12 @@ export default class Text extends Renderable {
 			);
 		}
 
-		// calculcate the text size and update the bounds accordingly
-		bounds.addBounds(
-			this.metrics.measureText(this._text, this.canvasTexture.context),
-			true,
-		);
+		// calculcate the text size, and the bounds from it the same way every
+		// later recompute does — taking them straight from `metrics` here
+		// gave a box in the parent's space, not the world's, that the next
+		// `updateBounds()` replaced
+		this.metrics.measureText(this._text, this.canvasTexture.context);
+		this.updateBounds();
 
 		// Quantize the offscreen canvas size to 32-pixel buckets: small
 		// metric changes (a score ticking, typewriter text) land on the
@@ -503,13 +644,27 @@ export default class Text extends Renderable {
 		// The canvas is the layout box PLUS whatever the ink escapes it by. The
 		// padding never reaches `metrics`, so the reported bounds are unmoved —
 		// see `TextMetrics#inkPadTop`.
-		const width = Math.ceil(this.metrics.width / 32) * 32;
+		// At least one bucket: a blank string measures 0 wide, and a canvas with
+		// a zero side cannot be uploaded (WebGPU throws).
+		const width =
+			Math.max(
+				1,
+				Math.ceil(
+					(this.metrics.width +
+						this.metrics.inkPadLeft +
+						this.metrics.inkPadRight) /
+						32,
+				),
+			) * 32;
 		const height =
-			Math.ceil(
-				(this.metrics.height +
-					this.metrics.inkPadTop +
-					this.metrics.inkPadBottom) /
-					32,
+			Math.max(
+				1,
+				Math.ceil(
+					(this.metrics.height +
+						this.metrics.inkPadTop +
+						this.metrics.inkPadBottom) /
+						32,
+				),
 			) * 32;
 
 		const renderer = this.parentApp?.renderer ?? game.renderer;
@@ -610,7 +765,7 @@ export default class Text extends Renderable {
 	 * @returns {Bounds} this renderable's bounding box
 	 */
 	updateBounds(absolute = true) {
-		if (typeof this.metrics !== "undefined" && this._text.length > 0) {
+		if (typeof this.metrics !== "undefined") {
 			const bounds = this.getBounds();
 			bounds.clear();
 
@@ -628,18 +783,9 @@ export default class Text extends Renderable {
 					break;
 			}
 
-			// compute y offset based on textBaseline
-			let ay = 0;
-			switch (this.textBaseline) {
-				case "middle":
-					ay = h / 2;
-					break;
-				case "ideographic":
-				case "alphabetic":
-				case "bottom":
-					ay = h;
-					break;
-			}
+			// the baseline places the whole block (see `TextMetrics#blockShift`),
+			// exactly as the draw does
+			const ay = h * this.metrics.blockShift();
 
 			bounds.addFrame(-ax, -ay, w - ax, h - ay);
 
@@ -656,8 +802,13 @@ export default class Text extends Renderable {
 	}
 
 	/**
-	 * measure the given text size in pixels
-	 * @param {string} [text] - the text to be measured
+	 * measure the given text size in pixels.
+	 *
+	 * With no argument it measures the label's own text and returns the
+	 * label's own metrics. Given another text, it measures it in this label's
+	 * style and returns a new TextMetrics for it, leaving the label's own
+	 * metrics, bounds and drawing as they were.
+	 * @param {string|string[]} [text] - the text to be measured, the label's own by default
 	 * @returns {TextMetrics} a TextMetrics object defining the dimensions of the given piece of text
 	 * @example
 	 * // size a panel around a label
@@ -669,7 +820,14 @@ export default class Text extends Renderable {
 	 * const widest = label.measureText("00:00").width;
 	 */
 	measureText(text = this._text) {
-		return this.metrics.measureText(text, this.canvasTexture.context);
+		// The label's own text refreshes the label's own metrics, which is what
+		// it is drawn and bounded with. Any other text is measured into a
+		// TextMetrics of its own: measured into `this.metrics` it replaced the
+		// label's width, height and ink padding with those of the other
+		// string, so a centred or right-aligned label was drawn shifted (and
+		// clipped) until its next `setText`.
+		const metrics = text === this._text ? this.metrics : new TextMetrics(this);
+		return metrics.measureText(text, this.canvasTexture.context);
 	}
 
 	/**
@@ -702,19 +860,15 @@ export default class Text extends Renderable {
 			this.canvasTexture.invalidate(renderer);
 		}
 
-		// adjust x,y position based on the bounding box. The blit rises by the
-		// same padding the glyphs were drawn down by, so they land in exactly
-		// the pixels they always did and only the clipped ink is recovered.
-		let x = this.metrics.x;
-		let y = this.metrics.y - this.metrics.inkPadTop;
+		// adjust x,y position based on the bounding box. The blit moves back
+		// by the same padding the glyphs were drawn in by, so they land in
+		// exactly the pixels they always did and only the clipped ink is
+		// recovered.
+		const x = this.metrics.x - this.metrics.inkPadLeft;
+		const y = this.metrics.y - this.metrics.inkPadTop;
 
-		// clamp to pixel grid if required
-		if (renderer.settings.subPixel === false) {
-			x = ~~x;
-			y = ~~y;
-		}
-
-		// draw the text
+		// draw the text (on whole pixels unless `subPixel` is set, where it
+		// lands, as any image is)
 		renderer.drawImage(this.canvasTexture.canvas, x, y);
 	}
 
@@ -723,7 +877,8 @@ export default class Text extends Renderable {
 	 * @internal
 	 */
 	_drawFont(context, text, x, y) {
-		// The bake canvas carries `inkPadTop` of headroom above the layout box.
+		// The bake canvas carries `inkPadTop` of headroom above the layout box,
+		// and `inkPadLeft` of room to its left.
 		// Translating INTO that headroom — rather than adding it to every draw
 		// position — keeps bake space equal to METRICS space, which is the
 		// space a caller authored their gradient coordinates in. Add the pad to
@@ -732,7 +887,7 @@ export default class Text extends Renderable {
 		// padding differs per browser. The translate is a whole number of
 		// pixels, so glyph rasterization is untouched.
 		context.save();
-		context.translate(0, this.metrics.inkPadTop);
+		context.translate(this.metrics.inkPadLeft, this.metrics.inkPadTop);
 
 		const fill = setContextStyle(context, this);
 
@@ -776,7 +931,15 @@ export default class Text extends Renderable {
 		 */
 		const eachLine = (paint) => {
 			let remaining = this.visibleCharacters;
-			let lineY = y;
+			// `y` is where `pos` lands, which the baseline puts somewhere on
+			// the BLOCK (see `TextMetrics#updateOrigin`). Each line is handed
+			// to the canvas at its own alignment point instead — the same
+			// share of its own line box — so the first one starts that much
+			// higher, and the block fills the box from its top.
+			let lineY =
+				y -
+				(this.metrics.height - this.metrics.lineHeight()) *
+					this.metrics.blockShift();
 
 			for (let i = 0; i < text.length; i++) {
 				let string = text[i].trimEnd();
@@ -815,7 +978,7 @@ export default class Text extends Renderable {
 			context.globalCompositeOperation = "source-in";
 			context.fillStyle = fill;
 			context.fillRect(
-				-1,
+				-this.metrics.inkPadLeft - 1,
 				-this.metrics.inkPadTop - 1,
 				canvas.width + 2,
 				canvas.height + 2,
@@ -826,9 +989,16 @@ export default class Text extends Renderable {
 		}
 
 		if (strokes) {
+			// "stroke" first: painted UNDER the glyphs already there rather
+			// than before them, so it is never re-coloured by the gradient
+			// pass above, and the result is what drawing it first gives
+			if (this.paintOrder !== "fill") {
+				context.globalCompositeOperation = "destination-over";
+			}
 			eachLine((line, lineX, lineY) => {
 				context.strokeText(line, lineX, lineY);
 			});
+			context.globalCompositeOperation = "source-over";
 		}
 
 		context.restore();

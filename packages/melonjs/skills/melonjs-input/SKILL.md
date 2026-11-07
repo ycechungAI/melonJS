@@ -1,6 +1,6 @@
 ---
 name: melonjs-input
-description: "Use this skill for keyboard, pointer, mouse, touch and gamepad input in melonJS. Covers the bindKey action indirection, registerPointerEvent on regions, the isKinematic requirement that silently blocks pointer events, which of several overlapping objects receives an event and how to consume it, world vs screen pointer coordinates, and gamepad mapping onto the same actions. Triggers on: input, bindKey, isKeyPressed, KEY, registerPointerEvent, releasePointerEvent, pointerdown, pointerup, pointermove, POINTERMOVE, gamepad, bindGamepad, triggerKeyEvent, KEYDOWN, KEYUP, press any key, splash screen, click, touch, drag, hit test, event propagation, stop propagating, overlapping, which object gets the click."
+description: "Use this skill for keyboard, pointer, mouse, touch and gamepad input in melonJS. Covers the bindKey action indirection, registerPointerEvent on regions, the isKinematic requirement that silently blocks pointer events, which of several overlapping objects receives an event and how to consume it, world vs screen pointer coordinates, and gamepad mapping onto the same actions. Triggers on: input, bindKey, isKeyPressed, KEY, registerPointerEvent, releasePointerEvent, pointerdown, pointerup, pointermove, POINTERMOVE, gamepad, bindGamepad, triggerKeyEvent, virtual gamepad, touch controls, joystick, gamepad-plugin, floating stick, floating button, floating joystick, two thumbs, tap to fire, hideAtRest, mobile controls, KEYDOWN, KEYUP, press any key, splash screen, click, touch, drag, hit test, event propagation, stop propagating, overlapping, which object gets the click."
 license: MIT
 ---
 
@@ -273,7 +273,66 @@ device, so a pad unplugged and plugged back into the same slot keeps working.
 
 ## Virtual controls
 
-On-screen buttons synthesise key events, again reaching the same actions:
+For on-screen touch controls, use `@melonjs/gamepad-plugin` rather than
+writing them: sticks and buttons drawn over the game and reported as a pad in
+a gamepad slot, so the `bindGamepad` bindings above answer to them unchanged.
+
+```js
+import { GamepadPlugin } from "@melonjs/gamepad-plugin";
+
+// once the application is created: a stick and two buttons, on touch screens
+plugin.register(GamepadPlugin, "gamepad", {
+    buttons: [{ label: "A" }, { label: "B" }],
+});
+```
+
+The left stick presses the D-pad buttons (`GAMEPAD.BUTTONS.UP` ...) in 8
+directions and reports `AXES.LX`/`LY`; the buttons press `FACE_1`, `FACE_2`...
+in turn, or a key with `{ key: input.KEY.SPACE }`. Each finger is followed on
+its own, a touch starting on the controls does not reach the game, and they
+hide while a real pad is in use. `plugin.cache.gamepad.visible` says whether
+they show, to word a prompt ("tap" or a key name).
+
+Sticks and buttons are fixed in a corner by default. **`floating: true`**
+puts one under the finger wherever it lands inside its `area` (`"half"`, its
+own half of the screen, by default; `"screen"`; or `{ x, y, width, height }`),
+and **`hideAtRest: true`** draws it only while held. The usual mobile
+two-thumb layout, nothing on screen until touched (1.1):
+
+```js
+plugin.register(GamepadPlugin, "gamepad", {
+    sticks: [{ floating: true, hideAtRest: true }],                 // left half
+    buttons: [{ floating: true, hideAtRest: true, label: "A" }],    // right half
+});
+```
+
+Or one thumb for both: a stick over the whole screen whose quick tap (lifted
+within `tap.time`, 250 ms, without leaning to `dpadThreshold`) presses a key
+or button for one frame, and no button at all:
+
+```js
+plugin.register(GamepadPlugin, "gamepad", {
+    sticks: [{ floating: true, area: "screen", hideAtRest: true,
+               tap: { key: input.KEY.SPACE } }],
+    buttons: 0,
+});
+```
+
+Where areas overlap, a finger takes the first free control there: fixed
+buttons, fixed sticks, floating buttons, floating sticks. So a floating button
+on its `"half"` carves the right half out of a `"screen"` stick, and several
+floating buttons sharing an area split it by distance to where each rests.
+Every press lasts at least one frame, so a 15 ms thumb tap still reaches
+`isKeyPressed`, and Safari's pinch gesture is cancelled while the controls
+show, so a second thumb works on iOS.
+
+To match the game's artwork, pass an already-loaded `TextureAtlas` as
+`skin` to `GamepadPlugin`, with `base` / `thumb` region names on sticks
+and `region` / optional `pressed` names on buttons. Omitted parts keep
+their shapes. Regions scale to the controls' sizes without changing hit areas;
+labels, floating controls, opacity, hiding and dimming keep working.
+
+A single key can also be pressed directly, reaching the same actions:
 
 ```js
 input.triggerKeyEvent(input.KEY.LEFT, true);    // press
@@ -293,12 +352,17 @@ input.triggerKeyEvent(input.KEY.LEFT, false);   // release
 | jump fires every frame while held | `bindKey` without its third `lock` argument |
 | `invalid event type` thrown at registration | non-pointer name (`"click"`, `"mousedown"`, …) passed to `registerPointerEvent` |
 | `no action defined for keycode N` | `bindGamepad` called before `bindKey` for that keycode |
+| floating stick ignores the right half of the screen | its `area` defaults to `"half"`, its own side — use `area: "screen"` |
+| `area: "screen"` stick still ignores part of the screen | a floating button's area comes first there — the overlap order is fixed buttons, fixed sticks, floating buttons, floating sticks |
+| a quick tap on a stick moves instead of acting | it leaned past `dpadThreshold` or outlasted `tap.time` before lifting |
 | stick has to be pushed well past its `threshold` before it registers | `threshold` is ADDED to the deadzone, not used instead of it |
 | one half of a stick does nothing | each half is a separate `bindGamepad`, chosen by the sign of `threshold` |
-| a widget under an overlapping panel still reacts | the panel consumes nothing — return `false` from its `onClick` and `onOver` |
+| a widget under an overlapping panel still lights up | the panel consumes no hover: return `false` from its `onOver` (presses already stop at UI elements; `UIPanel` with `blocking` does both) |
 | a widget stays highlighted after the pointer moves onto a panel over it | the panel consumes no `pointermove`, so nothing takes the pointer off the widget |
 | a child's big `z` does not put it in front of another container | `pos.z` is container-local — use `ancestor.moveToTop()` on the container |
 | every click in the game stops working | a handler on `app.viewport` returning `false`, which is asked first |
+| touch controls do nothing | nothing bound to their slot — `bindGamepad` on the plugin's `index` (0 by default), or give the buttons a `key` |
+| touch controls never show on a desktop | the gamepad plugin's `enabled` defaults to `device.touch` — pass `enabled: true` to try them there |
 
 ## Related skills
 

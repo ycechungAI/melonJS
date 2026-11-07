@@ -254,6 +254,101 @@ for (const HOST of HOSTS) {
 			expect(spy).toHaveBeenCalledTimes(1);
 		});
 
+		// ── onFrame ──────────────────────────────────────────────────────────
+
+		// the frames an onFrame callback was given
+		const frames = () => {
+			const seen = [];
+			return {
+				seen,
+				onFrame: (frame) => {
+					seen.push(frame);
+				},
+			};
+		};
+
+		it("onFrame reports frame 0 at the start, then each frame playback reaches", () => {
+			const s = make();
+			const f = frames();
+			s.setCurrentAnimation("walk", { onFrame: f.onFrame });
+			expect(f.seen).toEqual([0]);
+			s.update(100);
+			expect(f.seen).toEqual([0, 1]);
+			s.update(200);
+			expect(f.seen).toEqual([0, 1, 2, 3]);
+			s.update(100); // a new cycle starts
+			expect(f.seen).toEqual([0, 1, 2, 3, 0]);
+		});
+
+		it("onFrame reports every frame a long tick goes past", () => {
+			const s = make();
+			const f = frames();
+			s.setCurrentAnimation("walk", { onFrame: f.onFrame });
+			s.update(300); // three frames in one tick: none is skipped
+			expect(f.seen).toEqual([0, 1, 2, 3]);
+		});
+
+		it("onFrame reports no frame 0 when a play-once animation holds its last", () => {
+			const s = make();
+			const f = frames();
+			s.setCurrentAnimation("ab", { loop: false, onFrame: f.onFrame });
+			s.update(100);
+			s.update(1000);
+			expect(f.seen).toEqual([0, 1]);
+			expect(s.getCurrentAnimationFrame()).toBe(1);
+		});
+
+		it("onFrame stops when the animation chains to the next one", () => {
+			const s = make();
+			const f = frames();
+			s.setCurrentAnimation("ab", { next: "walk", onFrame: f.onFrame });
+			s.update(200); // the cycle ends: chained to walk
+			s.update(100); // walk advances, with no callback of its own
+			expect(s.isCurrentAnimation("walk")).toBe(true);
+			expect(f.seen).toEqual([0, 1]);
+		});
+
+		it("switching to another animation drops the onFrame of the last one", () => {
+			const s = make();
+			const f = frames();
+			s.setCurrentAnimation("walk", { onFrame: f.onFrame });
+			s.setCurrentAnimation("ab");
+			s.update(100);
+			expect(f.seen).toEqual([0]);
+		});
+
+		it("re-selecting the current animation keeps its onFrame", () => {
+			const s = make();
+			const f = frames();
+			s.setCurrentAnimation("walk", { onFrame: f.onFrame });
+			s.setCurrentAnimation("walk"); // a no-op, as every frame of a game loop
+			s.update(100);
+			expect(f.seen).toEqual([0, 1]);
+		});
+
+		it("onFrame is not called for a frame set by hand", () => {
+			const s = make();
+			const f = frames();
+			s.setCurrentAnimation("walk", { onFrame: f.onFrame });
+			s.setAnimationFrame(2);
+			expect(f.seen).toEqual([0]);
+		});
+
+		it("onComplete runs before the frame 0 of the next cycle is reported", () => {
+			const s = make();
+			const order = [];
+			s.setCurrentAnimation("ab", {
+				onFrame: (frame) => {
+					order.push(`frame ${frame}`);
+				},
+				onComplete: () => {
+					order.push("complete");
+				},
+			});
+			s.update(200);
+			expect(order).toEqual(["frame 0", "frame 1", "complete", "frame 0"]);
+		});
+
 		// ── legacy resetAnim forms (back-compat) ─────────────────────────────
 
 		it("legacy: a bare function returning false holds the last frame", () => {
@@ -362,6 +457,117 @@ for (const HOST of HOSTS) {
 			s.update(1_000_000); // length === 1 → the stepping loop is skipped
 			expect(s.getCurrentAnimationFrame()).toBe(0);
 			expect(s.current.length).toBe(1);
+		});
+
+		// ── single-frame animations ──────────────────────────────────────────
+
+		it("a single-frame play-once animation fires onComplete once, after its delay", () => {
+			const s = make();
+			s.addAnimation("eat", [1], 80);
+			const spy = vi.fn();
+			const f = frames();
+			s.setCurrentAnimation("eat", {
+				loop: false,
+				onComplete: spy,
+				onFrame: f.onFrame,
+			});
+			expect(f.seen).toEqual([0]); // frame 0 reported on start
+			s.update(79);
+			expect(spy).not.toHaveBeenCalled();
+			s.update(1); // the 80ms delay has elapsed
+			expect(spy).toHaveBeenCalledTimes(1);
+			s.update(10_000); // held: no further completion
+			expect(spy).toHaveBeenCalledTimes(1);
+			expect(s.getCurrentAnimationFrame()).toBe(0);
+			expect(f.seen).toEqual([0]); // the hold reports no extra frame
+		});
+
+		it("a single-frame play-once animation calls onended once", () => {
+			const s = make();
+			s.addAnimation("eat", [1], 80);
+			s.onended = vi.fn();
+			s.setCurrentAnimation("eat", { loop: false });
+			s.update(1000);
+			expect(s.onended).toHaveBeenCalledTimes(1);
+		});
+
+		it("a single-frame animation follows next after its delay", () => {
+			const s = make();
+			s.addAnimation("eat", [1], 80);
+			const spy = vi.fn();
+			s.setCurrentAnimation("eat", { next: "walk", onComplete: spy });
+			s.update(79);
+			expect(s.isCurrentAnimation("eat")).toBe(true);
+			s.update(1);
+			expect(spy).toHaveBeenCalledTimes(1);
+			expect(s.isCurrentAnimation("walk")).toBe(true);
+			expect(s.getCurrentAnimationFrame()).toBe(0);
+			s.update(100); // walk keeps advancing
+			expect(s.getCurrentAnimationFrame()).toBe(1);
+		});
+
+		it("a single-frame animation follows the legacy string form", () => {
+			const s = make();
+			s.addAnimation("eat", [1], 80);
+			s.setCurrentAnimation("eat", "walk");
+			s.update(80);
+			expect(s.isCurrentAnimation("walk")).toBe(true);
+		});
+
+		it("a single-frame animation holds when a legacy callback returns false", () => {
+			const s = make();
+			s.addAnimation("die", [1], 80);
+			const spy = vi.fn(() => {
+				return false;
+			});
+			s.setCurrentAnimation("die", spy);
+			s.update(79);
+			expect(spy).not.toHaveBeenCalled();
+			s.update(1_000_000); // `false` bails out of the long tick: one call
+			expect(spy).toHaveBeenCalledTimes(1);
+			expect(s.isCurrentAnimation("die")).toBe(true);
+			expect(s.getCurrentAnimationFrame()).toBe(0);
+		});
+
+		it("a single-frame play-once animation can be replayed after completing", () => {
+			const s = make();
+			s.addAnimation("eat", [1], 80);
+			const spy = vi.fn();
+			s.setCurrentAnimation("eat", { loop: false, onComplete: spy });
+			s.update(80);
+			expect(spy).toHaveBeenCalledTimes(1);
+			// re-selecting a completed play-once animation restarts it
+			s.setCurrentAnimation("eat", { loop: false, onComplete: spy });
+			s.update(79);
+			expect(spy).toHaveBeenCalledTimes(1);
+			s.update(1);
+			expect(spy).toHaveBeenCalledTimes(2);
+		});
+
+		it("a looping single-frame animation never steps, fires no onComplete, never hangs", () => {
+			const s = make();
+			s.addAnimation("solo", [1], 80);
+			const spy = vi.fn();
+			const f = frames();
+			s.onended = vi.fn();
+			s.setCurrentAnimation("solo", { onComplete: spy, onFrame: f.onFrame });
+			s.update(1_000_000);
+			expect(spy).not.toHaveBeenCalled();
+			expect(s.onended).not.toHaveBeenCalled();
+			expect(f.seen).toEqual([0]);
+			expect(s.dt).toBe(0); // the frame timer does not even run
+			expect(s.getCurrentAnimationFrame()).toBe(0);
+		});
+
+		it("chaining into a looping single-frame animation does not spin on a long tick", () => {
+			const s = make();
+			s.addAnimation("eat", [1], 80);
+			s.addAnimation("idle", [2], 80);
+			s.onended = vi.fn();
+			s.setCurrentAnimation("eat", { next: "idle" });
+			s.update(1_000_000);
+			expect(s.isCurrentAnimation("idle")).toBe(true);
+			expect(s.onended).toHaveBeenCalledTimes(1); // eat's cycle end only
 		});
 
 		it("ADVERSARIAL: setAnimationFrame wraps an out-of-range index", () => {

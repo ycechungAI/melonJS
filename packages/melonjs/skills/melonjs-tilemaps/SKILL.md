@@ -1,6 +1,6 @@
 ---
 name: melonjs-tilemaps
-description: "Use this skill for Tiled maps in melonJS — loading TMX/TSX levels, spawning entities from Tiled objects, collision shapes authored in Tiled, isometric and hexagonal maps, and image layers. Covers registerTiledObjectClass and the pool.register name contract, camera bounds, compressed maps needing the inflate plugin, and the level director API. Triggers on: Tiled, TMX, TSX, tilemap, level.load, level.load async, await level.load, tileset, ImageLayer, isometric, hexagonal, staggered, pool.register, Collectable, Trigger, object layer, collision layer, parallax, registerTiledObjectClass, registerTiledObjectFactory."
+description: "Use this skill for Tiled maps in melonJS — loading TMX/TSX levels, spawning entities from Tiled objects, collision shapes authored in Tiled, isometric and hexagonal maps, and image layers, and reading or changing tiles while the game runs. Covers registerTiledObjectClass and the pool.register name contract, camera bounds, compressed maps needing the inflate plugin, and the level director API. Triggers on: Tiled, TMX, TSX, tilemap, setTile, clearTile, cellAt, getTile, getTileById, change a tile, tile at run time, game board, grid, tile properties at run time, getTileProperties, map properties, level.load, level.load async, await level.load, tileset, ImageLayer, isometric, hexagonal, staggered, pool.register, Collectable, Trigger, object layer, collision layer, parallax, registerTiledObjectClass, registerTiledObjectFactory, TMXObject, resolvedProperty, resolvedProperties, tile class, tile properties."
 license: MIT
 ---
 
@@ -72,7 +72,8 @@ object group in its own `Container` named after the group.
 ## Spawning entities from Tiled objects
 
 Objects are matched against a factory registry, in this order: the object's
-Tiled **class**, then its **name**, then the structural fallbacks `"text"`,
+Tiled **class**, then its **name**, then, for a tile object with no class of
+its own, its **tile's class**, then the structural fallbacks `"text"`,
 `"tile"` and `"shape"`.
 
 ```js
@@ -122,6 +123,53 @@ registerTiledObjectClass("Trigger", MyTrigger);   // whenever you like
 The throw is for a clash between two of *your* classes under one name. For
 that case `registerTiledObjectFactory` overwrites and only warns.
 
+### Classes and properties set on tiles
+
+In Tiled, a tile can carry a class and custom properties (tileset editor), and
+every object placed from that tile shows them as its own. melonJS follows:
+
+- **The tile's class.** A tile object with no class is built by the class
+  registered under its tile's class, so a designer sets "Chest" once on the
+  chest tile and every chest dropped in the map is a `Chest`. The object's
+  own class or registered name still comes first, and a tile classed like a
+  built-in (`Sprite`, `Trigger`, `shape`...) stays a plain tile.
+- **The tile's properties.** Read them with `settings.resolvedProperty(name)`
+  or `settings.resolvedProperties()`, which merge the tile's properties under
+  the object's own, as Tiled's scripting API of the same names does. They are
+  **not** set on `settings` by name: only the object's own properties are,
+  as before, so a tile property named like a sprite setting never reaches a
+  plain tile sprite.
+
+```ts
+import { registerTiledObjectClass, Sprite, type TMXObject } from "melonjs";
+
+// the custom properties set on the object itself, by name
+interface DoorSettings extends TMXObject {
+    locked?: boolean;
+}
+
+class Door extends Sprite {
+    locked: boolean;
+    facing: string;
+    constructor(x: number, y: number, settings: DoorSettings) {
+        super(x, y, { image: "door" });
+        this.locked = settings.locked ?? false;
+        // on the object, or else on the door tile in the tileset
+        this.facing = settings.resolvedProperty("facing") ?? "N";
+    }
+}
+registerTiledObjectClass("Door", Door);   // and give the door tile the class "Door"
+```
+
+`TMXObject` is the type of the `settings` a registered class (or factory)
+receives: the object as read from the map, with `tile` (a `Tile`) on a tile
+object. Extend it with the properties your class reads.
+
+For a class that is not a `Sprite` itself (a `Container` holding the tile and
+something else, say), `settings.tile.getRenderable()` returns the tile's sprite
+as a plain tile object would get it: from a tileset image, an image collection
+or an animated tile alike, with no region names to build by hand.
+
 melonJS pre-registers `Renderable`, `Sprite`, `NineSliceSprite`, `Text`,
 `BitmapText`, `ImageLayer`, `ColorLayer`, `Light2d`, `Collectable`, `Trigger`
 and `Entity` as Tiled classes, so `Collectable` and `Trigger` work out of the
@@ -136,6 +184,90 @@ whatever you pass it. Today that list is `container`, `onLoaded`, `flatten`,
 knowing before you spend an afternoon on a map that loads at the wrong scale.
 `async` is excluded deliberately — the trigger needs to sequence its own
 transition.
+
+## Reading and changing tiles at run time
+
+A tile layer is a live grid, not just a picture: read it as the game board,
+and change cells while the game runs — a door opening, a floor panel lighting
+up, a wall blown away. A loaded tile layer is a `TMXLayer` in the world, under
+the name it has in Tiled:
+
+```js
+await level.load("map1", { container: this.app.world, async: true });
+const board = this.app.world.getChildByName("ground")[0];   // a TMXLayer
+board.cols; board.rows;              // the grid, in cells
+board.tilewidth; board.tileheight;   // a cell, in pixels
+```
+
+Two coordinate systems, and the methods do not share one:
+
+| method | takes | returns |
+|---|---|---|
+| `cellAt(col, row)` | column and row | the `Tile` there, or `null` for an empty cell or outside the grid |
+| `getTile(x, y)` | **world pixels** | the same `Tile` object `cellAt` gives, or `null` |
+| `setTile(tile, col, row)` | column and row | puts `tile` there, and returns it |
+| `clearTile(col, row)` | column and row | empties the cell: `cellAt` then returns `null` |
+| `getTileById(gid, col, row)` | a global tile id, column and row | a new `Tile`, to pass to `setTile` |
+
+Columns and rows are the map's tile coordinates, the ones Tiled shows. On an
+**infinite** map a layer can hold tiles left of or above the map's origin:
+there `board.startx` / `board.starty` are negative, its cells run from
+`startx` to `startx + cols - 1` (and `starty` to `starty + rows - 1`), and
+`cellAt(-3, -2)` is the tile Tiled shows at (-3, -2), drawn where Tiled draws
+it. On a finite map both are 0:
+
+```js
+for (let row = board.starty; row < board.starty + board.rows; row++) {
+    for (let col = board.startx; col < board.startx + board.cols; col++) {
+        const tile = board.cellAt(col, row);   // every cell, infinite maps included
+    }
+}
+```
+
+The viewport bounds still cover only the map's `width` x `height`: set them
+yourself to scroll to tiles painted outside it.
+
+A `Tile` carries `tileId` (its **global** id), `col`, `row` and `tileset`.
+Tiled shows a tile's *local* id in the tileset editor; the global id is
+`tileset.firstgid + localId`, and only the global one works with `setTile`.
+The tile's custom properties and class, set in Tiled's tileset editor, come
+from its tileset by global id:
+
+```js
+const tile = board.cellAt(col, row);
+const props = tile && tile.tileset.getTileProperties(tile.tileId);  // { kind: "floor" } or undefined
+const cls = tile && tile.tileset.getTileClass(tile.tileId);
+```
+
+To swap a cell for another tile of the tileset, build the tile and set it. Look
+global ids up by property once, rather than hard-coding them, so a designer
+can rearrange the tileset:
+
+```js
+const tileset = board.tilesets.getTilesetByIndex(0);   // the layer's first tileset
+const gidByKind = new Map();
+for (let gid = tileset.firstgid; gid <= tileset.lastgid; gid++) {
+    const kind = tileset.getTileProperties(gid)?.kind;
+    if (kind !== undefined) gidByKind.set(kind, gid);
+}
+
+// light a floor panel up
+board.setTile(board.getTileById(gidByKind.get("floor-lit"), col, row), col, row);
+// knock a wall down
+board.clearTile(col, row);
+```
+
+The layer redraws the changed cell by itself. What it does **not** change is
+collision: solid ground comes from collision object layers (below), so a tile
+set or cleared changes what is drawn and what `cellAt` returns, not what a body
+runs into. Keep a layer you edit often off `preRender` (see the symptom table).
+
+The map's own custom properties (Map → Map Properties in Tiled) are set on the
+map object, which `level.getCurrentLevel()` returns once it is loaded: a
+`theme` string property is `level.getCurrentLevel().theme`. They are set
+**over** the map's own fields, so a property named like one replaces it: a
+custom `name` property becomes the level's `name`. Give level settings names of
+their own (`title`, not `name`).
 
 ## Camera bounds
 
@@ -157,7 +289,9 @@ opposite of `level.load`'s.
 
 Draw collision geometry in Tiled on an object layer and melonJS turns it into
 world shapes automatically — rectangles, polygons, polylines, ellipses and
-points all work.
+points all work. On an isometric map they are projected with the map's tile
+ratio; a circle stays an `Ellipse`, but any other ellipse comes out tilted and
+becomes a `Polygon`, so code that checks a shape's type should expect either.
 
 The contract is the **layer name**: melonJS lowercases it and checks whether it
 *contains* `"collision"` (so `collision`, `Collision`, `world collision` all
@@ -171,7 +305,10 @@ An object that matches no factory and carries no text or tile data falls to the
 geometry, which the world auto-registers with the active adapter on `addChild`.
 
 For per-object physics, set the object's custom properties in Tiled; they arrive
-on the settings object passed to your entity's constructor.
+on the settings object passed to your entity's constructor. Properties set on
+the object's tile are read with `settings.resolvedProperty(name)`. One is also
+applied to the object the map creates: an `int` property named
+`visibilityLayer` sets which cameras draw it (see `melonjs-camera-and-drawing`).
 
 ## Map orientations
 
@@ -183,9 +320,68 @@ Isometric maps need y-sorting so objects overlap correctly:
 app.world.sortOn = "y";       // after level.load
 ```
 
+The world then keeps its objects in order as they move (`autoSort`, on by
+default): a character walking around passes in front of and behind the scenery
+with no `sort()` call.
+
 `sortOn` only accepts `"x"`, `"y"`, `"z"` (the default) or `"depth"` and throws
 on anything else. `Vector2d`, `Vector3d`, their observable variants and `Polygon`
 all carry `.toIso()` / `.to2d()` for converting between screen and map space.
+
+### What the y-sort can and cannot sort
+
+`sortOn = "y"` sorts **objects**, never tiles. A tile layer is a single
+renderable drawn in one piece, so a character ends up in front of all of it or
+behind all of it. Anything a character walks both in front of and behind
+(walls, trees, furniture) has to be on an **object layer, as tile objects**,
+and in the **same** object layer as the characters: each Tiled layer gets its
+own `z`, and the y-sort compares `z` before `y`. Keep the floor on a tile layer
+below them. This holds for any y-sorted map, isometric or a top-down
+orthogonal one.
+
+```
+floor      tile layer     the ground, drawn first
+dungeon    object layer   walls, props, chests, doors, the hero
+collision  object layer   the shapes (not drawn)
+```
+
+Tile objects with no class are built for you: each one is a `Sprite` with its
+default body, static, over its whole image box and typed `ENEMY_OBJECT`. A
+character keeping the default `collisionMask` (every type) collides with all of
+them, so when the scenery's real collision is drawn in the collision layer,
+mask the character to it:
+
+```js
+this.body.setCollisionMask(collision.types.WORLD_SHAPE);
+```
+
+Give the objects with behaviour a Tiled class and register it, as above.
+
+The `y` it sorts on is `pos.y`, and Tiled objects default to a `(0, 0)` anchor,
+so that is the **top** of each image. Sorting by the top only matches sorting by
+the feet when every image is the same height and stands on the bottom of its
+box, the usual layout of an isometric pack. A shorter image sorts in front of
+things it stands behind. Either pad the art to one height, or line every object
+up by the bottom of its image with `sortOffset`, which changes the order and
+never the position:
+
+```js
+level.load("map1");
+app.world.sortOn = "y";
+for (const child of app.world.getChildren()) {
+    child.sortOffset = child.height;   // sort by the bottom of each image
+}
+```
+
+A character you create in code follows the same convention as the scenery: by
+the top of a frame as tall as the scenery's (`anchorPoint` `(0, 0)`), or by its
+feet when everything sorts by the bottom.
+
+Two equal positions keep insertion order, and the one added **last** is drawn
+**behind**: a decoration placed at its wall's exact position disappears. Give
+it `sortOffset = 1`. A `Container` or a particle emitter is sorted by its top
+left corner (an emitter's by the top of its spawn area); give it the offset to
+the point it belongs with, such as `door.pos.y - dust.pos.y`.
 
 ## Image layers
 
@@ -232,6 +428,7 @@ unanimated layer into the offscreen-bake path instead.
 
 | symptom | cause |
 |---|---|
+| objects a screen added just before `level.load` draw in the order they were added (a background over everything) | before 20.13 the reset inside `level.load` dropped the sort still pending for the persistent children it kept; update, or call `sort()` on their container once the level is loaded |
 | a Tiled object becomes a plain shape with no behaviour | its class/name does not match any registered factory, or it was registered after `level.load` |
 | the world is still empty right after `level.load` | the load is deferred to a timer while the loop runs — `await level.load(id, { async: true })`, or use `onLoaded` / `LEVEL_LOADED` |
 | `await level.load(id)` returned `true` rather than a promise | without `async: true` the call returns a boolean; `await true` resolves immediately and the load has not run yet — pass the flag when you mean to await |
@@ -241,7 +438,26 @@ unanimated layer into the offscreen-bake path instead.
 | `No inflate function set` at parse time | compressed layers without the tiled-inflate plugin |
 | collision shapes are not solid | the object layer's name does not contain `"collision"`, or the objects are named |
 | isometric objects overlap wrongly | `world.sortOn` not set to `"y"` |
+| a character is always in front of (or behind) every wall | the walls are on a tile layer, or on another object layer than the character: each layer has its own `z`, compared before `y` |
+| a small prop draws over a character standing in front of it | images of different heights: the y-sort uses `pos.y`, the top of a Tiled object's image. Pad the art, or set `sortOffset = height` on every object to sort by the bottom |
+| a decoration placed at the same position as a wall disappears behind it | a tie keeps insertion order and draws the later one behind: `sortOffset = 1` |
+| particles (or a container) at the foot of something draw over a character standing in front of it | they sort by the top of their spawn area (or the container's top left): set `sortOffset` to line them up with what they belong to |
+| a character is stopped short of walls and props placed as tile objects | it collides with their default bodies (static, `ENEMY_OBJECT`, the whole image box); mask it to `collision.types.WORLD_SHAPE` when the collision layer holds the real shapes |
+| a property set on a tile is undefined on the object's `settings` | tile properties are not copied onto `settings`: read them with `settings.resolvedProperty(name)` |
+| objects placed from a classed tile come out as plain sprites | that class is not registered, it is a built-in name, or the object has a class or a registered name of its own, which come first |
 | missing tiles or a blank map | the `.tsx` or tileset image was not preloaded |
+| a tileset's transparent color (`trans`) still shows (the console says it could not be applied) | the image cannot be read back: an image the game made itself from another origin without CORS (an `<img>` with no `crossOrigin`) cannot be, so load it with the loader, which only loads an image another origin's server allows (its CORS headers) and can always read back; and a compressed texture cannot be changed: export it with an alpha channel instead |
+| `cellAt` returns `null` (or the wrong tile) for a cell that has one | it was given pixels: `cellAt`, `setTile` and `clearTile` take column and row, only `getTile` takes world pixels |
+| `setTile` shows the wrong tile, or nothing | it was given Tiled's local tile id: use the global id, `tileset.firstgid + localId`, through `getTileById` |
+| an infinite map's tiles sit in the wrong row, or tiles left of or above the origin are missing | an older melonJS ignored where the chunks start (update); and loop from `layer.startx` / `layer.starty`, not 0, to reach cells left of or above the origin |
+| on a staggered map `getTile` gives the neighbouring tile on every row but the first, or a scrolled view draws nothing | a bug of older melonJS versions in the staggered renderer: update |
+| on an isometric (or staggered, oblique) map `getTile` gives an edge tile for a point just outside the tiles | an older melonJS rounded a fractional column or row toward 0: update |
+| tiles of a second tileset draw from the first tileset's image (that first one has a `margin`) | an older melonJS let its gid range overrun into the next tileset (update): the range is the `tilecount` Tiled saved |
+| a layer is `undefined` from `getChildByName(name)[0]` | the level is not in the world yet (await `level.load(id, { async: true })`), or the name differs from the layer's in Tiled |
+| a tile set or cleared at run time does not block or free movement | tile layers carry no collision: collision comes from collision object layers |
+| the level's `name` is not its id after loading | a map custom property named `name` replaced it: map properties are set over the map's own fields |
+| changing tiles at runtime is slow on a pre-rendered layer | outside an orthogonal map whose tiles fit their cells, a changed tile re-bakes the whole layer before it next draws: keep layers you edit often off `preRender` |
+| thin lines between tiles on the Canvas renderer, with smoothing on | filtering blends in the next tile of the tileset or its spacing, which a canvas cannot prevent: set `antiAlias: false`, or `preRender` the layer. WebGL and WebGPU keep each tile to itself |
 | tilemap slow on some machines | layer fell back off the shader path — check the console warning for the reason |
 
 ## Related skills

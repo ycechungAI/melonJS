@@ -24,7 +24,9 @@ export const defaultApplicationSettings = {
 	gpuTilemap: true,
 	failIfMajorPerformanceCaveat: true,
 	highPrecisionShader: true,
+	scaleRounding: "fractional",
 	subPixel: false,
+	syncToDisplay: false,
 	verbose: false,
 	backgroundColor: "#000000",
 } satisfies Partial<ApplicationSettings>;

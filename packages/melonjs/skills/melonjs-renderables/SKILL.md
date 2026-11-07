@@ -96,9 +96,44 @@ world.addChild(sprite, 10);   // ✓ the only reliable form
 2. **Setting `depth` *before* `addChild` is overwritten.** With `autoDepth` on
    (the default), `addChild` without an explicit `z` assigns
    `child.pos.z = children.length` after the push, discarding whatever you set.
-3. **Setting `depth` *after* `addChild` does not reorder.** Containers sort when
-   a child is added (`autoSort`, deferred to the next tick), not when `pos.z`
-   changes. If you must change it later, call `container.sort()` yourself.
+3. **Setting `depth` *after* `addChild` does not reorder.** A `"z"` sort runs
+   when a child is added (`autoSort`, deferred to the next tick), not when
+   `pos.z` changes. If you must change it later, call `container.sort()`
+   yourself, or use `moveToTop` / `moveUp` / `moveDown` / `moveToBottom`, which
+   reorder the children themselves. (An `"x"` / `"y"` sort is different: see
+   below.)
+
+### Sorting on `"y"` (or `"x"`), and `sortOffset`
+
+A container with `sortOn = "y"` draws its children from the smallest `pos.y` to
+the largest, so whatever is lower on screen covers what is above it (top-down and
+isometric games). `"x"` does the same along x. A different `pos.z` still decides
+first, so keep the children that should interleave at one z.
+
+- **Moving a child re-sorts by itself.** With `autoSort` on (the default), the
+  container checks its order at the end of every update, after physics and the
+  children's own updates, and re-sorts when anything is out of place: a walking
+  character needs no `sort()` call. A frame where nothing moved costs one pass
+  over the children and does not cause a redraw. Turn `autoSort` off to keep
+  the children in the order you put them.
+- **Ties keep insertion order, and the child added LAST is drawn BEHIND.** A
+  torch placed at its wall's exact position disappears behind the wall.
+
+`sortOffset` changes the ORDER only, never where anything is: the child is lined
+up as if it stood that many pixels lower (positive) or higher (negative), and is
+drawn exactly where it was. Use it when `pos` is not the point to sort by:
+
+```js
+torch.sortOffset = 1;                        // win the tie with the wall it hangs on
+dust.sortOffset = door.pos.y - dust.pos.y;   // an emitter's pos is the top of its
+                                             // spawn area: line it up with the door
+prop.sortOffset = prop.height;               // sort by the bottom of the image
+```
+
+A container that keeps itself sorted picks a change up at its next update (with
+`autoSort` off, call its `sort()`). `"z"` and `"depth"` sorting ignore it. It must be a finite number (a string
+or `NaN` throws, rather than scrambling every sibling), and a pooled renderable
+starts again at `0`.
 
 The exception: under `Camera3d` the world's `sortOn` is `"depth"`, and the
 camera calls `container.sortNow(true)` every frame. Note that mode does **not**
@@ -139,9 +174,10 @@ Use `addPostEffect()` / `getPostEffect()` / `removePostEffect()`. Assigning
 `renderable.shader = …` is deprecated since 19.2.0.
 
 Post effects need a programmable pipeline. A `ShaderEffect` constructed against
-the Canvas renderer (`renderer.shaderLanguage === null`) logs a warning, stays
-at `enabled === false` and no-ops every method rather than throwing — and
-`beginPostEffect` filters disabled effects out. Since `video.AUTO` picks the
+the Canvas renderer (`renderer.shaderLanguage === null`) stays at
+`enabled === false` and no-ops every method rather than throwing — and
+`beginPostEffect` filters disabled effects out. The first one logs a warning,
+the rest stay quiet, so a decorative effect needs no renderer check. Since `video.AUTO` picks the
 backend at runtime, an effect that works on your machine may do nothing on
 another.
 
@@ -255,6 +291,12 @@ other correct ending.
 `obj.alwaysUpdate === true`. An off-screen object with the default
 `alwaysUpdate = false` does not tick at all.
 
+A `Container` is culled by its own bounds, which do not follow its children
+unless it has a size of its own (`resize`) or `enableChildBoundsUpdate` is on.
+With the flag, the bounds are the children's union, re-measured on every update
+and, while the group is off screen, before each culling check — so a squad that
+walks back into view is drawn again.
+
 ## Anchors and floating
 
 - `anchorPoint` defaults to centre `(0.5, 0.5)` on `Renderable`, but `Container`
@@ -262,6 +304,10 @@ other correct ending.
 - `floating = true` pins a renderable to the screen rather than the world, which
   is what you want for HUD elements. It opts the object out of camera transforms
   and out of ancestor position accumulation.
+- `visibilityLayer` decides which cameras draw a renderable: a camera draws it
+  only if it shares a bit with the camera's `cullMask` (every camera, by
+  default). See `melonjs-camera-and-drawing` for keeping something off a
+  minimap.
 
 ## Prefer built-in features
 
@@ -282,6 +328,7 @@ Hand-rolled equivalents miss the batching and the multi-backend support.
 | effect silently does nothing | running on the Canvas renderer |
 | object appears frozen while its state changes | `update()` not returning `true` |
 | off-screen object never ticks | `update()` is gated on `inViewport` — set `alwaysUpdate = true` |
+| a group of moving children vanishes once they leave where they started | a sizeless container's bounds did not follow its children: give it a size, or `enableChildBoundsUpdate` (which only followed them from 20.13.0) |
 | custom draw offset by half the size | centred `anchorPoint` default not zeroed |
 | spatial query never finds an object | `isKinematic` left `true` — not in the broadphase |
 | `z` unexpectedly 0 after a `set` | `Vector3d.set(x, y)` defaults `z` to 0 — `setPosition(x, y)` on the renderable leaves the depth alone |

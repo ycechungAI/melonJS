@@ -1,6 +1,6 @@
 ---
 name: melonjs-camera-and-drawing
-description: "Use this skill for camera control and immediate-mode drawing in melonJS — following a target, viewport bounds, shake and fade, secondary cameras, and drawing shapes, lines and gradients inside a custom draw(). Covers world versus screen coordinate conversion, clipping and masking, baking with CanvasRenderTarget, and reading pixels back. Triggers on: Camera2d, viewport, follow, setBounds, shake, fadeIn, fadeOut, worldToLocal, localToWorld, colorMatrix, renderer.fill, renderer.stroke, Rect, Ellipse, Polygon, Line, Gradient, clipRect, mask, CanvasRenderTarget, NoiseTexture2d, lookAt, setBasis, toImageData, getImageData, toBlob, toDataURL, screenshot, read pixels."
+description: "Use this skill for camera control and immediate-mode drawing in melonJS — following a target, viewport bounds, shake and fade, secondary cameras and what each one draws, and drawing shapes, lines and gradients inside a custom draw(). Covers world versus screen coordinate conversion, clipping and masking, baking with CanvasRenderTarget, and reading pixels back. Triggers on: Camera2d, viewport, follow, offset, look ahead, setBounds, minimap, second camera, split screen, cullMask, visibilityLayer, hide from a camera, shake, fadeIn, fadeOut, worldToLocal, localToWorld, colorMatrix, renderer.fill, renderer.stroke, setGlobalAlpha, fillArc, Rect, Ellipse, Polygon, Line, Gradient, clipRect, mask, CanvasRenderTarget, NoiseTexture2d, lookAt, setBasis, toImageData, getImageData, toBlob, toDataURL, screenshot, read pixels."
 license: MIT
 ---
 
@@ -23,6 +23,24 @@ frame-rate independent since 19.7. `AXIS.HORIZONTAL` / `AXIS.VERTICAL` /
 `AXIS.BOTH` / `AXIS.NONE`.
 
 Call it from the followed entity's `onActivateEvent`, using `this.parentApp`.
+
+**To frame the target off centre, set `offset`; do not follow a helper
+object.** It shifts the view without moving the camera, in world units, and is
+applied after following and the bounds, so the view can show past them:
+
+```js
+app.viewport.follow(player, app.viewport.AXIS.BOTH, 0.1);
+app.viewport.offset.set(0, -70);   // look a little above the feet
+
+// or ahead of where the player faces, eased (see math.damp below)
+const ahead = facingLeft ? -80 : 80;
+app.viewport.offset.x = math.damp(app.viewport.offset.x, ahead, 4, dt / 1000);
+```
+
+Culling, tile layers, parallax `ImageLayer`s, lights and the pointer
+(`localToWorld`, `worldToLocal`) all count it. `shake()` adds its jitter on top
+and gives the value back when it ends, so setting it before or during a shake
+is fine. `reset()` clears it.
 
 **For anything that is NOT the camera, the same smoothing is `math.damp`.**
 `follow()` is frame-rate independent for you; a value you smooth yourself is
@@ -125,6 +143,12 @@ app.viewport.worldToLocal(x, y);   // world → screen
 app.viewport.localToWorld(x, y);   // screen → world
 ```
 
+They agree with where the camera draws: a level smaller than the view is
+centred by offsetting the world container (`world.pos`), which the default
+camera draws and a minimap, corner or zoomed camera leaves out, and each
+camera's conversions follow suit (20.13 and later; before, a minimap's were off
+by `world.pos`).
+
 Both return a `Vector2d`; with no third argument that vector comes from the
 shared pool, so in a per-frame path pass your own `v` as the third argument, or
 release it with `getPool("vector2d").release(v)`.
@@ -187,9 +211,51 @@ and an overridden `postDraw`:
 this.cameras.set("minimap", new MinimapCamera());
 ```
 
+A stage's cameras draw in the order they were added, each over the ones before
+it, so a full-screen second camera is a layer: a `Camera3d` drawing a 3D
+background first, the game's own camera over it, each kept to its part of the
+world with `visibilityLayer` / `cullMask` (below). A camera's post effects
+apply to what that camera draws: the first camera's pass starts the frame, and
+a later camera's is blended over what is already there (20.13 and later;
+before, it wiped out the cameras before it).
+
 View state is per camera, not per scene: a `Camera3d` carries its own distance
 fog (`setFog`), so a minimap or split-screen view fogs independently of the main
 one — and a `Camera2d` never fogs. See `melonjs-3d`.
+
+### What each camera draws: `visibilityLayer` and `cullMask`
+
+Every camera draws the whole world. To keep something off one camera only, put
+it on a layer that camera leaves out. A renderable's `visibilityLayer` is the
+layers it is on, as bits (1, 2, 4...); a camera's `cullMask` is the layers it
+draws. A camera draws a renderable only if the two share a bit:
+
+```js
+const PARTICLES = 2;
+emitter.visibilityLayer = PARTICLES;   // the particles go on layer 2
+minimap.cullMask = ~PARTICLES;         // the minimap draws every layer but 2
+```
+
+- By default every renderable is on layer 1 and every camera draws every layer
+  (`cullMask` is `-1`), so nothing changes until a game sets one.
+- A container left out is left out with everything inside it, however deep:
+  set it on an emitter and none of its particles are drawn. The world itself
+  obeys it too, and so does what it contains: a child is drawn only if it and
+  every container above it share a bit with the camera.
+- Particles are on their emitter's layers, and follow a change to them on the
+  emitter's next update, so a camera that draws only the emitter's layer draws
+  its particles too.
+- A renderable on layer `0` is drawn by no camera; a `cullMask` of `0` draws
+  nothing.
+- It decides drawing only: what a camera leaves out still updates, collides and
+  receives pointer events.
+- A `Light2d` a camera leaves out, itself or a container it is in, neither
+  glows, nor cuts its hole in the darkness, nor lights normal-mapped sprites in
+  that camera. A `Light3d` lights the meshes of every camera.
+- It adds to the floating rule: a floating renderable is drawn by a secondary
+  camera only with `visibleInAllCameras`, and only if the layers match as well.
+- On a Tiled object, set it as an `int` custom property named
+  `visibilityLayer`.
 
 ## Immediate-mode drawing
 
@@ -206,6 +272,23 @@ draw(renderer) {
     renderer.stroke(new Line(0, 0, [/* … */]));
 }
 ```
+
+**The colour's alpha and the global alpha are two things**, as on a 2D
+context. A fill or a stroke is drawn at the alpha of `setColor` times
+`setGlobalAlpha` (which is where the renderable's opacity comes in), an image at
+the global alpha (times the tint) alone, and `getGlobalAlpha()` never moves with
+`setColor`. So to fade a translucent shape, lower the global alpha and keep the
+colour; folding the colour's alpha into `setGlobalAlpha` as well counts it twice.
+
+`lineWidth`, `lineJoin`, the colour and the global alpha are all part of what
+`save()` / `restore()` keep, and every renderable's `draw()` runs between the
+two, so set them freely there: the next renderable gets them back.
+
+`fillArc` / `strokeArc` read their angles like `CanvasRenderingContext2D.arc`:
+an end before the start wraps round (`end + 2π`), and a span of 2π or more in
+the arc's own direction is the whole circle. A filled part-circle differs by
+backend, though: Canvas closes it with a straight chord, the GPU renderers fill
+a pie slice from the centre.
 
 Geometry available: `Rect`, `RoundRect`, `Ellipse`, `Polygon`, `Line`, `Point`
 (and a `Bounds`). `renderer.fill(shape)` and `renderer.stroke(shape)` take any
@@ -269,6 +352,14 @@ Pass `rt.canvas`, never `rt` — a `CanvasRenderTarget` is a wrapper, not a
 drawable, and the engine's own bakes (the particle emitter's default texture)
 hand `.canvas` on for exactly that reason.
 
+**Create it once and keep it.** On a GPU backend, once drawn, its texture stays
+on the GPU for as long as the renderer lives: a stage change does not release
+it, and no public call does. A target made for every level, every restart or
+every spawned object leaks one texture each time, so make it once (at module
+level, say) and clear it for reuse. If you paint into it again after it has
+been drawn, call `rt.invalidate(renderer)` before the next draw so the GPU copy
+is refreshed.
+
 This is the sanctioned performance idiom before reaching for a custom shader.
 
 **For a solid fill you do not need a canvas at all.** `Renderer.getWhitePixel()`
@@ -326,6 +417,7 @@ const data = await rt.toImageData(0, 0, w, h);
 
 | symptom | cause |
 |---|---|
+| a second camera's post effect wipes out what the first camera drew | before 20.13 a later camera's post-effect pass replaced the whole frame; update, or put the effects on a container instead of the camera |
 | `follow()` set but the view never moves | viewport bounds still at renderer size |
 | `invalid target for me.Camera2d.follow` | passed `player.pos` — pass the renderable, a `Vector2d` or a `Vector3d` |
 | camera drag jumps around | using world (`gameWorldX`) instead of screen (`gameScreenX`) coordinates |
@@ -333,12 +425,22 @@ const data = await rt.toImageData(0, 0, w, h);
 | custom drawing appears at the origin | `draw()` not reading `this.pos` |
 | custom drawing offset by half its size | centred `anchorPoint` not zeroed |
 | `setLineWidth` is not a function | it is the `lineWidth` property |
+| after a translucent `setColor`, images, later colours and the next renderables come out faded (WebGL / WebGPU) | before 20.13 the colour's alpha leaked into the global alpha; update |
+| a translucent colour comes out fainter than asked | its alpha folded into `setGlobalAlpha` as well, so it counts twice |
+| a `lineWidth` set in one `draw()` thickens everything drawn after it (WebGL / WebGPU) | before 20.13 `restore()` did not put `lineWidth` back; update, or put it back yourself |
+| `fillArc` with the end angle before the start fills the wrong part of the circle (WebGL / WebGPU) | before 20.13 the GPU renderers did not wrap the angles like Canvas; update |
+| a minimap's `worldToLocal` / `localToWorld` are off by the level's centring offset | before 20.13 they applied `world.pos`, which a non-default camera does not draw; update |
 | clipping in the wrong place inside a container | container clips in local coordinates, after its own translate |
 | `container.clipping = true` does nothing | container has no explicit size, so `width`/`height` are `Infinity` |
 | baked target draws nothing / throws | passed the `CanvasRenderTarget`, not its `.canvas` |
 | `getImageData()` throws on one machine but not another | that one is on the WebGPU renderer, which cannot read back synchronously — `await toImageData()` instead |
 | frame rate drops with many static draws | bake into a `CanvasRenderTarget` instead |
+| GPU memory grows with every level or restart | a `CanvasRenderTarget` created each time: make one and reuse it |
+| a repainted `CanvasRenderTarget` still shows the old pixels | call `rt.invalidate(renderer)` after painting |
 | a 3D camera cannot be given an arbitrary up | `Camera3d#lookAt(target, up)` or `setBasis(right, up, forward)`; see `melonjs-3d` |
+| particles or effects clutter a minimap | every camera draws everything: put them on their own `visibilityLayer` and leave it out of the minimap's `cullMask` |
+| something is missing from one camera only | its `visibilityLayer`, or a container's above it, shares no bit with that camera's `cullMask` |
+| a renderable shows in no camera at all | its `visibilityLayer` is `0`, or the world's own layer is left out |
 
 ## Related skills
 

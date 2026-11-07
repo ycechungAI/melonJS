@@ -4,7 +4,11 @@ import { Color, colorPool } from "../../math/color.ts";
 import type { Gradient } from "../../video/gradient.js";
 import type Renderer from "../../video/renderer.js";
 
-/** anything {@link Renderer#setColor} will take */
+/**
+ * A colour a widget is painted with: a CSS string, a {@link Color} (kept
+ * and read every frame, so changing it animates the widget), or a gradient.
+ * @category UI
+ */
 export type Paint = Color | string | Gradient;
 
 /**
@@ -41,19 +45,18 @@ export class PanelPainter {
 	private _round: RoundRect | undefined;
 
 	/**
-	 * Set the draw colour, with its own alpha folded into the cascaded one.
+	 * Set the draw colour, and the cascaded alpha as the global alpha.
 	 *
-	 * Not simply `setColor` then `setGlobalAlpha(cascade)`: that discards
-	 * whatever alpha the colour asked for, so a background given `#00000033`
-	 * comes out solid. Nor `setColor` then reading the alpha back, which is
-	 * worse: a renderer keeps ONE current colour, and parsing a six digit hex
-	 * into it leaves the alpha from the colour before, so a translucent
-	 * background silently leaks into the border drawn after it.
+	 * Every renderer draws a fill at the colour's own alpha times the global
+	 * alpha, so a background given `#00000033` is drawn at a fifth of the
+	 * cascade, and the colour's alpha must NOT be folded into the global
+	 * alpha as well, or it counts twice.
 	 * @param renderer - the renderer to set the colour on
 	 * @param color - what to paint with
 	 * @param cascade - the alpha the owning renderable inherited
+	 * @returns the colour's own alpha (`1` for a gradient)
 	 */
-	paint(renderer: Renderer, color: Paint, cascade: number) {
+	paint(renderer: Renderer, color: Paint, cascade: number): number {
 		if (typeof color === "string") {
 			// Borrowed on FIRST use, not in the constructor: a widget handed
 			// `Color` instances never needs one at all, and a widget that is
@@ -68,14 +71,12 @@ export class PanelPainter {
 				this._lastCss = color;
 			}
 			renderer.setColor(css);
-			renderer.setGlobalAlpha(css.alpha * cascade);
-		} else if (color instanceof Color) {
-			renderer.setColor(color);
-			renderer.setGlobalAlpha(color.alpha * cascade);
-		} else {
-			renderer.setColor(color);
 			renderer.setGlobalAlpha(cascade);
+			return css.alpha;
 		}
+		renderer.setColor(color);
+		renderer.setGlobalAlpha(cascade);
+		return color instanceof Color ? color.alpha : 1;
 	}
 
 	/**
@@ -181,12 +182,9 @@ export class PanelPainter {
 			return;
 		}
 		if (radius > 0) {
-			// Put `lineWidth` back afterwards, because `RenderState.save()`
-			// does not stack it: it keeps colour, tint, transform, scissor,
-			// gradient, line DASH, blend mode, shader and depth, and
-			// `lineWidth` is a plain field on the renderers. Left alone, a
-			// widget with a 2px border makes everything stroked after it in
-			// the frame 2px too.
+			// Put `lineWidth` back afterwards: restore() only does it at the
+			// end of the widget's draw, and whatever the widget strokes after
+			// its border (a check mark, a thumb outline) has its own width.
 			const previousWidth = renderer.lineWidth;
 			renderer.lineWidth = bw;
 			this.rect(
@@ -205,6 +203,68 @@ export class PanelPainter {
 			renderer.fillRect(x, y + bw, bw, h - bw * 2); // left
 			renderer.fillRect(x + w - bw, y + bw, bw, h - bw * 2); // right
 		}
+	}
+
+	/**
+	 * Draw a drop shadow under a rectangle: offset, and softened by `blur`.
+	 *
+	 * Not a real blur, which primitives cannot do the same on every backend:
+	 * a few translucent rounded rectangles, from `blur` pixels larger down to
+	 * the rectangle itself, stacked so the middle reaches the shadow's own
+	 * alpha and the edge fades out. It costs a handful of fills, and looks
+	 * the same on Canvas, WebGL and WebGPU.
+	 * @param renderer - the renderer to draw with
+	 * @param color - the shadow's colour; its alpha is how dark it gets
+	 * @param cascade - the alpha the owning renderable inherited
+	 * @param x - left edge of the rectangle casting it
+	 * @param y - top edge
+	 * @param w - width
+	 * @param h - height
+	 * @param radius - the rectangle's corner radius
+	 * @param offsetX - how far right the shadow falls
+	 * @param offsetY - how far down the shadow falls
+	 * @param blur - how far the soft edge spreads, in pixels; `0` is sharp
+	 */
+	shadow(
+		renderer: Renderer,
+		color: Paint,
+		cascade: number,
+		x: number,
+		y: number,
+		w: number,
+		h: number,
+		radius: number,
+		offsetX: number,
+		offsetY: number,
+		blur: number,
+	) {
+		if (w <= 0 || h <= 0) {
+			return;
+		}
+		const spread = Math.max(0, blur);
+		// one layer per two pixels of spread, enough for a smooth edge
+		const layers = spread > 0 ? Math.min(8, Math.ceil(spread / 2) + 1) : 1;
+		// layers of alpha `a` stacked n deep reach 1 - (1 - a)^n; solve for
+		// the colour's own alpha in the middle, where they all overlap
+		// the colour's own alpha, a string's included: `paint` parses it
+		const target = this.paint(renderer, color, 1);
+		const each = 1 - (1 - Math.min(target, 0.999)) ** (1 / layers);
+		const scale = target > 0 ? each / target : 0;
+		for (let i = 0; i < layers; i++) {
+			const grow = layers > 1 ? spread * (1 - i / (layers - 1)) : 0;
+			this.paint(renderer, color, cascade * scale);
+			this.rect(
+				renderer,
+				x + offsetX - grow,
+				y + offsetY - grow,
+				w + grow * 2,
+				h + grow * 2,
+				radius + grow,
+			);
+		}
+		// put the cascade back: what is drawn next, a skin above all, takes
+		// the global alpha as it finds it
+		renderer.setGlobalAlpha(cascade);
 	}
 
 	/**

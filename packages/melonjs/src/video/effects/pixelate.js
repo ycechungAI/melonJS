@@ -1,3 +1,4 @@
+import { FRAME_GLSL, FRAME_WGSL, FRAME_WGSL_MEMBERS } from "./frame.js";
 import ShaderEffect from "./shadereffect.js";
 
 /**
@@ -12,14 +13,14 @@ import ShaderEffect from "./shadereffect.js";
 const wgslFragment = `
 struct PixelateUniforms {
 	uPixelSize : f32,
-	uTextureSize : vec2f,
+	uTextureSize : vec2f,${FRAME_WGSL_MEMBERS}
 };
 @group(3) @binding(0) var<uniform> fx : PixelateUniforms;
-
+${FRAME_WGSL}
 fn apply(color : vec4f, uv : vec2f) -> vec4f {
 	let texel = fx.uPixelSize / fx.uTextureSize;
 	let snapped = texel * floor(uv / texel) + texel * 0.5;
-	return textureSample(uTexture, uSampler, snapped) * vColor;
+	return frameTexel(snapped) * vColor;
 }
 `;
 
@@ -40,27 +41,28 @@ export default class PixelateEffect extends ShaderEffect {
 	 * @param {Renderer} renderer - the current renderer instance
 	 * @param {object} [options] - effect options
 	 * @param {number} [options.size=4.0] - pixel size in texels (higher = more pixelated)
-	 * @param {number[]} [options.textureSize=[256, 256]] - texture dimensions [width, height]
+	 * @param {number[]} [options.textureSize] - the size, `[width, height]`, of the texture its pixel size is measured in; by default the texture it draws: a sprite's own, alone or with other effects and at any scale or zoom, the screen for a camera's effect
 	 */
 	constructor(renderer, options = {}) {
 		super(renderer, {
 			glsl: `
 			uniform float uPixelSize;
 			uniform vec2 uTextureSize;
+			${FRAME_GLSL}
 			vec4 apply(vec4 color, vec2 uv) {
 				vec2 texel = uPixelSize / uTextureSize;
 				vec2 snapped = texel * floor(uv / texel) + texel * 0.5;
-				return texture2D(uSampler, snapped) * vColor;
+				return frameTexel(snapped) * vColor;
 			}
 			`,
 			wgsl: wgslFragment,
 		});
 
 		this.size = options.size ?? 4.0;
-		const texSize = options.textureSize ?? [256, 256];
 
 		this.setUniform("uPixelSize", this.size);
-		this.setUniform("uTextureSize", new Float32Array(texSize));
+		// its pixel size is in texels: of the texture it draws, unless given one
+		this._initTextureSize(options.textureSize, [256, 256]);
 	}
 
 	/**
@@ -73,7 +75,8 @@ export default class PixelateEffect extends ShaderEffect {
 	}
 
 	/**
-	 * set the texture size
+	 * Measure the effect's pixel size in the texels of a texture of this size,
+	 * rather than of the texture it draws (the default)
 	 * @param {number} width - texture width in pixels
 	 * @param {number} height - texture height in pixels
 	 */

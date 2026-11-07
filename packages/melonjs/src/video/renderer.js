@@ -1,13 +1,22 @@
 import Path2D from "./../geometries/path2d.ts";
+import { warnOnce } from "../lang/console.js";
 import { Color } from "./../math/color.ts";
 import { Matrix3d } from "../math/matrix3d.ts";
 import { Vector2d } from "../math/vector2d.ts";
+import state from "../state/state.ts";
 import { CANVAS_ONRESIZE, emit } from "../system/event.ts";
+import { isAdvancedBlendMode } from "./blendmodes.js";
 import { createCanvas } from "./canvas_factory.js";
+import { LOCAL_MODE } from "./effects/local_space.js";
 import ToneMappingEffect, { CURVES } from "./effects/tonemap.js";
 import { Gradient } from "./gradient.js";
 import RenderState from "./renderstate.js";
 import CanvasRenderTarget from "./rendertarget/canvasrendertarget.js";
+import { is2dTransform, pixelSnap } from "./utils/pixel_snap.js";
+
+// scratch: the transform a renderable is drawn through (see
+// Renderer#_drawnTransform), `[a, b, c, d, e, f]`
+const drawnTransform = new Float64Array(6);
 
 /**
  * @import RenderTargetPool from "./rendertarget/render_target_pool.js";
@@ -104,6 +113,53 @@ export default class Renderer {
 		 * @internal
 		 */
 		this.customShader = undefined;
+
+		/**
+		 * Where each renderable whose effect chain is under way is, for its
+		 * passes to read (see `_setEffectSpace`); keyed by the renderable.
+		 * @type {WeakMap<object, object>}
+		 * @ignore
+		 * @internal
+		 */
+		this._effectSpaces = new WeakMap();
+
+		/**
+		 * Where the renderable whose chain is being composited is, for the
+		 * blits of that chain to hand its effects; `null` otherwise.
+		 * @type {object|null}
+		 * @ignore
+		 * @internal
+		 */
+		this._chainSpace = null;
+
+		/**
+		 * How many of the target's pixels each pixel of a renderable whose
+		 * chain is under way covers, across and down (see
+		 * `_setEffectSpace`); keyed by the renderable.
+		 * @type {WeakMap<object, number[]>}
+		 * @ignore
+		 * @internal
+		 */
+		this._effectScales = new WeakMap();
+
+		/**
+		 * How many of the target's pixels each pixel of the renderable whose
+		 * chain is being composited covers, for the blits of that chain to
+		 * measure its effects in; `null` otherwise.
+		 * @type {number[]|null}
+		 * @ignore
+		 * @internal
+		 */
+		this._chainScale = null;
+
+		/**
+		 * Whether an effect pass's capture runs bottom-up (WebGL's
+		 * framebuffers), which the space of a chain's passes accounts for.
+		 * @type {boolean}
+		 * @ignore
+		 * @internal
+		 */
+		this._captureFlipsY = false;
 
 		/**
 		 * The render target pool for post-effect processing (ping-pong FBOs).
@@ -277,7 +333,9 @@ export default class Renderer {
 		 * and {@link Renderer#strokeLine}. Subclasses override the
 		 * storage — `CanvasRenderer` proxies it to the underlying 2D
 		 * context via a getter/setter, while `WebGLRenderer` treats it
-		 * as a regular field consumed by its shape-stroke routines.
+		 * as a regular field consumed by its shape-stroke routines. On
+		 * every renderer it is part of the state {@link Renderer#save}
+		 * and {@link Renderer#restore} keep.
 		 * @type {number}
 		 * @default 1
 		 */
@@ -293,6 +351,14 @@ export default class Renderer {
 		this.projectionMatrix = new Matrix3d();
 
 		/**
+		 * what each nested {@link Renderer#_pixelSnapBegin} changed, to put
+		 * it back
+		 * @ignore
+		 */
+		this._pixelSnapStack = [];
+		this._pixelSnapDepth = 0;
+
+		/**
 		 * The distance fog installed by the camera currently drawing, or
 		 * `null` for none. Written once per camera by `Camera2d.draw`; read
 		 * per draw by the mesh batchers. Null for every camera that is not a
@@ -302,8 +368,14 @@ export default class Renderer {
 		 */
 		this._fog3d = null;
 
-		// default uvOffset
-		this.uvOffset = 0;
+		/**
+		 * true while a tile layer draws its tiles one by one, between
+		 * `beginTileLayer` and `endTileLayer`
+		 * @type {boolean}
+		 * @ignore
+		 * @internal
+		 */
+		this.drawingTiles = false;
 
 		/**
 		 * The normal-map texture associated with the next `drawImage` call,
@@ -327,11 +399,11 @@ export default class Renderer {
 		this.currentShininess = 0;
 
 		/**
-		 * Number of active `Light2d` instances uploaded to the lit batcher
-		 * for the current frame. Set by `setLightUniforms`. The WebGL
-		 * renderer's `drawImage` reads this to decide between the unlit
-		 * fast-path batcher (default) and the lit batcher (only when
-		 * lights AND a normal map are both in play).
+		 * Number of active `Light2d` instances for the camera drawing, set by
+		 * `setLightUniforms`. The GPU renderers' `drawImage` reads it to
+		 * choose between the unlit batcher (default) and the lit one (only
+		 * when lights AND a normal map are both in play); the Canvas renderer,
+		 * to say when a normal-mapped sprite is drawn unlit.
 		 * @type {number}
 		 */
 		this.activeLightCount = 0;
@@ -440,12 +512,25 @@ export default class Renderer {
 	 *
 	 * Two consequences worth knowing:
 	 *
-	 * - **A game that never calls `loader.preload()` is never warmed.** There
-	 *   is no other hook. Call this yourself if you load assets some other way
-	 *   and still want the warm-up.
+	 * - **A game that never calls `loader.preload()` never gets this part.**
+	 *   Call it yourself if you load assets some other way and still want it.
 	 * - It is deliberately NOT called from `Application.init()`. That runs
 	 *   before anything is on screen, so warming there would only lengthen a
 	 *   blank page instead of hiding behind a progress bar.
+	 *
+	 * This is the half that needs no renderable. The other half cannot run
+	 * here, because what it compiles depends on the renderable drawing: under
+	 * WebGPU a pipeline is keyed by blend mode, culling, transparency and the
+	 * format of the target as well as by shader. So, behind the same
+	 * `prewarm` setting, the renderer also warms a renderable when it gains
+	 * a post effect ({@link Renderable#addPostEffect}) and when it is added
+	 * to the world ({@link Container#addChild}): its effect pipelines, its
+	 * own draw, the render targets its effect chain composites through, and
+	 * the advanced blend machinery if its blend mode needs it. That work is
+	 * started after the caller's code has run and finishes off the frame, so
+	 * it pays off when a renderable is set up at least a frame before it is
+	 * first drawn: build pools and attach their effects when a stage starts,
+	 * not when the object is first shown.
 	 * @returns {Promise<void>} settles when the built-in programs are ready
 	 * @example
 	 * // the usual case: nothing to write. `preload()` warms on the way through
@@ -1134,6 +1219,316 @@ export default class Renderer {
 	}
 
 	/**
+	 * Tell a renderable's effects where it is, for those that place a
+	 * pattern on it (see effects/local_space.js). Called at the end of
+	 * `Renderable#preDraw`, once its own transform and anchor are applied,
+	 * so the transform maps its own rectangle (`pos`, `width`, `height`)
+	 * onto the target.
+	 *
+	 * Drawn with its one effect, the effect is told now, for the draws that
+	 * follow; with a chain, its passes are, as each one is composited (see
+	 * `_endEffectSpace`), along with the size of its pixels on the target
+	 * (see `_effectScaleOf`). A renderable this cannot place (no finite size, a
+	 * perspective view, a transform that is not 2D) leaves its effects in
+	 * the space `uv` always was.
+	 * @param {Renderable} renderable - the renderable about to draw
+	 * @ignore
+	 * @internal
+	 */
+	_setEffectSpace(renderable) {
+		// effects only run where there are shaders (not on Canvas)
+		if (this.shaderLanguage === null) {
+			return;
+		}
+		const effects = this._effectChainFor(renderable);
+		if (effects.length === 0) {
+			return;
+		}
+		if (this._usesPostEffectFastPath(renderable, effects)) {
+			const space = this._effectSpaceOf(renderable, LOCAL_MODE.sprite);
+			if (space !== null) {
+				effects[0]._setLocalSpace?.(space);
+			}
+			return;
+		}
+		const space = this._effectSpaceOf(renderable, LOCAL_MODE.chain);
+		if (space !== null) {
+			this._effectSpaces.set(renderable, space);
+		}
+		const scale = this._effectScaleOf(renderable);
+		if (scale !== null) {
+			this._effectScales.set(renderable, scale);
+		}
+	}
+
+	/**
+	 * The other end of `_setEffectSpace`, from `endPostEffect`, for a
+	 * renderable drawn with its one effect: that effect is put back to the
+	 * space `uv` always was, for whatever draws with it next.
+	 * @param {Renderable} renderable - the renderable done drawing
+	 * @param {object[]} effects - its enabled effect chain
+	 * @returns {boolean} true when it was drawn with its one effect
+	 * @ignore
+	 * @internal
+	 */
+	_endEffectSpace(renderable, effects) {
+		if (this._usesPostEffectFastPath(renderable, effects)) {
+			effects[0]._setLocalSpace?.(null);
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * A chain is about to be composited: its blits hand its effects where
+	 * the renderable is (`_chainSpace`) and the size of its pixels
+	 * (`_chainScale`), until `_clearChainSpace`. A camera's chain has
+	 * neither: its effects measure in the screen's pixels.
+	 * @param {Renderable} renderable - the renderable whose chain it is
+	 * @ignore
+	 * @internal
+	 */
+	_beginChainSpace(renderable) {
+		const own = renderable._postEffectManaged !== true;
+		this._chainSpace = own
+			? (this._effectSpaces.get(renderable) ?? null)
+			: null;
+		this._chainScale = own
+			? (this._effectScales.get(renderable) ?? null)
+			: null;
+		this._effectSpaces.delete(renderable);
+		this._effectScales.delete(renderable);
+	}
+
+	/**
+	 * Done compositing a chain: blits are back to the space `uv` always was.
+	 * @ignore
+	 * @internal
+	 */
+	_clearChainSpace() {
+		this._chainSpace = null;
+		this._chainScale = null;
+	}
+
+	/**
+	 * The transform the renderable about to draw is drawn through, as
+	 * `[a, b, c, d, e, f]` (x' = a x + c y + e, y' = b x + d y + f): its
+	 * transform, to the vertices it draws, or with `toTarget`, on to the
+	 * target's pixels (from its top-left corner) through the projection as
+	 * well: a camera's zoom, and where the camera sits on the screen.
+	 * `null` when it is not drawn onto a pixel grid (a perspective view, a
+	 * 3D transform) or is squashed to no area at all. The array is reused.
+	 * @param {boolean} toTarget - on to the target's pixels
+	 * @returns {Float64Array|null} the transform
+	 * @ignore
+	 * @internal
+	 */
+	_drawnTransform(toTarget) {
+		// a perspective view (Camera3d) has no pixel grid to be placed on
+		const p = this.projectionMatrix.val;
+		if (p[11] !== 0) {
+			return null;
+		}
+		// target x and y must come from the 2D part alone: a 3D view
+		// matrix mixes the depth in
+		const v = this.currentTransform.val;
+		if (v[8] !== 0 || v[9] !== 0) {
+			return null;
+		}
+		let a = v[0];
+		let b = v[1];
+		let c = v[4];
+		let d = v[5];
+		let e = v[12];
+		let f = v[13];
+		if (toTarget) {
+			// clip space to the target's pixels, y down
+			const canvas = this.getCanvas();
+			const hw = (canvas.width || 1) / 2;
+			const hh = (canvas.height || 1) / 2;
+			const pa = hw * p[0];
+			const pc = hw * p[4];
+			const pb = -hh * p[1];
+			const pd = -hh * p[5];
+			const pe = hw * (p[12] + 1);
+			const pf = hh * (1 - p[13]);
+			const ta = pa * a + pc * b;
+			const tb = pb * a + pd * b;
+			const tc = pa * c + pc * d;
+			const td = pb * c + pd * d;
+			const te = pa * e + pc * f + pe;
+			f = pb * e + pd * f + pf;
+			a = ta;
+			b = tb;
+			c = tc;
+			d = td;
+			e = te;
+		}
+		if (Math.abs(a * d - b * c) < 1e-12) {
+			return null;
+		}
+		const out = drawnTransform;
+		out[0] = a;
+		out[1] = b;
+		out[2] = c;
+		out[3] = d;
+		out[4] = e;
+		out[5] = f;
+		return out;
+	}
+
+	/**
+	 * How many of the target's pixels each pixel of the renderable about to
+	 * draw covers, across and down the target: what a pass of its chain
+	 * measures an effect's width, offset or size in (see
+	 * `ShaderEffect#_clearFrameRect`), so they come out in its own pixels
+	 * (a sprite's texels) as they do with one effect, at any scale or zoom.
+	 * `null` when it cannot be measured (see `_drawnTransform`).
+	 * @param {Renderable} renderable - the renderable
+	 * @returns {number[]|null} `[across, down]`, reused per renderable
+	 * @ignore
+	 * @internal
+	 */
+	_effectScaleOf(renderable) {
+		const m = this._drawnTransform(true);
+		if (m === null) {
+			return null;
+		}
+		let scale = renderable._effectScale;
+		if (scale === undefined) {
+			scale = [1, 1];
+			/**
+			 * @ignore
+			 * @internal
+			 */
+			renderable._effectScale = scale;
+		}
+		// the length of a pixel of its own, along each axis of the target
+		scale[0] = Math.hypot(m[0], m[2]);
+		scale[1] = Math.hypot(m[1], m[3]);
+		return scale;
+	}
+
+	/**
+	 * Where a renderable is, as the effects that place a pattern on it read
+	 * it (see effects/local_space.js): rows taking a target pixel to 0..1
+	 * across its rectangle, following its art; how a displacement there
+	 * moves the coordinate the effect samples at; and, for a chain, its
+	 * frame in its texture. `null` when it cannot be placed.
+	 * @param {Renderable} renderable - the renderable
+	 * @param {number} mode - LOCAL_MODE.sprite or LOCAL_MODE.chain
+	 * @returns {object|null} the space, reused per renderable
+	 * @ignore
+	 * @internal
+	 */
+	_effectSpaceOf(renderable, mode) {
+		const w = renderable.width;
+		const h = renderable.height;
+		if (!Number.isFinite(w) || !Number.isFinite(h) || w === 0 || h === 0) {
+			return null;
+		}
+		// with its one effect, it is placed by the vertices it draws, which
+		// the projection has not touched yet; a pass runs over the target
+		const m = this._drawnTransform(mode === LOCAL_MODE.chain);
+		if (m === null) {
+			return null;
+		}
+		const a = m[0];
+		const b = m[1];
+		const c = m[2];
+		const d = m[3];
+		const e = m[4];
+		const f = m[5];
+		const det = a * d - b * c;
+		// the frame drawn, for a sprite: its texture, and where in it
+		const frame = renderable.current;
+		const image = renderable.image;
+		const sprite =
+			frame?.offset !== undefined &&
+			image !== undefined &&
+			image !== null &&
+			renderable.offset !== undefined;
+		if (mode === LOCAL_MODE.sprite && !sprite) {
+			// drawn with its one effect, a renderable that is not a sprite
+			// samples what it draws in no way this can describe
+			return null;
+		}
+
+		let space = renderable._effectSpace;
+		if (space === undefined) {
+			space = {
+				mode,
+				localX: [0, 0, 0],
+				localY: [0, 0, 0],
+				toUV: [0, 0, 0, 0],
+				art: [0, 0, 1, 1],
+			};
+			/**
+			 * @ignore
+			 * @internal
+			 */
+			renderable._effectSpace = space;
+		}
+		space.mode = mode;
+
+		// the inverse of the transform, then across the rectangle at `pos`
+		const iw = 1 / (det * w);
+		const ih = 1 / (det * h);
+		space.localX[0] = d * iw;
+		space.localX[1] = -c * iw;
+		space.localX[2] = (c * f - d * e) * iw - renderable.pos.x / w;
+		space.localY[0] = -b * ih;
+		space.localY[1] = a * ih;
+		space.localY[2] = (b * e - a * f) * ih - renderable.pos.y / h;
+
+		let texW = 1;
+		let texH = 1;
+		if (sprite) {
+			texW = image.width || image.videoWidth || 1;
+			texH = image.height || image.videoHeight || 1;
+		}
+		const toUV = space.toUV;
+		if (mode === LOCAL_MODE.sprite) {
+			// across the sprite, in its texture: its frame's size, turned
+			// by the frame's own rotation in an atlas (see Sprite#draw)
+			const angle = frame.angle ?? 0;
+			const cos = Math.cos(-angle);
+			const sin = Math.sin(-angle);
+			toUV[0] = (w * cos) / texW;
+			toUV[1] = (w * sin) / texH;
+			toUV[2] = (-h * sin) / texW;
+			toUV[3] = (h * cos) / texH;
+		} else {
+			// across the renderable, in the capture: its transform onto the
+			// target, scaled to the capture (bottom-up on WebGL)
+			const canvas = this.getCanvas();
+			const W = canvas.width || 1;
+			const H = canvas.height || 1;
+			const yDir = this._captureFlipsY ? -1 : 1;
+			toUV[0] = (a * w) / W;
+			toUV[1] = (yDir * b * w) / H;
+			toUV[2] = (c * h) / W;
+			toUV[3] = (yDir * d * h) / H;
+		}
+
+		const art = space.art;
+		if (sprite) {
+			// the frame's whole rectangle (before any trim) in its texture
+			const trim = frame.trim;
+			art[0] = (renderable.offset.x + frame.offset.x - (trim?.x ?? 0)) / texW;
+			art[1] = (renderable.offset.y + frame.offset.y - (trim?.y ?? 0)) / texH;
+			art[2] = w / texW;
+			art[3] = h / texH;
+		} else {
+			art[0] = 0;
+			art[1] = 0;
+			art[2] = 1;
+			art[3] = 1;
+		}
+		return space;
+	}
+
+	/**
 	 * Begin capturing rendering to an offscreen buffer for post-effect processing.
 	 * Call endPostEffect() after rendering to blit the result to the screen.
 	 * No-op on Canvas renderer.
@@ -1178,9 +1573,10 @@ export default class Renderer {
 	 * @param {number} height - destination height
 	 * @param {ShaderEffect} shader - the shader effect to apply
 	 * @param {boolean} [keepBlend=false] - if true, keep current blend mode (for sprite compositing)
+	 * @param {number} [alpha=1] - the opacity to composite the blit at (0.0 to 1.0)
 	 */
 	// eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
-	blitEffect(source, x, y, width, height, shader, keepBlend) {}
+	blitEffect(source, x, y, width, height, shader, keepBlend, alpha) {}
 
 	/**
 	 * Sets the viewport for the renderer.
@@ -1244,26 +1640,6 @@ export default class Renderer {
 	}
 
 	/**
-	 * Upload the active scene lights to the lit sprite pipeline.
-	 *
-	 * Called once per camera per frame by `Camera2d.draw()` (after the
-	 * FBO is bound, before the world tree walk fires `Sprite.draw` for
-	 * any normal-mapped sprite). GPU renderers (WebGL today, WebGPU once
-	 * it lands) override this to pack the lights into the lit shader's
-	 * uniform buffers; the Canvas renderer cannot do per-pixel normal-map
-	 * lighting and silently ignores the call. The first time a non-empty
-	 * light list is passed in Canvas mode, a one-shot console warning is
-	 * emitted.
-	 *
-	 * Stage stays renderer-agnostic by passing the raw scene data —
-	 * lights iterable and ambient color — and letting the renderer
-	 * decide how to encode them.
-	 * @param {Iterable<object>} [lights] - active `Light2d` instances; falsy/empty no-ops
-	 * @param {object} [ambient] - ambient lighting color (0..255 RGB)
-	 * @param {number} [translateX=0] - world-to-screen X translate (matches `Camera2d.draw()`)
-	 * @param {number} [translateY=0] - world-to-screen Y translate
-	 */
-	/**
 	 * Install the distance fog for the camera about to draw, or clear it with
 	 * `null`.
 	 *
@@ -1283,29 +1659,59 @@ export default class Renderer {
 		this._fog3d = fog ?? null;
 	}
 
+	/**
+	 * Upload the active scene lights to the lit sprite pipeline.
+	 *
+	 * Called once per camera per frame by `Camera2d.draw()` (after the
+	 * FBO is bound, before the world tree walk fires `Sprite.draw` for
+	 * any normal-mapped sprite). The WebGL and WebGPU renderers override
+	 * this to pack the lights into the lit shader's uniform buffers. A light
+	 * only reaches a sprite with a normal map, on those renderers alone: the
+	 * Canvas renderer cannot light per pixel, so it only counts the lights,
+	 * and says once when it draws a sprite with a normal map under them.
+	 *
+	 * Stage stays renderer-agnostic by passing the raw scene data —
+	 * lights iterable and ambient color — and letting the renderer
+	 * decide how to encode them.
+	 * @param {Iterable<object>} [lights] - active `Light2d` instances; falsy/empty no-ops
+	 * @param {object} [ambient] - ambient lighting color (0..255 RGB)
+	 * @param {number} [translateX=0] - world-to-screen X translate (matches `Camera2d.draw()`)
+	 * @param {number} [translateY=0] - world-to-screen Y translate
+	 */
 	// eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
 	setLightUniforms(lights, ambient, translateX, translateY) {
-		if (this._litPipelineWarned || !lights) {
+		// count them: an array's length, or by iterating
+		let count = 0;
+		if (lights) {
+			if (typeof lights.length === "number") {
+				count = lights.length;
+			} else if (typeof lights[Symbol.iterator] === "function") {
+				const it = lights[Symbol.iterator]();
+				while (!it.next().done) {
+					count++;
+				}
+			}
+		}
+		this.activeLightCount = count;
+	}
+
+	/**
+	 * On a renderer that cannot light per pixel (Canvas): say once that a
+	 * sprite with a normal map, drawn while lights shine, is drawn without
+	 * that lighting. A sprite without one is drawn unlit by every renderer,
+	 * so it has nothing to say about it.
+	 * @ignore
+	 * @internal
+	 */
+	_warnUnlitNormalMap() {
+		if (this.activeLightCount === 0) {
 			return;
 		}
-		// detect "non-empty" via `Set.size`, array length, or by iterating
-		const hasAny =
-			(typeof lights.size === "number" && lights.size > 0) ||
-			(typeof lights.length === "number" && lights.length > 0) ||
-			(typeof lights[Symbol.iterator] === "function" &&
-				!lights[Symbol.iterator]().next().done);
-		if (hasAny) {
-			/**
-			 * @ignore
-			 * @internal
-			 */
-			this._litPipelineWarned = true;
-			console.warn(
-				"melonJS: Light2d normal-map lighting requires a GPU backend " +
-					"(WebGL 2 or WebGPU); the Canvas fallback renders sprites without " +
-					"per-pixel lighting. Light2d glow and stage lighting still draw.",
-			);
-		}
+		warnOnce(
+			"melonJS: Light2d normal-map lighting requires a GPU backend " +
+				"(WebGL 2 or WebGPU); the Canvas fallback renders sprites without " +
+				"per-pixel lighting. Light2d glow and stage lighting still draw.",
+		);
 	}
 
 	/**
@@ -1335,6 +1741,38 @@ export default class Renderer {
 	}
 
 	/**
+	 * Draw the stage's ambient darkness over a view, with a hole for each
+	 * light that follows its {@link Light2d#softness}: the soft-cutout path of
+	 * {@link Stage#drawLighting}, taken when any light has a softness. Called
+	 * with the renderer translated to world space. The base implementation is
+	 * a no-op; concrete renderers override.
+	 * @param {Color} color - the ambient color, its alpha the darkness
+	 * @param {Iterable<Light2d>} lights - the stage's active lights
+	 * @param {number} x - left of the view, in world units
+	 * @param {number} y - top of the view, in world units
+	 * @param {number} width - width of the view, in world units
+	 * @param {number} height - height of the view, in world units
+	 * @param {number} pixelWidth - width of the view on the screen, in pixels
+	 * @param {number} pixelHeight - height of the view on the screen, in pixels
+	 * @ignore
+	 * @internal
+	 */
+	/* eslint-disable no-unused-vars, @typescript-eslint/no-unused-vars */
+	drawAmbientLight(
+		color,
+		lights,
+		x,
+		y,
+		width,
+		height,
+		pixelWidth,
+		pixelHeight,
+	) {
+		// base no-op; concrete renderers override
+	}
+	/* eslint-enable no-unused-vars, @typescript-eslint/no-unused-vars */
+
+	/**
 	 * Draw a TMX tile layer. Default behavior:
 	 *   - if `layer.canvasRenderer` is set (preRender bake), blit the cached
 	 *     offscreen canvas in a single `drawImage` call;
@@ -1349,35 +1787,70 @@ export default class Renderer {
 	 */
 	drawTileLayer(layer, rect) {
 		if (layer.canvasRenderer) {
-			// clamp the source rect to the cached canvas bounds — the
-			// visible region can start inside the layer (camera scrolled
-			// in from the origin) and extend past the layer's right /
-			// bottom edge, so the source width must be reduced by
-			// `rect.pos.*` to avoid reading past the canvas
-			const width = Math.min(rect.width, layer.width - rect.pos.x);
-			const height = Math.min(rect.height, layer.height - rect.pos.y);
+			// the visible region, in the baked canvas, whose top left corner
+			// sits at (_preRenderX, _preRenderY): clamped to the canvas, as
+			// the region can start before it or run past it
+			const canvas = layer.canvasRenderer.getCanvas();
+			const originX = layer._preRenderX ?? 0;
+			const originY = layer._preRenderY ?? 0;
+			const sx = Math.max(rect.pos.x - originX, 0);
+			const sy = Math.max(rect.pos.y - originY, 0);
+			const width =
+				Math.min(rect.pos.x + rect.width - originX, canvas.width) - sx;
+			const height =
+				Math.min(rect.pos.y + rect.height - originY, canvas.height) - sy;
 			if (width <= 0 || height <= 0) {
 				return;
 			}
 			this.drawImage(
-				layer.canvasRenderer.getCanvas(),
-				rect.pos.x,
-				rect.pos.y,
+				canvas,
+				sx,
+				sy,
 				width,
 				height,
-				rect.pos.x,
-				rect.pos.y,
+				sx + originX,
+				sy + originY,
 				width,
 				height,
 			);
 			return;
 		}
-		layer.getRenderer().drawTileLayer(this, layer, rect);
+		// a tile keeps to its own tile while the layer draws (see
+		// `beginTileLayer`): no seam between two of them
+		this.beginTileLayer();
+		try {
+			layer.getRenderer().drawTileLayer(this, layer, rect);
+		} finally {
+			this.endTileLayer();
+		}
 	}
+
+	/**
+	 * Called before a tile layer draws its tiles one by one, and paired with
+	 * {@link Renderer#endTileLayer} after. Between the two, the GPU
+	 * renderers keep every sample half a texel inside its tile, so that
+	 * filtering never blends the next tile of the tileset, or the spacing
+	 * around it, into a tile's edge: a seam between two tiles. The base, and
+	 * so the Canvas renderer, does nothing.
+	 * @ignore
+	 * @internal
+	 */
+	beginTileLayer() {}
+
+	/**
+	 * Called after a tile layer has drawn its tiles (see
+	 * {@link Renderer#beginTileLayer}). The base does nothing.
+	 * @ignore
+	 * @internal
+	 */
+	endTileLayer() {}
 
 	/**
 	 * Set the current fill & stroke style color.
 	 * By default, or upon reset, the value is set to #000000.
+	 * The colour's own alpha applies to fills and strokes, times the global
+	 * alpha; it does not change {@link Renderer#getGlobalAlpha}, nor how an
+	 * image is drawn.
 	 * @param {Color|string|Gradient} color - css color value or a Gradient object
 	 */
 	// eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
@@ -1454,11 +1927,25 @@ export default class Renderer {
 	}
 
 	/**
-	 * return the current global alpha
+	 * return the current global alpha, the same as {@link Renderer#getGlobalAlpha}.
+	 * It is not the alpha of the current colour: as on a 2D context, a
+	 * translucent {@link Renderer#setColor} leaves it alone.
 	 * @returns {number}
 	 */
 	globalAlpha() {
-		return this.currentColor.alpha;
+		return this.getGlobalAlpha();
+	}
+
+	/**
+	 * The current colour packed for a vertex stream, at the alpha a fill or a
+	 * stroke is drawn at: the colour's own alpha times the global alpha.
+	 * @ignore
+	 * @internal
+	 * @returns {number} the colour as a 32-bit ARGB integer
+	 */
+	packedFillColor() {
+		const color = this.currentColor;
+		return color.toUint32(color.alpha * this.getGlobalAlpha());
 	}
 
 	/**
@@ -1541,6 +2028,327 @@ export default class Renderer {
 		}
 		return effects;
 	}
+
+	/**
+	 * How many effects a renderable's chain has to have render targets for:
+	 * every one attached, not just the ones enabled right now.
+	 *
+	 * Sizing the pool by the enabled count meant the ping-pong target was
+	 * only created on the frame a second effect was switched on, which is a
+	 * frame in the middle of play by construction (a hit flash, a power-up),
+	 * and creating a target there is a stall in that frame. A disabled effect
+	 * is one the game intends to turn on, so its target is made up front.
+	 * @param {Renderable} renderable - the renderable whose chain this is
+	 * @param {ShaderEffect[]} effects - its enabled chain, from `_effectChainFor`
+	 * @returns {number} the number of chain slots to provision
+	 * @ignore
+	 * @internal
+	 */
+	_postEffectCapacity(renderable, effects) {
+		return Math.max(effects.length, renderable.postEffects.length);
+	}
+
+	/**
+	 * Warm, ahead of its first draw, what a renderable will need: the
+	 * pipelines, programs and render targets that would otherwise be built
+	 * on the frame it first shows up.
+	 *
+	 * Called when a renderable gains a post effect
+	 * ({@link Renderable#addPostEffect}) and when it enters the world
+	 * ({@link Container#addChild}), the two moments its draw becomes
+	 * knowable. Deferred to a microtask so it runs once the caller's own code
+	 * has finished, which is when the rest of the picture exists: a
+	 * renderable usually gets its effect before it is added to the world,
+	 * sized, or given its blend mode, and those all decide which pipeline its
+	 * draw will ask for. Several requests in one task collapse into one
+	 * warm-up per renderable.
+	 *
+	 * Honours the `prewarm` setting, the same switch as the loading-screen
+	 * warm-up.
+	 * @param {Renderable} renderable - the renderable to warm for
+	 * @ignore
+	 * @internal
+	 */
+	_queueWarm(renderable) {
+		// no shader language means nothing to compile (the Canvas backend)
+		if (this.settings?.prewarm !== true || this.shaderLanguage == null) {
+			return;
+		}
+		if (this._warmHosts === undefined) {
+			/**
+			 * renderables waiting for the next post-effect warm-up
+			 * @type {Set<Renderable>}
+			 * @ignore
+			 * @internal
+			 */
+			this._warmHosts = new Set();
+		}
+		if (this._warmHosts.size === 0) {
+			queueMicrotask(() => {
+				this._flushWarm();
+			});
+		}
+		this._warmHosts.add(renderable);
+	}
+
+	/**
+	 * Run the warm-ups queued by {@link Renderer#_queueWarm}.
+	 * @param {boolean} [stage=false] - true when a stage is being entered,
+	 *   which warms its cameras' grading as well
+	 * @returns {Promise<void>[]} what they started that is still being built
+	 * @ignore
+	 * @internal
+	 */
+	_flushWarm(stage = false) {
+		const hosts = this._warmHosts === undefined ? [] : [...this._warmHosts];
+		// already run, by `_whenWarmed`, ahead of the microtask that queued it
+		if (hosts.length === 0 && !stage) {
+			return [];
+		}
+		this._warmHosts?.clear();
+		// The cameras' grading when a stage is entered, or when a camera is
+		// itself among what changed (an effect added to it moves the grading
+		// along its chain). Not for every flush: one runs after each burst of
+		// `addChild` during play, and a graded camera is not what changed.
+		const cameras =
+			stage ||
+			hosts.some((host) => {
+				return host?._postEffectManaged === true;
+			});
+		// read once for the whole flush: the cameras do not change under it
+		this._warmFog = this._warmFogStates();
+		try {
+			return this._collectWarms(() => {
+				for (const host of hosts) {
+					// A warm-up that fails changes nothing: the draw builds what
+					// it needs on first use, exactly as it did before there was
+					// one.
+					try {
+						this._warmRenderable(host);
+					} catch {
+						// deliberately silent, see above
+					}
+				}
+				if (cameras) {
+					try {
+						this._warmCameraColorMatrices();
+					} catch {
+						// as above: the draw builds it on first use
+					}
+				}
+			});
+		} finally {
+			this._warmFog = undefined;
+		}
+	}
+
+	/**
+	 * Run `warm` and hand back what it started that is still being built,
+	 * as one promise each. Every warm-up on this base is done by the time it
+	 * returns, so nothing.
+	 * @param {Function} warm - issues the warm-ups
+	 * @returns {Promise<void>[]} the warm-ups still on their way
+	 * @ignore
+	 * @internal
+	 */
+	_collectWarms(warm) {
+		warm();
+		return [];
+	}
+
+	/**
+	 * Run the queued warm-ups now, and say when they are built.
+	 *
+	 * What a state change waits on before drawing the stage it has just built
+	 * (see `state.change`). A warm-up on its own does not keep the first
+	 * frame from compiling: the frame comes some milliseconds after the stage
+	 * is built, and a pipeline still compiling then is compiled again, on the
+	 * spot, by the draw that needs it. Holding the frame until they land is
+	 * what lets them do their job.
+	 *
+	 * Only what this flush asked for is waited on, not every warm-up in
+	 * flight: one a game started for later (an effect attached ahead of
+	 * time, a level's own preload) is not this stage's to wait for.
+	 * @returns {Promise<void>|undefined} settles once they are built, or
+	 *   `undefined` when nothing is being built and the frame can draw now
+	 * @ignore
+	 * @internal
+	 */
+	_whenWarmed() {
+		let waits;
+		try {
+			waits = this._flushWarm(true);
+		} catch {
+			// a warm-up that fails must not keep the state from starting
+			return undefined;
+		}
+		if (waits.length === 0) {
+			return undefined;
+		}
+		return Promise.all(waits).then(() => {});
+	}
+
+	/**
+	 * Warm each of the current stage's cameras for its built-in colour
+	 * matrix.
+	 *
+	 * A camera applies `colorMatrix` as one more effect at the end of its
+	 * chain, but it built that effect inside its own `draw`, on the first
+	 * frame the matrix was not identity, and appends it for that frame only.
+	 * Nothing ever attached it, so nothing warmed it: its program (WebGL) or
+	 * its pipelines (WebGPU) were built in the first frame of a stage that
+	 * grades its camera. Made here instead, once the stage has been built,
+	 * and warmed where `draw` runs it, last in the camera's chain.
+	 * @ignore
+	 * @internal
+	 */
+	_warmCameraColorMatrices() {
+		const cameras = state.current()?.cameras;
+		if (cameras === undefined) {
+			return;
+		}
+		for (const camera of cameras.values()) {
+			const effect = camera._syncColorMatrixEffect?.(this);
+			if (effect == null) {
+				continue;
+			}
+			const effects = camera.postEffects;
+			effects.push(effect);
+			try {
+				this._warmPostEffects(camera);
+			} finally {
+				effects.splice(effects.indexOf(effect), 1);
+			}
+		}
+	}
+
+	/**
+	 * Whether the meshes being warmed will draw with fog, without it, or both.
+	 *
+	 * Fog is a pipeline variant, and which one a mesh draws with is decided by
+	 * the camera drawing it: each camera installs its own fog on the renderer
+	 * as it starts drawing ({@link Renderer#setFog}), and the frame clears it.
+	 * So the renderer's own value is no answer here. A warm-up runs between
+	 * frames, while the renderer still holds the fog of whichever camera drew
+	 * LAST, which after a state change is the previous screen's: a loading
+	 * screen has none, so every mesh of a fogged scene was warmed without it
+	 * and then compiled with it, synchronously, on its first frame.
+	 *
+	 * Asked of the current stage's cameras instead, through the same
+	 * `_fog3dState` the draw installs, so the warm-up and the draw cannot
+	 * disagree. A stage with a fogged camera and a clear one (a minimap, say)
+	 * warms both variants. Fog switched on in a later frame than the scene was
+	 * built in is not seen here, and is built on that frame as before.
+	 * @returns {boolean[]} the fog states to warm, each `true` for fogged
+	 * @ignore
+	 * @internal
+	 */
+	_warmFogStates() {
+		let fogged = false;
+		let clear = false;
+		const cameras = state.current()?.cameras;
+		if (cameras !== undefined) {
+			for (const camera of cameras.values()) {
+				if (camera._fog3dState?.(this) != null) {
+					fogged = true;
+				} else {
+					clear = true;
+				}
+			}
+		}
+		if (!fogged && !clear) {
+			// no stage to ask: what the renderer holds is the best guess left
+			return [this._fog3d != null];
+		}
+		return clear && fogged ? [false, true] : [fogged];
+	}
+
+	/**
+	 * Warm one renderable, and everything under it when it is a container:
+	 * adding a container to the world brings its whole subtree in with it,
+	 * without an `addChild` per descendant.
+	 * @param {Renderable} renderable - the renderable to warm for
+	 * @ignore
+	 * @internal
+	 */
+	_warmRenderable(renderable) {
+		// a renderable destroyed between being queued and this running has
+		// no effects left, and nothing here builds anything without a draw
+		// to build for
+		if (renderable == null) {
+			return;
+		}
+		if (renderable.postEffects?.length > 0) {
+			this._warmPostEffects(renderable);
+		}
+		this._warmDraw(renderable);
+		if (isAdvancedBlendMode(renderable.blendMode)) {
+			this._warmAdvancedBlend();
+		}
+		const children = renderable.children;
+		if (Array.isArray(children)) {
+			for (const child of children) {
+				this._warmRenderable(child);
+			}
+		}
+	}
+
+	/**
+	 * Warm everything one renderable's post effects will need. Each backend
+	 * knows what that is; this base has no shaders, so nothing.
+	 * @param {Renderable} renderable - the renderable to warm for
+	 * @ignore
+	 * @internal
+	 */
+	// eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
+	_warmPostEffects(renderable) {}
+
+	/**
+	 * Warm the renderable's own draw, the one it makes without any effect.
+	 * Only meaningful where that is a pipeline keyed by draw state; nothing
+	 * to do on this base.
+	 * @param {Renderable} renderable - the renderable to warm for
+	 * @ignore
+	 * @internal
+	 */
+	// eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
+	_warmDraw(renderable) {}
+
+	/**
+	 * Warm the advanced blend modes' machinery: the blend shader, built on
+	 * the first draw that uses one of those modes, and its offscreen target.
+	 * Nothing to do on this base.
+	 * @ignore
+	 * @internal
+	 */
+	_warmAdvancedBlend() {}
+
+	/**
+	 * Whether a renderable draws through `drawMesh`, where a lone effect is
+	 * spliced into the mesh shader instead of being drawn as a quad.
+	 * Duck-typed on fields only a `Mesh` carries, so the renderer does not
+	 * have to import the renderable classes. An instanced mesh never hosts
+	 * an effect: its shading is a separate family that knows nothing of one.
+	 * @param {Renderable} renderable - the renderable to test
+	 * @returns {boolean} true for a non-instanced mesh
+	 * @ignore
+	 * @internal
+	 */
+	_hostsMeshEffect(renderable) {
+		return (
+			typeof renderable.cullBackFaces === "boolean" &&
+			renderable.indices !== undefined &&
+			renderable.instanceLayout === undefined
+		);
+	}
+
+	/**
+	 * Warm the tone curve's pipeline once it exists. Nothing to do on a
+	 * backend that compiles it in its constructor.
+	 * @ignore
+	 * @internal
+	 */
+	_warmToneMap() {}
 
 	/**
 	 * Set the tone curve applied at the end of the camera's chain.
@@ -1636,6 +2444,7 @@ export default class Renderer {
 			// renderer-owned: a camera tearing its own effects down must not
 			// free the program every other camera is still using
 			this._toneMapEffect.shared = true;
+			this._warmToneMap();
 		}
 		this._toneMapEffect.setExposure(this.settings.toneMappingExposure ?? 1);
 		this._toneMapEffect.setWhite(this.settings.toneMappingWhite ?? 0);
@@ -1677,8 +2486,9 @@ export default class Renderer {
 	/**
 	 * Resolve the default texture filter **mode** for this renderer, decoupled
 	 * from {@link Renderer#setAntiAlias} (which controls polygon-edge MSAA on GPU
-	 * backends). Honors the `textureFilter` setting (`"nearest"` / `"linear"`),
-	 * falling back to the `antiAlias` setting when it's `"auto"` (the default).
+	 * backends). Honors the `textureFilter` setting (`"nearest"` / `"linear"`,
+	 * `"linear-mipmap"` resolving to `"linear"`), falling back to the
+	 * `antiAlias` setting when it's `"auto"` (the default).
 	 *
 	 * Backend-neutral on purpose: it returns the mode as a string so each GPU
 	 * backend maps it to its own enum (WebGL `gl.LINEAR` / `gl.NEAREST`, a future
@@ -1691,8 +2501,36 @@ export default class Renderer {
 		if (mode === "linear" || mode === "nearest") {
 			return mode;
 		}
+		// linear, plus mipmaps where `wantsMipmaps` allows them
+		if (mode === "linear-mipmap") {
+			return "linear";
+		}
 		// "auto" (or unset) → follow the antiAlias setting
 		return this.settings.antiAlias ? "linear" : "nearest";
+	}
+
+	/**
+	 * Whether a texture drawn in 2D samples its mipmaps: the
+	 * `"linear-mipmap"` filter, over a source the backend keeps a full chain
+	 * for. Not a video, which would have to rebuild it every frame, nor a
+	 * texture the engine renders into (a `TextureResource`), whose smaller
+	 * levels are never filled. The backend also requires the texture's own
+	 * filter to be linear. Checks the filter first, so that with any other
+	 * the texture is never looked at.
+	 * @param {object} texture - the texture drawn (a `TextureAtlas`)
+	 * @returns {boolean} true to sample the mipmaps
+	 * @ignore
+	 * @internal
+	 */
+	wantsMipmaps(texture) {
+		if (this.settings.textureFilter !== "linear-mipmap") {
+			return false;
+		}
+		const source = texture.getTexture();
+		return (
+			typeof source.videoWidth === "undefined" &&
+			typeof source.upload !== "function"
+		);
 	}
 
 	/**
@@ -1700,7 +2538,12 @@ export default class Renderer {
 	 * decoupled from {@link Renderer#setAntiAlias}. The base implementation just
 	 * records the setting (the Canvas renderer has no per-texture filtering);
 	 * GPU backends override this to re-apply the filter to live textures.
-	 * @param {"auto"|"nearest"|"linear"} [mode="auto"] - `"auto"` follows `antiAlias`
+	 * @param {"auto"|"nearest"|"linear"|"linear-mipmap"} [mode="auto"] - `"auto"` follows `antiAlias`
+	 * @example
+	 * // smooth, and from the mipmaps wherever something is drawn small
+	 * app.renderer.setTextureFilter("linear-mipmap");
+	 * // back to the antiAlias setting
+	 * app.renderer.setTextureFilter("auto");
 	 */
 	setTextureFilter(mode = "auto") {
 		this.settings.textureFilter = mode;
@@ -1713,6 +2556,94 @@ export default class Renderer {
 	 */
 	setProjection(matrix) {
 		this.projectionMatrix.copy(matrix);
+	}
+
+	/**
+	 * With `subPixel` off, put the draw of a local box on whole pixels: its
+	 * edges, after the current transform, are rounded to the nearest pixel,
+	 * and the draw is moved and stretched by less than a pixel to fit (see
+	 * `video/utils/pixel_snap.js` for the rule every renderer follows). Lasts
+	 * until {@link Renderer#_pixelSnapEnd}, which gets the returned value.
+	 *
+	 * Calls nest: a draw made inside another one's snap (a gradient fill,
+	 * drawn as an image) is already on whole pixels, and is left as it is.
+	 *
+	 * This adjusts `currentTransform`, which the GPU batchers apply as they
+	 * take the draw's vertices; the Canvas renderer overrides it.
+	 * @ignore
+	 * @param {number} x - the local box the draw covers
+	 * @param {number} y - the local box the draw covers
+	 * @param {number} w - the local box the draw covers
+	 * @param {number} h - the local box the draw covers
+	 * @param {number} [pad=0] - added around the box, in local units: half the
+	 * line width of a stroke
+	 * @returns {boolean} whether anything changed
+	 */
+	_pixelSnapBegin(x, y, w, h, pad = 0) {
+		if (!this._snapsToPixels()) {
+			return false;
+		}
+		const v = this.currentTransform.val;
+		const k = pixelSnap(v[0], v[1], v[4], v[5], v[12], v[13], x, y, w, h, pad);
+		if (k === null) {
+			return false;
+		}
+		let saved = this._pixelSnapStack[this._pixelSnapDepth];
+		if (saved === undefined) {
+			saved = this._pixelSnapStack[this._pixelSnapDepth] = new Float64Array(6);
+		}
+		this._pixelSnapDepth++;
+		saved[0] = v[0];
+		saved[1] = v[4];
+		saved[2] = v[12];
+		saved[3] = v[1];
+		saved[4] = v[5];
+		saved[5] = v[13];
+		v[0] *= k[0];
+		v[4] *= k[0];
+		v[12] = k[0] * v[12] + k[1];
+		v[1] *= k[2];
+		v[5] *= k[2];
+		v[13] = k[2] * v[13] + k[3];
+		return true;
+	}
+
+	/**
+	 * Whether what is drawn now is snapped to whole pixels: `subPixel` is off,
+	 * and the current transform is a 2D one without rotation or skew, under a
+	 * flat projection (a perspective view, a `Camera3d`'s, has no pixel grid
+	 * to snap to).
+	 * @ignore
+	 * @returns {boolean}
+	 */
+	_snapsToPixels() {
+		const v = this.currentTransform.val;
+		return (
+			this.settings.subPixel === false &&
+			this.projectionMatrix.val[11] === 0 &&
+			is2dTransform(v) &&
+			v[1] === 0 &&
+			v[4] === 0
+		);
+	}
+
+	/**
+	 * Undo {@link Renderer#_pixelSnapBegin}.
+	 * @ignore
+	 * @param {boolean} snapped - what `_pixelSnapBegin` returned
+	 */
+	_pixelSnapEnd(snapped) {
+		if (snapped !== true) {
+			return;
+		}
+		const saved = this._pixelSnapStack[--this._pixelSnapDepth];
+		const v = this.currentTransform.val;
+		v[0] = saved[0];
+		v[4] = saved[1];
+		v[12] = saved[2];
+		v[1] = saved[3];
+		v[5] = saved[4];
+		v[13] = saved[5];
 	}
 
 	/**
@@ -1937,12 +2868,25 @@ export default class Renderer {
 	scale(x, y) {}
 
 	/**
-	 * Set the renderer global alpha (0..1) for subsequent draw calls.
-	 * Implemented by subclasses.
+	 * Set the renderer global alpha (0..1) for subsequent draw calls. It
+	 * multiplies everything drawn, and is part of the state that
+	 * {@link Renderer#save} and {@link Renderer#restore} keep. It is
+	 * separate from the alpha of the colour given to {@link Renderer#setColor}:
+	 * a fill or a stroke is drawn at both multiplied together, and an image
+	 * at the global alpha (times the tint) alone.
 	 * @param {number} alpha - opacity value in the [0..1] range
 	 */
-	// eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
-	setGlobalAlpha(alpha) {}
+	setGlobalAlpha(alpha) {
+		this.renderState.globalAlpha = alpha;
+	}
+
+	/**
+	 * Return the renderer global alpha, as set by {@link Renderer#setGlobalAlpha}.
+	 * @returns {number} global alpha value, in the [0..1] range
+	 */
+	getGlobalAlpha() {
+		return this.renderState.globalAlpha;
+	}
 
 	/**
 	 * Fill an axis-aligned rectangle with the current color.

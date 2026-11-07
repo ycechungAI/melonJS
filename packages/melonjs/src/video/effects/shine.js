@@ -1,3 +1,4 @@
+import { rgba } from "./rgba.js";
 import ShaderEffect from "./shadereffect.js";
 
 /**
@@ -11,7 +12,7 @@ import ShaderEffect from "./shadereffect.js";
 // names, picked by the ShaderEffect base per renderer.shaderLanguage
 const wgslFragment = `
 struct ShineUniforms {
-	uShineColor : vec3f,
+	uShineColor : vec4f,
 	uShineWidth : f32,
 	uShineSpeed : f32,
 	uShineIntensity : f32,
@@ -20,7 +21,6 @@ struct ShineUniforms {
 	uPulseDepth : f32,
 	uPulseSpeed : f32,
 	uTime : f32,
-	uUVYDir : f32,
 };
 @group(3) @binding(0) var<uniform> fx : ShineUniforms;
 
@@ -30,20 +30,22 @@ fn apply(color : vec4f, uv : vec2f) -> vec4f {
 	}
 	// Optional brightness pulse on the base color.
 	let pulse = (1.0 - fx.uPulseDepth) + fx.uPulseDepth * sin(fx.uTime * fx.uPulseSpeed);
-	// Directional UV arithmetic — an ABSOLUTE coordinate, so a flipped
-	// space mirrors the position (1 - uv.y), not merely the sign (see the
-	// ShaderEffect uUVYDir docs; the renderer feeds the space's direction)
-	let y = select(uv.y, 1.0 - uv.y, fx.uUVYDir < 0.0);
-	// Project uv along the sweep axis; tile by uShineBands (wrap-around
-	// distance keeps sweeps gapless — see the GLSL twin's rationale).
-	let pos = uv.x * cos(fx.uShineAngle) + y * sin(fx.uShineAngle);
+	// Project the coordinate in its texture along the sweep axis, as it
+	// always was (on an atlas sprite, across the atlas), top to bottom on
+	// every path: a capture the camera's effects read runs bottom-up on
+	// WebGL. Tile by uShineBands (wrap-around distance keeps sweeps
+	// gapless — see the GLSL twin's rationale).
+	let art = ME_art;
+	let y = select(art.y, 1.0 - art.y, ME.mode < 0.5 && ME.ydir < 0.0);
+	let pos = art.x * cos(fx.uShineAngle) + y * sin(fx.uShineAngle);
 	let localX = fract(pos * fx.uShineBands);
 	let sweep = fract(fx.uTime * fx.uShineSpeed);
 	let d = abs(localX - sweep);
 	let dist = min(d, 1.0 - d);
 	let glint = smoothstep(fx.uShineWidth, 0.0, dist) * fx.uShineIntensity;
 	// premultiplied-alpha discipline mirrors the GLSL twin
-	let result = color.rgb * pulse + fx.uShineColor * glint * color.a;
+	// the color's alpha scales the glint
+	let result = color.rgb * pulse + fx.uShineColor.rgb * glint * color.a * fx.uShineColor.a;
 	return vec4f(result, color.a);
 }
 `;
@@ -56,6 +58,11 @@ fn apply(color : vec4f, uv : vec2f) -> vec4f {
  * Set `bands` > 1 to tile the sweep into N parallel glints (useful for the
  * "etched grooves" look of a coin's rim). An optional subtle brightness
  * pulse can be layered on top via `pulseDepth` — set to 0 to disable.
+ *
+ * The sweep, its bands and its width are measured across the texture the
+ * sprite is drawn from: on a sprite cut from an atlas, across the atlas, so
+ * a single sweep crosses the sprite only part of the time. With other
+ * effects after it, it stays on the sprite.
  *
  * The `time` uniform must be updated each frame for the animation.
  * @category Effects
@@ -83,12 +90,15 @@ fn apply(color : vec4f, uv : vec2f) -> vec4f {
  *
  * // update each frame
  * coinShine.setTime(timer.getTime() / 1000);
+ * @example
+ * // a gentler glint: the color's alpha scales its strength
+ * mySprite.addPostEffect(new ShineEffect(renderer, { color: [1.0, 1.0, 1.0, 0.4] }));
  */
 export default class ShineEffect extends ShaderEffect {
 	/**
 	 * @param {Renderer} renderer - the current renderer instance
 	 * @param {object} [options] - effect options
-	 * @param {number[]} [options.color=[1.0, 1.0, 1.0]] - shine color as [r, g, b] (0.0–1.0)
+	 * @param {number[]} [options.color=[1.0, 1.0, 1.0]] - shine color as [r, g, b] or [r, g, b, a] (0.0–1.0); the alpha scales the glint
 	 * @param {number} [options.speed=0.5] - sweeps per second
 	 * @param {number} [options.width=0.15] - glint half-width as a fraction of one tile (0.0–1.0)
 	 * @param {number} [options.intensity=0.5] - maximum highlight strength
@@ -100,7 +110,7 @@ export default class ShineEffect extends ShaderEffect {
 	constructor(renderer, options = {}) {
 		super(renderer, {
 			glsl: `
-			uniform vec3  uShineColor;
+			uniform vec4  uShineColor;
 			uniform float uShineWidth;
 			uniform float uShineSpeed;
 			uniform float uShineIntensity;
@@ -109,18 +119,18 @@ export default class ShineEffect extends ShaderEffect {
 			uniform float uPulseDepth;
 			uniform float uPulseSpeed;
 			uniform float uTime;
-			uniform float uUVYDir;
 			vec4 apply(vec4 color, vec2 uv) {
 				if (color.a == 0.0) return color;
 				// Optional brightness pulse on the base color.
 				float pulse = (1.0 - uPulseDepth) + uPulseDepth * sin(uTime * uPulseSpeed);
-				// Directional UV arithmetic — an ABSOLUTE coordinate, so a
-				// flipped space mirrors the position (1.0 - uv.y), not just
-				// the sign (see the ShaderEffect uUVYDir docs); without it,
-				// a vertical sweep runs backwards on bottom-up captures
-				float y = uUVYDir < 0.0 ? 1.0 - uv.y : uv.y;
-				// Project uv along the sweep axis (uShineAngle).
-				float pos = uv.x * cos(uShineAngle) + y * sin(uShineAngle);
+				// Project the coordinate in its texture along the sweep axis
+				// (uShineAngle), as it always was: on an atlas sprite, across
+				// the atlas. Top to bottom on every path: a capture the
+				// camera's effects read runs bottom-up on WebGL, and with
+				// several effects the coordinate is the sprite's frame
+				vec2 art = ME_art;
+				float y = ME_mode < 0.5 && ME_ydir < 0.0 ? 1.0 - art.y : art.y;
+				float pos = art.x * cos(uShineAngle) + y * sin(uShineAngle);
 				// Tile by uShineBands so we get N parallel glints in unison.
 				// localX and sweep both live in [0,1] tile-space; the
 				// wrap-around distance (min(d, 1-d)) lets the glint exit
@@ -138,17 +148,15 @@ export default class ShineEffect extends ShaderEffect {
 				// added glint by color.a so it stays premultiplied too, but
 				// do NOT scale the whole result by color.a (that would dim
 				// antialiased edges twice).
-				vec3 result = color.rgb * pulse + uShineColor * glint * color.a;
+				// the color's alpha scales the glint
+				vec3 result = color.rgb * pulse + uShineColor.rgb * glint * color.a * uShineColor.a;
 				return vec4(result, color.a);
 			}
 			`,
 			wgsl: wgslFragment,
 		});
 
-		this.setUniform(
-			"uShineColor",
-			new Float32Array(options.color ?? [1.0, 1.0, 1.0]),
-		);
+		this.setUniform("uShineColor", rgba(options.color ?? [1.0, 1.0, 1.0]));
 		this.setUniform("uShineWidth", options.width ?? 0.15);
 		this.setUniform("uShineSpeed", options.speed ?? 0.5);
 		this.setUniform("uShineIntensity", options.intensity ?? 0.5);
@@ -157,17 +165,14 @@ export default class ShineEffect extends ShaderEffect {
 		this.setUniform("uPulseDepth", options.pulseDepth ?? 0.0);
 		this.setUniform("uPulseSpeed", options.pulseSpeed ?? 3.0);
 		this.setUniform("uTime", 0.0);
-		// top-down default; the batchers feed the actual space direction
-		// per draw through _setUVYDir (bottom-up pooled captures on GL)
-		this.setUniform("uUVYDir", 1.0);
 	}
 
 	/**
 	 * set the shine color
-	 * @param {number[]} color - shine color as [r, g, b] (0.0–1.0)
+	 * @param {number[]} color - shine color as [r, g, b] or [r, g, b, a] (0.0–1.0); the alpha scales the glint
 	 */
 	setColor(color) {
-		this.setUniform("uShineColor", new Float32Array(color));
+		this.setUniform("uShineColor", rgba(color));
 	}
 
 	/**

@@ -1,4 +1,5 @@
 import { warning } from "../../lang/console.js";
+import { getImage } from "../../loader/loader.js";
 import { vector2dPool } from "../../math/vector2d.ts";
 import { collision } from "../../physics/collision.js";
 import Container from "../../renderable/container.js";
@@ -22,6 +23,7 @@ import TMXTilesetGroup from "./TMXTilesetGroup.js";
 import {
 	applyObjectOpacity,
 	applyTMXProperties,
+	applyTransparentColor,
 	parseTintColor,
 	propagateBlendMode,
 	resolveEmbeddedImage,
@@ -87,7 +89,14 @@ function readImageLayer(map, data, z) {
 		Object.assign(
 			{
 				name: data.name,
-				image: data.image,
+				// its transparent color applied, when Tiled gives one
+				image:
+					typeof data.transparentcolor === "string"
+						? (applyTransparentColor(
+								getImage(data.image),
+								data.transparentcolor,
+							) ?? data.image)
+						: data.image,
 				ratio: vector2dPool.get(ratioX, ratioY),
 				tint: parseTintColor(data.tintcolor),
 				z: z,
@@ -141,6 +150,33 @@ function refreshAbsoluteBounds(container) {
 			refreshAbsoluteBounds(child);
 		}
 	});
+}
+
+/**
+ * the highest object id in a map's layers, group layers included
+ * @param {object[]} [layers] - the map's (or a group's) layer data
+ * @returns {number} the highest id, or 0 when there is none
+ * @ignore
+ */
+function highestObjectId(layers) {
+	let highest = 0;
+	if (!Array.isArray(layers)) {
+		return highest;
+	}
+	for (const layer of layers) {
+		if (Array.isArray(layer.objects)) {
+			for (const object of layer.objects) {
+				const id = +object.id;
+				if (id > highest) {
+					highest = id;
+				}
+			}
+		}
+		if (Array.isArray(layer.layers)) {
+			highest = Math.max(highest, highestObjectId(layer.layers));
+		}
+	}
+	return highest;
 }
 
 /**
@@ -285,8 +321,11 @@ export default class TMXTileMap {
 		// Check if map is from melon editor
 		this.isEditor = data.editor === "melon-editor";
 
-		// object id
-		this.nextobjectid = +data.nextobjectid || undefined;
+		// the first id free for objects added at runtime: what the map says,
+		// or, as Tiled maps may leave it out, one past the highest object id
+		// actually in it, so a GUID made from the counter cannot meet one made
+		// from a map object's id (#1809)
+		this.nextobjectid = +data.nextobjectid || highestObjectId(data.layers) + 1;
 
 		// hex/iso properties
 		this.hexsidelength = +data.hexsidelength;
@@ -593,6 +632,11 @@ export default class TMXTileMap {
 					} else if (settings.opacity < 1) {
 						applyObjectOpacity(obj, settings.opacity);
 					}
+				}
+
+				// the layers the cameras draw it on, from a custom property
+				if (typeof settings.visibilityLayer === "number") {
+					obj.visibilityLayer = settings.visibilityLayer;
 				}
 
 				// propagate group blend mode to child objects

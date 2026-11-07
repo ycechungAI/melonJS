@@ -38,12 +38,18 @@ export default class TMXIsometricRenderer extends TMXRenderer {
 	 * @internal
 	 */
 	getBounds(layer) {
-		const bounds = layer instanceof TMXLayer ? boundsPool.get() : this.bounds;
+		const isLayer = layer instanceof TMXLayer;
+		const bounds = isLayer ? boundsPool.get() : this.bounds;
+		// a layer can have more cells than the map (an infinite map's): its
+		// first column still starts at the map's origin, and its rows reach
+		// left of it
+		const cols = isLayer ? layer.cols : this.cols;
+		const rows = isLayer ? layer.rows : this.rows;
 		bounds.setMinMax(
+			this.originX - rows * this.hTilewidth,
 			0,
-			0,
-			(this.cols + this.rows) * (this.tilewidth / 2),
-			(this.cols + this.rows) * (this.tileheight / 2),
+			this.originX + cols * this.hTilewidth,
+			(cols + rows) * this.hTileheight,
 		);
 		return bounds;
 	}
@@ -81,7 +87,9 @@ export default class TMXIsometricRenderer extends TMXRenderer {
 	 * @internal
 	 */
 	adjustPosition(obj) {
-		const tileX = obj.x / this.hTilewidth;
+		// Tiled stores isometric object positions unprojected, measured in
+		// tileheight along both map axes
+		const tileX = obj.x / this.tileheight;
 		const tileY = obj.y / this.tileheight;
 		const isoPos = vector2dPool.get();
 
@@ -89,6 +97,12 @@ export default class TMXIsometricRenderer extends TMXRenderer {
 
 		obj.x = isoPos.x;
 		obj.y = isoPos.y;
+
+		// unless their tileset says otherwise, tile objects are aligned to
+		// their bottom center on isometric maps
+		if (typeof obj.gid === "number") {
+			this.alignTileObject(obj, "bottom");
+		}
 
 		vector2dPool.release(isoPos);
 	}

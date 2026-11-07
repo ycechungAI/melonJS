@@ -1,6 +1,6 @@
 ---
 name: melonjs-particles-and-trails
-description: "Use this skill for particle effects and motion trails in melonJS — ParticleEmitter configuration, burst versus stream emission, the referenceSpace frame of reference introduced in 20.2, 3D particle motion through elevation and minSpread/maxSpread in 20.8, and the Trail renderable. Covers the emitter that silently does nothing until you call an emit method. Triggers on: Trail3d, ribbon, exhaust trail, speed streak, ski track, tyre mark, ribbonNormal, ParticleEmitter, particles, burstParticles, streamParticles, referenceSpace, ParticleEmitterSettings, elevation, minSpread, maxSpread, spawn area, Trail, explosion, smoke, sparks, debris, ring, exhaust, emitter."
+description: "Use this skill for particle effects and motion trails in melonJS — ParticleEmitter configuration, burst versus stream emission, the referenceSpace frame of reference introduced in 20.2, 3D particle motion through elevation and minSpread/maxSpread in 20.8, and the Trail renderable. Covers the emitter that silently does nothing until you call an emit method. Triggers on: Trail3d, ribbon, exhaust trail, speed streak, ski track, tyre mark, ribbonNormal, ParticleEmitter, particles, particle editor, tune particles, spawn depth, volume, burstParticles, streamParticles, referenceSpace, ParticleEmitterSettings, elevation, minSpread, maxSpread, spawn area, Trail, explosion, smoke, sparks, debris, ring, exhaust, emitter, tintOverLife, colour over life, color over life, flame, fire."
 license: MIT
 ---
 
@@ -27,6 +27,50 @@ emitter.burstParticles();      // one shot
 `streamParticles(ms)` takes an optional run time; without one it uses the
 `duration` setting, which defaults to `Infinity` — a stream runs until
 `stopStream()`. `burstParticles(n)` launches `n`, or `totalParticles`.
+
+Without an `image`, particles are white squares of `textureSize` pixels (8 by
+default), coloured by `tint`. Every such emitter draws the renderer's one
+shared white pixel, stretched, so an emitter per explosion or a `reset()` on
+every tweak costs no texture.
+
+## Tuning an effect: the Particle Editor
+
+Settings are easier to find by eye than by reasoning. The
+[Particle Editor](https://melonjs.github.io/melonJS/examples/#/particle-editor)
+runs one emitter live, with every setting on a slider, from a preset (fire,
+smoke, rain, explosions, 3D bursts and rings…), a built-in texture or a sprite
+(sheet) of your own, under a 2D camera or an orbiting 3D one. It writes out the
+matching `new ParticleEmitter(...)` call, listing only what differs from the
+defaults, and the same settings as JSON, in the emitter's own units, to load at
+run time:
+
+```js
+// preloaded with { name: "smoke-fx", type: "json", src: "data/fx/smoke.json" }
+const effect = loader.getJSON("smoke-fx");
+const emitter = new ParticleEmitter(x, y, {
+    ...effect.settings,
+    // no `image` for the plain square: `getImage` would give null
+    ...(effect.image ? { image: loader.getImage(effect.image) } : {}),
+});
+```
+
+Point a user there when they are tuning numbers by trial and error.
+
+It covers every setting that changes how one emitter looks, but not:
+
+- **Layered effects.** It shows one emitter at a time. A campfire (flames,
+  sparks, smoke) or an explosion (flash, debris, smoke) is several emitters
+  at the same spot: tune each in the editor, then add them side by side,
+  the one drawn on top last (or with a higher `z`).
+- **Trails.** `Trail` and `Trail3d` are separate renderables; see below.
+- **Code-only settings.** `onComplete`, `autoDestroyOnComplete`,
+  `accurateBounds`, and a `Container` as `referenceSpace` (it offers
+  `"local"` and `"world"`). `textureAdditive` is left out: `blendMode`
+  replaces it.
+- **Changes at run time.** Calling `burstParticles()` when something
+  happens, or assigning `emitter.blendMode` while particles are alive, is
+  game code. Its "moving emitter" option previews the common case: an
+  emitter attached to something that moves.
 
 ## Sprite-sheet particles
 
@@ -60,7 +104,8 @@ pair it with `framewidth`/`frameheight` or it does nothing.
 
 Note the variety is in SHAPE, not colour. `tint` belongs to the emitter, so
 every particle from one emitter is tinted alike however many frames it picks
-between.
+between. For a colour that changes over each particle's life, use
+`tintOverLife` (below) rather than drawing one frame per colour.
 
 Frame dimensions must be positive integers that fit inside the image, and an
 explicit `frames` sequence must be nonempty and contain valid integer indices.
@@ -68,6 +113,35 @@ Invalid configurations throw `RangeError` before changing an emitter during
 `reset()`. The frame sequence is copied on construction/reset; resetting changes
 only future particles, so ones already alive finish with their original image,
 frame size and sequence.
+
+## Colour over life: `tintOverLife`
+
+`tintOverLife` is the list of tints a particle takes over its life: the first at
+birth, the last at the end, evenly spaced and blended in between. Give as many
+CSS colours as you like (repeat one to hold it longer); it replaces `tint`.
+
+```js
+// a flame: white hot, then orange, then deep red as it rises and dies
+const flame = new ParticleEmitter(x, y, {
+    image: softDot,                     // a white texture takes the tints as they are
+    tintOverLife: ["#fff3b0", "#ffc455", "#ff8a26", "#e45414", "#a0280c"],
+    textureAdditive: true,
+});
+```
+
+- **Colour only.** Opacity is still the built-in fade over the particle's life;
+  the alpha of a colour in the list is ignored. On an additive emitter, a darker
+  colour is a dimmer particle, so fold a "fainter" step into the colour itself.
+- **32 steps.** However many colours, the blend is taken in 32 steps, the same on
+  every renderer: a particle changes colour at most 32 times. That matters on
+  Canvas, which keeps a tinted copy of the texture for every colour it is asked
+  to draw: 32 at most per texture.
+- **Author the texture white.** `tint` multiplies, so a coloured texture muddies
+  every step.
+- It works alongside sprite-sheet `frames` (one picks the image, the other the
+  colour), and a list that is empty, not an array, or holds a non-string throws a
+  `TypeError` from the constructor or `reset()`, which then leaves the emitter as
+  it was. The list is copied: change it through `reset()`.
 
 ## Where particles are born
 
@@ -77,15 +151,33 @@ fountain and wrong for an explosion: additive sprites piled on one point clip
 all three channels there however well they are tinted, so a burst reads as one
 bright flash rather than as debris.
 
-Give it the size of whatever broke. The area is measured from the emitter's own
-position, NOT centred on it, so offset by half or the whole burst sits down and
-to the right of its source:
+Give it the size of whatever broke. The constructor centres the area on the
+point it is given, so pass the centre of the source:
 
 ```js
 const area = radius * 2;
-const emitter = new ParticleEmitter(x - area / 2, y - area / 2, {
-    width: area, height: area,
-});
+const emitter = new ParticleEmitter(x, y, { width: area, height: area });
+```
+
+After that, `pos` is the area's top-left corner, as on any renderable. To move
+the emitter to a new source later, offset by half, or the burst sits down and
+to the right of it:
+
+```js
+emitter.pos.set(x - area / 2, y - area / 2);   // re-aimed at (x, y)
+emitter.burstParticles();
+```
+
+Under a `Camera3d`, `depth` (20.13) gives the area its third side: each
+particle is born at a random depth within it, centered on the emitter's own
+depth, unlike `width` and `height`. Without it every particle starts on one
+plane facing the camera, so rain or dust seen from the side is a flat sheet. A
+2D camera does not show depth, though with an order-dependent blend the
+particles are still sorted by it. It is the spawn box's size, not the
+emitter's `depth` property, which is where the emitter sits along Z.
+
+```js
+new ParticleEmitter(x, y, { width: 600, height: 20, depth: 400 });   // a volume of rain
 ```
 
 ## Particles in 3D
@@ -290,6 +382,8 @@ answer when you want discrete puffs rather than a continuous ribbon.
 | symptom | cause |
 |---|---|
 | trail looks flat under a `Camera3d` | `Trail` is 2D; use `Trail3d` |
+| particles clutter a minimap or a second camera | every camera draws them: set the emitter's `visibilityLayer` to a layer that camera's `cullMask` leaves out (see `melonjs-camera-and-drawing`) |
+| a camera that draws only the emitter's layer shows no particles | before 20.13 particles stayed on layer 1 whatever their emitter was on; update |
 | `Trail3d` draws nothing, with a console warning | it needs a `Camera3d`; the app's `cameraClass` is still the 2D default |
 | `trail.tint` does nothing | `Trail` cannot be tinted at all; `Trail3d` can |
 | assigning `maxPoints` throws | `Trail3d` sizes its geometry once; pass `length` to the constructor |
@@ -298,10 +392,14 @@ answer when you want discrete puffs rather than a continuous ribbon.
 | the cloud follows a moving emitter | default `referenceSpace: "local"` — use `"world"` for trails |
 | particles do not travel far enough | settings tuned pre-20.2, when drawn travel was doubled |
 | one-shot emitters accumulate | missing `autoDestroyOnComplete: true` |
+| every particle of an emitter is the same colour all its life | `tint` is one value for the emitter: use `tintOverLife` for a colour that changes as it ages |
+| a `tintOverLife` colour's transparency has no effect | the list sets the colour only; opacity is the particle's fade |
+| `tintOverLife` colours look muddy | the texture is coloured; author it white so the tints come through as given |
 | frame rate drops with many effects | an emitter per event instead of one re-aimed emitter |
 | a 3D burst is invisible under a `Camera3d` | before 20.8 a particle was culled at twice its depth; update |
 | the whole burst launches from one pixel | `width`/`height` are the spawn area and default to `1` |
-| the burst sits down-right of its source | the spawn area starts at the emitter's position; offset by half |
+| the burst sits down-right of its source | the emitter was moved by setting `pos` to the source: `pos` is the area's top-left corner, so offset by half (only the constructor centres it) |
+| the burst sits up-left of its source | the constructor was given the top-left corner: it centres the area on (x, y), so pass the centre |
 | the middle of a burst goes white | additive sprites overlapping — `textureAdditive: false`, or spread them |
 | debris chunks look like squares | the default sprite is a filled square; pass your own `image` |
 | a ring tilts with the camera instead of staying on a surface | the launch axis is in WORLD axes, not the camera basis |

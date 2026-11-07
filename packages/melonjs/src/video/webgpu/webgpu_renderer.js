@@ -1,3 +1,5 @@
+import { warnOnce } from "../../lang/console.js";
+import Light2d from "../../lighting/light2d.ts";
 import { shaderList } from "../../loader/cache.js";
 import { Color, colorPool } from "../../math/color.ts";
 import { Matrix3d } from "../../math/matrix3d.ts";
@@ -18,9 +20,11 @@ import {
 	normalizeBlendMode,
 	reportedBlendMode,
 } from "../blendmodes.js";
+import AmbientLightEffect from "../effects/ambientlight.js";
 import BlendEffect from "../effects/blendEffect.js";
 import { meshHostingBlocker } from "../effects/mesh_splice.js";
 import RadialGradientEffect from "../effects/radialGradient.js";
+import { frameClampMode } from "../gpu/frame.js";
 import { Gradient } from "../gradient.js";
 import Renderer from "../renderer.js";
 import RenderTargetPool from "../rendertarget/render_target_pool.js";
@@ -28,7 +32,9 @@ import WebGPURenderTarget from "../rendertarget/webgpurendertarget.js";
 import { createAtlas, TextureAtlas } from "../texture/atlas.js";
 import TextureCache from "../texture/cache.js";
 import { dashPath, dashSegments } from "../utils/dash.js";
+import { pointsBox } from "../utils/pixel_snap.js";
 import {
+	arcSweep,
 	generateJoinCircles,
 	generateTriangleFan,
 } from "../utils/tessellation.js";
@@ -57,7 +63,6 @@ import WebGPUTextureStore from "./texture/store.js";
  * additional import for TypeScript
  * @import {ApplicationSettings} from "../../application/settings.ts";
  * @import {Ellipse} from "../../geometries/ellipse.ts";
- * @import Light2d from "../../lighting/light2d.ts";
  * @import {Line} from "../../geometries/line.ts";
  * @import {Matrix2d} from "../../math/matrix2d.ts";
  * @import {Polygon} from "../../geometries/polygon.ts";
@@ -341,11 +346,6 @@ export default class WebGPURenderer extends Renderer {
 		 * @internal
 		 */
 		this._advancedBlendParent = null;
-		/**
-		 * @ignore
-		 * @internal
-		 */
-		this._advancedBlendWarned = new Set();
 
 		// consumed as the next pass's colorLoadOp "clear" (fresh target)
 		/** @ignore
@@ -375,11 +375,6 @@ export default class WebGPURenderer extends Renderer {
 		/** @ignore
 		 * @internal */
 		this.viewportRect = null;
-		// one-shot warn: a customShader (ShaderEffect fast path) cannot host
-		// a mesh draw on this backend
-		/** @ignore
-		 * @internal */
-		this.meshEffectWarned = false;
 		// the canvas GPUTexture handle of the current frame — kept beside its
 		// view because captureFrame copies from the TEXTURE, not the view
 		/** @ignore
@@ -398,6 +393,16 @@ export default class WebGPURenderer extends Renderer {
 		/** @ignore
 		 * @internal */
 		this.effectProjectionStack = [];
+
+		/**
+		 * The opacity each (possibly nested) post-effect pass was begun
+		 * under, by depth: the pass draws its content opaque, and the last
+		 * blit of a renderable's chain composites it at this.
+		 * @type {number[]}
+		 * @ignore
+		 * @internal
+		 */
+		this.effectAlphaStack = [];
 		/** @ignore
 		 * @internal */
 		this.effectPassDepth = 0;
@@ -743,6 +748,9 @@ export default class WebGPURenderer extends Renderer {
 		this.uniformRing.reset();
 		this.effectUniformArena.reset();
 		this.frameId++;
+		// from here to the submit, a pipeline built on demand is a compile
+		// paid inside the frame — the cache counts those
+		this.pipelineCache.inFrame = true;
 		// a frame always begins on the canvas, outside any effect bracket
 		// (an exception that escaped between begin/endPostEffect last frame
 		// must not leave the projection stack wound up)
@@ -1256,6 +1264,580 @@ export default class WebGPURenderer extends Renderer {
 	}
 
 	/**
+	 * The post-effect render-target pool, created on first use.
+	 * @returns {RenderTargetPool} the pool
+	 * @ignore
+	 * @internal
+	 */
+	_postEffectPool() {
+		// capture targets rasterize the scene — under antiAlias they carry
+		// the pass sample count so MSAA composes with post-effects (the GL
+		// twin resolves via blitFramebuffer). Ping-pong intermediates draw
+		// screen-aligned effect quads only and stay single-sampled.
+		/**
+		 * @ignore
+		 * @internal
+		 */
+		this._renderTargetPool ??= new RenderTargetPool(
+			(w, h, isCapture, index) => {
+				// Indices 0/1 are the CAMERA chain; 2 and up are sprite chains.
+				// Only the camera pair takes the half-float format, and that is
+				// a correctness limit rather than thrift: a sprite chain's final
+				// blit composites source-over with `ONE_MINUS_SRC_ALPHA`, and
+				// additive blending accumulates ALPHA past 1 in a float target,
+				// so that factor goes negative and subtracts the backdrop. The
+				// camera chain blits without that factor, and is the documented
+				// place for these effects anyway.
+				return new WebGPURenderTarget(this, w, h, {
+					sampleCount: isCapture === true ? this.canvasSampleCount : 1,
+					format: index < 2 ? this._colorFormat : this.preferredFormat,
+				});
+			},
+		);
+		return this._renderTargetPool;
+	}
+
+	/**
+	 * The pipeline-cache family of an effect's WGSL realization, building its
+	 * module and layouts first if this device has not seen it yet.
+	 * @param {ShaderEffect} effect - an effect with a valid WGSL realization
+	 * @returns {string} the family key
+	 * @ignore
+	 * @internal
+	 */
+	_effectFamily(effect) {
+		const realization = effect.wgslRealization;
+		if (
+			realization.gpu === null ||
+			realization.gpu.epoch !== this.pipelineCache.epoch
+		) {
+			buildEffectGPU(this, effect, realization);
+		}
+		return realization.gpu.key;
+	}
+
+	/**
+	 * Run `warm` and hand back the pipelines it asked for that are still
+	 * compiling, which on this backend is every one not already cached.
+	 * @param {Function} warm - issues the warm-ups
+	 * @returns {Promise<void>[]} one promise per pipeline on its way
+	 * @override
+	 * @ignore
+	 * @internal
+	 */
+	_collectWarms(warm) {
+		if (this.pipelineCache == null) {
+			return super._collectWarms(warm);
+		}
+		return this.pipelineCache.collect(warm);
+	}
+
+	/**
+	 * Build, off the frame, every pipeline a renderable's post effects can
+	 * draw with, and the render targets its chain will composite through.
+	 *
+	 * Which pipeline an effect draws with depends on where it sits: an
+	 * effect alone on a sprite draws the sprite itself (blended with the
+	 * sprite's own mode), one alone on a mesh is spliced into the mesh
+	 * shader, and one in a chain is a full-screen blit into either the next
+	 * offscreen target or the one below. Its colour format depends on that
+	 * target too, and under `hdr` the camera's targets are half-float while
+	 * the canvas is not. So this warms every position the effect can reach
+	 * with the effects ATTACHED, enabled or not, since turning one on moves
+	 * the others: enabling a camera's second effect sends its first one
+	 * from the canvas into the ping-pong target, a different pipeline.
+	 *
+	 * Each key is composed by the same function the draw uses, from the
+	 * renderable's own state (blend mode, culling, transparency, fog), so
+	 * what is built here is what the draw will ask for.
+	 * @param {Renderable} renderable - the renderable to warm for
+	 * @override
+	 * @ignore
+	 * @internal
+	 */
+	_warmPostEffects(renderable) {
+		if (!this._canWarm()) {
+			return;
+		}
+		const cache = this.pipelineCache;
+		const effects = renderable.postEffects.filter((fx) => {
+			return fx?.wgslRealization?.valid === true;
+		});
+		const count = effects.length;
+		if (count === 0) {
+			return;
+		}
+		const isCamera = renderable._postEffectManaged === true;
+		const needsCapture = renderable.postEffectNeedsCapture === true;
+		const pooled = isCamera || count > 1 || needsCapture;
+		const canvas = [this.canvasFormat, this.canvasSampleCount];
+		const scene = this._sceneTargets();
+		const blit = (family, blendMode, [format, sampleCount]) => {
+			void cache.warm(
+				family,
+				"triangle-list",
+				blendMode,
+				true,
+				"none",
+				undefined,
+				format,
+				sampleCount,
+			);
+		};
+
+		if (pooled) {
+			// the targets a chain composites through, made now rather than
+			// on the frame the chain first runs or grows a second effect
+			const pool = this._postEffectPool();
+			const { width, height } = this.getCanvas();
+			pool.reserve(
+				isCamera,
+				this._postEffectCapacity(renderable, effects),
+				width,
+				height,
+			);
+		}
+
+		if (isCamera) {
+			for (const fx of effects) {
+				const family = this._effectFamily(fx);
+				// mid-chain (another effect, or the tone curve, after it) into
+				// the camera's ping-pong target, or last onto the canvas —
+				// toggling either neighbour moves it between the two
+				blit(family, "none", [this._colorFormat, 1]);
+				blit(family, "none", canvas);
+			}
+			this._warmToneMap();
+			return;
+		}
+
+		const blendMode = renderable.blendMode ?? "normal";
+		const meshHost = this._hostsMeshEffect(renderable);
+		for (let i = 0; i < count; i++) {
+			const fx = effects[i];
+			const family = this._effectFamily(fx);
+			if (!needsCapture) {
+				// alone on the renderable (the only effect, or the only one
+				// left enabled): no offscreen pass, the effect IS the draw
+				if (meshHost) {
+					this._warmHostedEffect(renderable, fx, scene);
+				} else {
+					for (const target of scene) {
+						blit(family, blendMode, target);
+					}
+				}
+			}
+			if (pooled) {
+				// last in the chain: composited back with the renderable's
+				// own blend mode, onto whatever was below it
+				for (const target of scene) {
+					blit(family, blendMode, target);
+				}
+				// mid-chain: into the chain's own ping-pong target
+				if (i < count - 1) {
+					blit(family, "none", [this.preferredFormat, 1]);
+				}
+			}
+		}
+		if (pooled && !meshHost) {
+			// and the renderable's own content, drawn into the chain's capture
+			// target before any effect runs
+			blit("quad", blendMode, [this.preferredFormat, this.canvasSampleCount]);
+		}
+	}
+
+	/**
+	 * The `[format, sampleCount]` targets an ordinary renderable can be drawn
+	 * into: the canvas, or the camera's capture target when the camera runs
+	 * an effect chain of its own. The two differ only in format, and only
+	 * under `hdr`, so this is usually one target.
+	 * @returns {Array<Array<string|number>>} the targets
+	 * @ignore
+	 * @internal
+	 */
+	_sceneTargets() {
+		const canvas = [this.canvasFormat, this.canvasSampleCount];
+		return this._colorFormat === this.canvasFormat
+			? [canvas]
+			: [canvas, [this._colorFormat, this.canvasSampleCount]];
+	}
+
+	/**
+	 * Whether the warm-ups can run: a live device and a pipeline cache.
+	 * @returns {boolean} true when ready
+	 * @ignore
+	 * @internal
+	 */
+	_canWarm() {
+		return (
+			this.pipelineCache != null &&
+			typeof this.device !== "undefined" &&
+			this.isContextValid !== false
+		);
+	}
+
+	/**
+	 * The mesh batcher a mesh draws through.
+	 * @param {object} mesh - the mesh
+	 * @returns {object|undefined} the batcher
+	 * @ignore
+	 * @internal
+	 */
+	_meshBatcherFor(mesh) {
+		return this.batchers.get(
+			mesh.lit === true && this.batchers.has("litMesh") ? "litMesh" : "mesh",
+		);
+	}
+
+	/**
+	 * Warm the pipelines a mesh will draw with when it hosts an effect: the
+	 * effect spliced into the mesh shader.
+	 * @param {object} mesh - the hosting mesh
+	 * @param {ShaderEffect} effect - the effect it hosts
+	 * @param {Array<Array<string|number>>} scene - the targets it can land on
+	 * @ignore
+	 * @internal
+	 */
+	_warmHostedEffect(mesh, effect, scene) {
+		const realization = effect.wgslRealization;
+		if (
+			meshHostingBlocker(realization.builtins, realization.textures, "wgsl") !==
+			null
+		) {
+			return;
+		}
+		const batcher = this._meshBatcherFor(mesh);
+		if (
+			batcher === undefined ||
+			realization.meshModule(batcher.shaderSource?.() ?? "") === null
+		) {
+			return;
+		}
+		// the family is registered by the batcher's own lookup, so the warm-up
+		// and the draw cannot disagree on which module and layout it is
+		const previous = batcher.hostedEffect;
+		let family;
+		batcher.hostedEffect = effect;
+		try {
+			family = batcher.activeShaderKey();
+		} finally {
+			batcher.hostedEffect = previous;
+		}
+		this._warmMeshDraw(mesh, family, scene);
+	}
+
+	/**
+	 * Warm the pipelines one mesh draw resolves to, keyed on the mesh's own
+	 * culling, depth test and transparency exactly as `drawMesh` keys them:
+	 * the opaque pass, the transparent pass, or both when `transparent` is
+	 * left unset (blended whenever the mesh is faded).
+	 * @param {object} mesh - the mesh
+	 * @param {string} family - the pipeline family it draws with
+	 * @param {Array<Array<string|number>>} scene - the targets it can land on
+	 * @ignore
+	 * @internal
+	 */
+	_warmMeshDraw(mesh, family, scene) {
+		// the fog states the stage's cameras will draw it under, see
+		// `_warmFogStates`; outside a flush, what the renderer holds
+		for (const fog of this._warmFog ?? [this._fog3d != null]) {
+			this._warmMeshDrawFog(mesh, family, scene, fog);
+		}
+	}
+
+	/**
+	 * {@link WebGPURenderer#_warmMeshDraw} for one fog state.
+	 * @param {object} mesh - the mesh
+	 * @param {string} family - the pipeline family it draws with
+	 * @param {Array<Array<string|number>>} scene - the targets it can land on
+	 * @param {boolean} fog - whether it draws fogged
+	 * @ignore
+	 * @internal
+	 */
+	_warmMeshDrawFog(mesh, family, scene, fog) {
+		const culling = mesh.cullBackFaces === true;
+		const state = {
+			cullMode: culling ? "back" : "none",
+			// the retained path's winding rule, see `drawMesh`
+			frontFace:
+				culling &&
+				this.supportsRetainedMesh === true &&
+				mesh.rightHanded !== true
+					? "cw"
+					: "ccw",
+			depthWrite: undefined,
+			depthTest: mesh.depthTest === false ? false : undefined,
+			// `undefined` rather than `false`, as the draw sets it: the key only
+			// grows a fog suffix for `true`
+			fog: fog ? true : undefined,
+		};
+		const blendedOnly = mesh.transparent === true || mesh._blendedDraw === true;
+		const blended = mesh.transparent !== false || mesh._blendedDraw === true;
+		for (const [format, sampleCount] of scene) {
+			if (!blendedOnly) {
+				void this.pipelineCache.warm(
+					family,
+					"triangle-list",
+					"none",
+					true,
+					"none",
+					state,
+					format,
+					sampleCount,
+				);
+			}
+			if (blended) {
+				// the transparent pass: blended, premultiplied, no depth write
+				void this.pipelineCache.warm(
+					family,
+					"triangle-list",
+					mesh._blendedDraw === true ? "normal" : mesh.blendMode,
+					true,
+					"none",
+					{ ...state, depthWrite: false },
+					format,
+					sampleCount,
+				);
+			}
+		}
+	}
+
+	/**
+	 * Build, off the frame, what a light draws with: its glow, through the
+	 * radial-gradient effect in its own blend mode, and for a light with a
+	 * soft edge the stage's darkness, through the ambient-light effect (see
+	 * `drawLight`, `drawAmbientLight`). The renderer makes both effects the
+	 * first time a frame draws a light, so their pipelines were built inside
+	 * that frame.
+	 * @param {Light2d} light - the light to warm for
+	 * @param {Array<Array<string|number>>} scene - the targets a scene draws into, as `[format, sampleCount]`
+	 * @ignore
+	 * @internal
+	 */
+	_warmLight(light, scene) {
+		this.lightShader ??= new RadialGradientEffect(this);
+		const warm = (effect, blendMode) => {
+			// an effect that cannot run here has nothing to build
+			if (effect.wgslRealization?.valid !== true) {
+				return;
+			}
+			const family = this._effectFamily(effect);
+			for (const [format, sampleCount] of scene) {
+				void this.pipelineCache.warm(
+					family,
+					"triangle-list",
+					blendMode,
+					true,
+					"none",
+					undefined,
+					format,
+					sampleCount,
+				);
+			}
+		};
+		warm(this.lightShader, light.blendMode ?? "normal");
+		if (light.softness > 0) {
+			this._ambientShader ??= new AmbientLightEffect(this);
+			warm(this._ambientShader, "normal");
+		}
+	}
+
+	/**
+	 * Warm the renderable's own draw: a mesh through its mesh family, and
+	 * everything else that draws a texture through the quad family, each with
+	 * the renderable's blend mode, and a light through the renderer's light
+	 * effects. Containers draw nothing of their own, and a camera is a chain,
+	 * warmed with its effects.
+	 * @param {Renderable} renderable - the renderable to warm for
+	 * @override
+	 * @ignore
+	 * @internal
+	 */
+	_warmDraw(renderable) {
+		if (
+			!this._canWarm() ||
+			renderable._postEffectManaged === true ||
+			Array.isArray(renderable.children)
+		) {
+			return;
+		}
+		const scene = this._sceneTargets();
+		if (renderable instanceof Light2d) {
+			this._warmLight(renderable, scene);
+			return;
+		}
+		if (this._hostsMeshEffect(renderable)) {
+			const batcher = this._meshBatcherFor(renderable);
+			if (batcher?.shaderKey !== undefined) {
+				this._warmMeshDraw(renderable, batcher.shaderKey, scene);
+			}
+			return;
+		}
+		if (renderable.instanceLayout !== undefined) {
+			this._warmInstancedDraw(renderable, scene);
+			return;
+		}
+		const blendMode = renderable.blendMode ?? "normal";
+		for (const [format, sampleCount] of scene) {
+			void this.pipelineCache.warm(
+				"quad",
+				"triangle-list",
+				blendMode,
+				true,
+				"none",
+				undefined,
+				format,
+				sampleCount,
+			);
+		}
+	}
+
+	/**
+	 * Warm what an `InstancedMesh` draws with: its instanced family, and the
+	 * instanced ground-shadow family when it casts one.
+	 *
+	 * Both families are registered per instance record layout, on first use,
+	 * which the warm-up used to leave to the first draw. Nothing about them
+	 * needs the draw, though: the layout is the mesh's own, so registering
+	 * them here builds the same module and vertex layout the draw would, and
+	 * the keys follow the same rules as an ordinary mesh's. A scatter of
+	 * props is one of these, and it is exactly the kind of thing a stage
+	 * builds when it starts and draws on its next frame.
+	 * @param {object} mesh - the instanced mesh
+	 * @param {Array<Array<string|number>>} scene - the targets it can land on
+	 * @ignore
+	 * @internal
+	 */
+	_warmInstancedDraw(mesh, scene) {
+		// without instancing every copy draws as an ordinary mesh
+		if (this.supportsInstancing !== true) {
+			return;
+		}
+		const batcher = this._meshBatcherFor(mesh);
+		if (typeof batcher?.instancedFamilyFor !== "function") {
+			return;
+		}
+		this._warmMeshDraw(
+			mesh,
+			batcher.instancedFamilyFor(mesh.instanceLayout),
+			scene,
+		);
+		if (
+			mesh._castsGroundShadow?.(this) !== true ||
+			typeof batcher.instancedShadowFamily !== "function"
+		) {
+			return;
+		}
+		const family = batcher.instancedShadowFamily(mesh.instanceLayout);
+		for (const fog of this._warmFog ?? [this._fog3d != null]) {
+			// as `drawInstancedGroundShadow` keys it: never culled, blended,
+			// no depth write, and the depth test the mesh draw just set
+			const state = {
+				cullMode: "none",
+				frontFace: "ccw",
+				depthWrite: false,
+				depthTest: mesh.depthTest === false ? false : undefined,
+				fog: fog ? true : undefined,
+			};
+			for (const [format, sampleCount] of scene) {
+				void this.pipelineCache.warm(
+					family,
+					"triangle-list",
+					"normal",
+					true,
+					"none",
+					state,
+					format,
+					sampleCount,
+				);
+			}
+		}
+	}
+
+	/**
+	 * Build the advanced blend shader and its offscreen target before the
+	 * first draw in one of those modes, and warm the two pipelines a bracket
+	 * uses: the draw itself into the 8-bit offscreen, and the composite back
+	 * onto the scene.
+	 * @override
+	 * @ignore
+	 * @internal
+	 */
+	_warmAdvancedBlend() {
+		if (!this._canWarm()) {
+			return;
+		}
+		if (typeof this._advancedBlendEffect === "undefined") {
+			this._advancedBlendEffect = new BlendEffect(this);
+		}
+		const effect = this._advancedBlendEffect;
+		if (effect.enabled !== true || effect.wgslRealization?.valid !== true) {
+			return;
+		}
+		const { width, height } = this.getCanvas();
+		if (typeof this._advancedBlendTarget === "undefined") {
+			// the same target `_openAdvancedBlend` makes, see the note there
+			this._advancedBlendTarget = new WebGPURenderTarget(this, width, height, {
+				sampleCount: 1,
+				format: this.preferredFormat,
+			});
+		}
+		// the renderable drawn into the offscreen: an advanced mode has no
+		// blend state of its own, so it lands source-over
+		void this.pipelineCache.warm(
+			"quad",
+			"triangle-list",
+			"normal",
+			true,
+			"none",
+			undefined,
+			this.preferredFormat,
+			1,
+		);
+		const family = this._effectFamily(effect);
+		for (const [format, sampleCount] of this._sceneTargets()) {
+			void this.pipelineCache.warm(
+				family,
+				"triangle-list",
+				"normal",
+				true,
+				"none",
+				undefined,
+				format,
+				sampleCount,
+			);
+		}
+	}
+
+	/**
+	 * Warm the tone curve's pipeline: always the last step of a camera chain,
+	 * so a full-screen blit onto the canvas with blending off.
+	 * @override
+	 * @ignore
+	 * @internal
+	 */
+	_warmToneMap() {
+		const toneMap = this._toneMapEffect;
+		if (
+			this.settings?.prewarm !== true ||
+			toneMap?.wgslRealization?.valid !== true ||
+			!this._canWarm()
+		) {
+			return;
+		}
+		void this.pipelineCache.warm(
+			this._effectFamily(toneMap),
+			"triangle-list",
+			"none",
+			true,
+			"none",
+			undefined,
+			this.canvasFormat,
+			this.canvasSampleCount,
+		);
+	}
+
+	/**
 	 * Begin a post-effect pass for the given renderable — the WebGPU
 	 * realization of the WebGL FBO path: the renderable's whole content
 	 * renders into a pooled offscreen target, composited by
@@ -1294,42 +1876,23 @@ export default class WebGPURenderer extends Renderer {
 				new Matrix3d();
 		}
 		savedProjection.copy(this.projectionMatrix);
+		// the opacity the renderable is drawn at: its content goes into the
+		// target opaque, and the chain's last blit composites it at this
+		this.effectAlphaStack[this.effectPassDepth] = this.globalAlpha();
 		this.effectPassDepth++;
 
-		// capture targets rasterize the scene — under antiAlias they carry
-		// the pass sample count so MSAA composes with post-effects (the GL
-		// twin resolves via blitFramebuffer). Ping-pong intermediates draw
-		// screen-aligned effect quads only and stay single-sampled.
-		/**
-		 * @ignore
-		 * @internal
-		 */
-		this._renderTargetPool ??= new RenderTargetPool(
-			(w, h, isCapture, index) => {
-				// Indices 0/1 are the CAMERA chain; 2 and up are sprite chains.
-				// Only the camera pair takes the half-float format, and that is
-				// a correctness limit rather than thrift: a sprite chain's final
-				// blit composites source-over with `ONE_MINUS_SRC_ALPHA`, and
-				// additive blending accumulates ALPHA past 1 in a float target,
-				// so that factor goes negative and subtracts the backdrop. The
-				// camera chain blits without that factor, and is the documented
-				// place for these effects anyway.
-				return new WebGPURenderTarget(this, w, h, {
-					sampleCount: isCapture === true ? this.canvasSampleCount : 1,
-					format: index < 2 ? this._colorFormat : this.preferredFormat,
-				});
-			},
-		);
-		const rt = this._renderTargetPool.begin(
+		const rt = this._postEffectPool().begin(
 			isCamera,
-			effects.length,
+			this._postEffectCapacity(renderable, effects),
 			canvas.width,
 			canvas.height,
 		);
 		// retarget with the appropriate clear: a camera's offscreen pass
 		// starts like a frame (background color + fresh stencil), a
 		// sprite's starts transparent so unpainted texels stay see-through
-		if (isCamera) {
+		// (a camera drawn over another camera starts transparent too, so that
+		// one shows through: see `Camera2d#draw`)
+		if (isCamera && !renderable._postEffectOver) {
 			const [r, g, b, a] = this.backgroundColor.toArray();
 			this.setRenderTarget(rt, {
 				clear: true,
@@ -1361,8 +1924,9 @@ export default class WebGPURenderer extends Renderer {
 		if (effects.length === 0) {
 			return;
 		}
-		// the fast path set customShader — nothing offscreen to composite
-		if (this._usesPostEffectFastPath(renderable, effects)) {
+		// the fast path set customShader — nothing offscreen to composite;
+		// its effect is put back to the space `uv` always was
+		if (this._endEffectSpace(renderable, effects)) {
 			return;
 		}
 
@@ -1376,7 +1940,10 @@ export default class WebGPURenderer extends Renderer {
 		const pool = this._renderTargetPool;
 		const rt1 = pool.getCaptureTarget();
 		const rt2 = pool.getPingPongTarget();
-		const keepBlend = !isCamera;
+		// a camera that starts the frame replaces it; one drawn over another
+		// camera is blended over what that one drew
+		const over = isCamera && renderable._postEffectOver === true;
+		const keepBlend = !isCamera || over;
 		const canvas = this.getCanvas();
 		const w = canvas.width;
 		const h = canvas.height;
@@ -1411,8 +1978,22 @@ export default class WebGPURenderer extends Renderer {
 			this.captureFrame();
 		}
 
+		// the chain's passes are told where the renderable is
+		this._beginChainSpace(renderable);
+		if (over) {
+			// whatever the camera's last draw left set
+			this.setBlendMode("normal");
+		}
+		// a renderable's chain lands at the opacity it is drawn at, by its
+		// last blit only; a camera's composites whole
+		const alpha = isCamera
+			? 1
+			: this.effectAlphaStack[this.effectPassDepth - 1];
 		if (effects.length === 1) {
-			this.blitEffect(rt1, 0, 0, w, h, effects[0], keepBlend);
+			if (!isCamera) {
+				this._resumeSavedClip();
+			}
+			this.blitEffect(rt1, 0, 0, w, h, effects[0], keepBlend, alpha);
 		} else {
 			// multi-pass: ping-pong between the two pool targets
 			let src = rt1;
@@ -1425,12 +2006,25 @@ export default class WebGPURenderer extends Renderer {
 				dst = tmp;
 			}
 			this.setRenderTarget(parentRT);
-			this.blitEffect(src, 0, 0, w, h, effects[effects.length - 1], keepBlend);
+			if (!isCamera) {
+				this._resumeSavedClip();
+			}
+			this.blitEffect(
+				src,
+				0,
+				0,
+				w,
+				h,
+				effects[effects.length - 1],
+				keepBlend,
+				alpha,
+			);
 		}
 
 		if (isCamera && renderable.isDefault === false) {
 			this.disableScissor();
 		}
+		this._clearChainSpace();
 
 		// restore renderer state and the projection saved in beginPostEffect
 		this.restore();
@@ -1454,9 +2048,19 @@ export default class WebGPURenderer extends Renderer {
 	 * @param {number} height - destination height
 	 * @param {ShaderEffect} effect - the effect to composite with
 	 * @param {boolean} [keepBlend=false] - keep the current blend mode
+	 * @param {number} [alpha=1] - the opacity to composite the blit at (0.0 to 1.0)
 	 * @override
 	 */
-	blitEffect(source, x, y, width, height, effect, keepBlend = false) {
+	blitEffect(
+		source,
+		x,
+		y,
+		width,
+		height,
+		effect,
+		keepBlend = false,
+		alpha = 1,
+	) {
 		// A blit is compositing machinery, not a scene draw: it must never
 		// open an advanced-blend bracket of its own. Covers both the
 		// post-effect chain's ping-pong blits (which run under the
@@ -1469,7 +2073,7 @@ export default class WebGPURenderer extends Renderer {
 		blitSavedProjection.copy(this.projectionMatrix);
 		this.projectionMatrix.ortho(0, width, height, 0, -1, 1);
 		this.pushFrameGlobals();
-		batcher.blitTexture(source, x, y, width, height, effect, keepBlend);
+		batcher.blitTexture(source, x, y, width, height, effect, keepBlend, alpha);
 		this.projectionMatrix.copy(blitSavedProjection);
 		this.pushFrameGlobals();
 		this._advancedBlendBusy--;
@@ -1485,12 +2089,7 @@ export default class WebGPURenderer extends Renderer {
 	 * @internal
 	 */
 	_warnAdvancedBlendFallback(what) {
-		const key = `${what}:${this.currentBlendMode}`;
-		if (this._advancedBlendWarned.has(key)) {
-			return;
-		}
-		this._advancedBlendWarned.add(key);
-		console.warn(
+		warnOnce(
 			`WebGPURenderer: blend mode "${this.currentBlendMode}" is not supported for ${what} and falls back to "normal"`,
 		);
 	}
@@ -1636,23 +2235,24 @@ export default class WebGPURenderer extends Renderer {
 	 * WebGPU splits what WebGL fuses into one program. The **modules** for
 	 * the engine's own families — quad, blit, primitive, clear, and the mesh
 	 * tiers — are already created when the pipeline cache and the batchers
-	 * are constructed, so there is nothing lazy there to warm. A **pipeline**
-	 * is lazy, but it is keyed by draw state (blend, cull, depth-write) as
-	 * well as by shader, so the set a scene will ask for cannot be known from
-	 * here — and creating one costs almost nothing anyway, because WebGPU
-	 * records the intent and leaves the work to first use.
+	 * are constructed. A **pipeline** is where the real compile happens, and
+	 * it is the expensive part: tens of milliseconds each, paid in the frame
+	 * that first draws with it. But it is keyed by draw state (blend, cull,
+	 * depth write) and by the format of the target being drawn into, as well
+	 * as by shader, so the set a scene will ask for cannot be known from
+	 * here. Those are warmed when an effect is attached to a renderable
+	 * ({@link Renderable#addPostEffect}), which is the first moment the
+	 * renderable that decides them is known.
 	 *
-	 * What IS both lazy and knowable is a `ShaderEffect`'s module:
-	 * `prepareEffectBinding` builds it, and it is only ever called from
-	 * inside the draw path. Every effect the loader compiled from a
-	 * `{type: "shader"}` asset is already in `shaderList`, so those are
-	 * exactly the ones that can be brought forward — which is what makes
-	 * declaring a level's effects alongside that level's assets worth doing.
-	 *
-	 * Effects constructed inline when a stage builds are not here yet and
-	 * cannot be warmed; that is a property of when they come into existence,
-	 * not a limitation of this method.
-	 * @returns {Promise<void>} settles once those modules are built
+	 * What this does warm is what needs no renderable. A `ShaderEffect`'s
+	 * module: `prepareEffectBinding` builds it, and only ever from inside the
+	 * draw path. Every effect the loader compiled from a `{type: "shader"}`
+	 * asset is already in `shaderList`, so those can be brought forward —
+	 * which is what makes declaring a level's effects alongside that level's
+	 * assets worth doing. And the mip-chain blitter every mipmapped texture
+	 * goes through on upload, when textures are filtered (`textureFilter`
+	 * resolving to `"linear"`; nearest filtering never builds a chain).
+	 * @returns {Promise<void>} settles once those are built
 	 * @see {@link Renderer#prewarm}
 	 */
 	prewarm() {
@@ -1683,6 +2283,32 @@ export default class WebGPURenderer extends Renderer {
 					buildEffectGPU(this, effect, realization);
 				}
 			}
+			if (this.getDefaultTextureFilter() === "linear") {
+				this.textureStore.warmMipmaps();
+			}
+			// the full-target clear every frame opens with, in each target
+			// format a frame draws into. Awaited, unlike the warm-ups made while
+			// a game runs: the loader waits on this promise, so the compile
+			// finishes behind the loading screen instead of after it
+			const warms = [];
+			if (this._canWarm()) {
+				for (const [format, sampleCount] of this._sceneTargets()) {
+					warms.push(
+						this.pipelineCache.warm(
+							"clear",
+							"triangle-list",
+							"none",
+							true,
+							"none",
+							undefined,
+							format,
+							sampleCount,
+						),
+					);
+				}
+			}
+			// a warm-up never rejects: a failed compile settles empty
+			return Promise.all(warms).then(() => {});
 		});
 	}
 
@@ -1709,6 +2335,9 @@ export default class WebGPURenderer extends Renderer {
 			this.frameTextureView = null;
 			this.frameTexture = null;
 		}
+		if (this.pipelineCache != null) {
+			this.pipelineCache.inFrame = false;
+		}
 		this.destroyRetiredTextures();
 	}
 
@@ -1731,6 +2360,9 @@ export default class WebGPURenderer extends Renderer {
 		}
 		this.frameTextureView = null;
 		this.frameTexture = null;
+		if (this.pipelineCache != null) {
+			this.pipelineCache.inFrame = false;
+		}
 		// an abandoned frame may have died inside a post-effect bracket —
 		// never leave an offscreen target active for the next frame
 		this.currentRenderTarget = null;
@@ -1890,6 +2522,44 @@ export default class WebGPURenderer extends Renderer {
 			return;
 		}
 		super.drawTileLayer(layer, rect);
+	}
+
+	/**
+	 * A tile layer drawn tile by tile: the sprite shaders keep each tile's
+	 * samples half a texel inside it (see `gpu/frame.js`), so two tiles
+	 * never blend the next tile of their tileset in along their edge.
+	 * @ignore
+	 * @internal
+	 */
+	beginTileLayer() {
+		this.setDrawingTiles(true);
+	}
+
+	/**
+	 * @ignore
+	 * @internal
+	 */
+	endTileLayer() {
+		this.setDrawingTiles(false);
+	}
+
+	/**
+	 * Flip `drawingTiles`, and when that changes the sprite shaders' frame
+	 * clamp, draw the quads queued under the old one and push a frame-globals
+	 * slot carrying the new one (the shaders read it from there).
+	 * @param {boolean} on - whether a tile layer is drawing
+	 * @ignore
+	 * @internal
+	 */
+	setDrawingTiles(on) {
+		const before = frameClampMode(this);
+		this.drawingTiles = on;
+		// pushed even when no pass is open, which happens mid-frame too (a
+		// post effect, a mask, a flush): the next draws read it
+		if (frameClampMode(this) !== before && this.uniformRing !== null) {
+			this.currentBatcher?.flush();
+			this.pushFrameGlobals();
+		}
 	}
 
 	/**
@@ -2088,10 +2758,8 @@ export default class WebGPURenderer extends Renderer {
 		if (
 			this.customShader != null &&
 			customShader === null &&
-			hostedEffect === null &&
-			this.meshEffectWarned !== true
+			hostedEffect === null
 		) {
-			this.meshEffectWarned = true;
 			// Two genuinely different reasons, and saying the wrong one costs
 			// hours: a ShaderEffect IS dual-language, so telling its author it
 			// "carries no wgsl module" sends them looking for a body that is
@@ -2107,7 +2775,7 @@ export default class WebGPURenderer extends Renderer {
 							"wgsl",
 						)
 					: null;
-			console.warn(
+			warnOnce(
 				blocker !== null
 					? `melonJS: this ShaderEffect cannot be hosted on a Mesh — ${blocker}. The mesh draws with the built-in shading.`
 					: "melonJS: this custom shader cannot be hosted on a Mesh by the WebGPU renderer (it carries no `wgsl` module) — the mesh draws with the built-in shading",
@@ -2128,17 +2796,22 @@ export default class WebGPURenderer extends Renderer {
 			mesh.instanceLayout !== undefined &&
 			retained &&
 			this.supportsInstancing === true;
-		if (
-			instanced &&
-			hostedEffect !== null &&
-			this.instancedEffectWarned !== true
-		) {
-			this.instancedEffectWarned = true;
-			console.warn(
+		if (instanced && hostedEffect !== null) {
+			warnOnce(
 				"melonJS: a ShaderEffect cannot be hosted on an InstancedMesh — the instanced shading is a separate shader family. The mesh draws with the built-in shading.",
 			);
 		}
 		batcher.hostedEffect = instanced ? null : hostedEffect;
+		// an effect measuring in texels counts the mesh's
+		if (batcher.hostedEffect !== null) {
+			const image = mesh.texture?.getTexture();
+			if (image !== undefined) {
+				hostedEffect._setSourceSize?.(
+					image.width || image.videoWidth || 1,
+					image.height || image.videoHeight || 1,
+				);
+			}
+		}
 
 		// per-mesh culling is a pipeline axis here. Retained geometry keeps
 		// its authored winding, so the axis bridge's reflection (which
@@ -2208,13 +2881,9 @@ export default class WebGPURenderer extends Renderer {
 	 * @param {number} y - distance to move in the vertical direction
 	 */
 	translate(x, y) {
+		// not snapped here: a draw is snapped once, where it lands (see
+		// _pixelSnapBegin)
 		this.currentTransform.translate(x, y);
-		if (this.settings.subPixel === false) {
-			// snap position values to pixel grid
-			const a = this.currentTransform.val;
-			a[12] |= 0;
-			a[13] |= 0;
-		}
 	}
 
 	/**
@@ -2254,12 +2923,6 @@ export default class WebGPURenderer extends Renderer {
 				tempMatrix.setTransform(a, b, 0, 0, c, d, 0, 0, 0, 0, 1, 0, e, f, 0, 1),
 			);
 		}
-		if (this.settings.subPixel === false) {
-			// snap position values to pixel grid
-			const m = this.currentTransform.val;
-			m[12] |= 0;
-			m[13] |= 0;
-		}
 	}
 
 	/**
@@ -2281,6 +2944,9 @@ export default class WebGPURenderer extends Renderer {
 	 */
 	save() {
 		this.renderState.currentShader = this.customShader;
+		// the line width is a plain field here, not context state: hand it
+		// to the stack so restore() puts it back, as on Canvas
+		this.renderState.lineWidth = this.lineWidth;
 		this.renderState.save(this.scissorActive === true);
 	}
 
@@ -2308,6 +2974,7 @@ export default class WebGPURenderer extends Renderer {
 		}
 		const result = this.renderState.restore(canvas.width, canvas.height);
 		if (result !== null) {
+			this.lineWidth = this.renderState.lineWidth;
 			this.setBlendMode(result.blendMode);
 			if (scissorChanging) {
 				this.scissorActive = result.scissorActive === true;
@@ -2324,7 +2991,9 @@ export default class WebGPURenderer extends Renderer {
 	 * @param {number} alpha - global alpha value (0..1)
 	 */
 	setGlobalAlpha(alpha) {
-		this.currentColor.alpha = alpha;
+		// apart from the colour's own alpha, as a 2D context keeps its
+		// globalAlpha apart from its fillStyle
+		this.renderState.globalAlpha = alpha;
 	}
 
 	/**
@@ -2332,7 +3001,7 @@ export default class WebGPURenderer extends Renderer {
 	 * @returns {number} global alpha value
 	 */
 	getGlobalAlpha() {
-		return this.currentColor.alpha;
+		return this.renderState.globalAlpha;
 	}
 
 	/**
@@ -2346,9 +3015,9 @@ export default class WebGPURenderer extends Renderer {
 		} else {
 			this.renderState.currentGradient = null;
 			this.currentGradient = null;
-			const alpha = this.currentColor.alpha;
+			// the colour keeps its own alpha: fills and strokes are drawn at
+			// it times the global alpha (see `packedFillColor`)
 			this.currentColor.copy(color);
-			this.currentColor.alpha *= alpha;
 		}
 	}
 
@@ -2454,6 +3123,7 @@ export default class WebGPURenderer extends Renderer {
 		this.currentFrameBinding = this.uniformRing.pushFrameGlobals(
 			this.projectionMatrix,
 			this.lineWidth,
+			frameClampMode(this),
 		);
 		this.currentFrameLineWidth = this.lineWidth;
 	}
@@ -2487,12 +3157,6 @@ export default class WebGPURenderer extends Renderer {
 			sh = image.height;
 			sx = 0;
 			sy = 0;
-		}
-
-		if (this.settings.subPixel === false) {
-			// clamp to pixel grid
-			dx |= 0;
-			dy |= 0;
 		}
 
 		// same lit gate as the GL backend: only normal-mapped sprites in a
@@ -2530,7 +3194,9 @@ export default class WebGPURenderer extends Renderer {
 				reupload = true;
 			}
 		}
-		const uvs = texture.getUVs(sx, sy, sw, sh);
+		const uvs = texture._quadUVs(image, sx, sy, sw, sh);
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(dx, dy, dw, dh);
 		this.currentBatcher.addQuad(
 			texture,
 			dx,
@@ -2545,6 +3211,7 @@ export default class WebGPURenderer extends Renderer {
 			reupload,
 			useLit ? this.currentNormalMap : undefined,
 		);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -2690,6 +3357,42 @@ export default class WebGPURenderer extends Renderer {
 	}
 
 	/**
+	 * Draw the ambient darkness with a hole per light, as one quad over the
+	 * view through the ambient-light effect (see `AmbientLightEffect`).
+	 * @ignore
+	 * @internal
+	 */
+	drawAmbientLight(color, lights, x, y, width, height) {
+		if (this._ambientShader === undefined) {
+			this._ambientShader = new AmbientLightEffect(this);
+		}
+		this._ambientShader.setLights(lights, x, y, width, height);
+		this.save();
+		this.setGlobalAlpha(1.0);
+		this.setBlendMode("normal");
+		const previousShader = this.customShader;
+		this.customShader = this._ambientShader;
+		const batcher = this.setBatcher("quad");
+		batcher.addQuad(
+			this.getLightAtlas(),
+			x,
+			y,
+			width,
+			height,
+			0,
+			0,
+			1,
+			1,
+			// the ambient color and its alpha, through the vertex tint
+			color.toUint32(color.alpha),
+		);
+		// drawn now, under these lights: the next camera loads its own
+		this.flush();
+		this.customShader = previousShader;
+		this.restore();
+	}
+
+	/**
 	 * Lazy-init a shared 1x1 flat-normal TextureAtlas — RGB (128, 128, 255),
 	 * which decodes to the tangent-space normal (0, 0, 1).
 	 *
@@ -2759,8 +3462,11 @@ export default class WebGPURenderer extends Renderer {
 	 * @param {number} height - height of the pattern
 	 */
 	drawPattern(pattern, x, y, width, height) {
-		const uvs = pattern.getUVs("0,0," + width + "," + height);
 		this.setBatcher("quad");
+		// computed last: it is a scratch array, valid until the next call
+		const uvs = pattern._quadUVs(pattern.getTexture(), 0, 0, width, height);
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(x, y, width, height);
 		this.currentBatcher.addQuad(
 			pattern,
 			x,
@@ -2773,6 +3479,7 @@ export default class WebGPURenderer extends Renderer {
 			uvs[3],
 			this.currentTint.toUint32(this.getGlobalAlpha()),
 		);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -2804,15 +3511,10 @@ export default class WebGPURenderer extends Renderer {
 	 */
 	clipRect(x, y, width, height) {
 		const canvas = this.getCanvas();
-		// treat a non-finite transform as "no clip"
+		// treat a non-finite transform as "no further clip": the clip
+		// already active, if any, stays, as a clip can only narrow
 		const m = this.currentTransform;
 		if (!Number.isFinite(m.tx) || !Number.isFinite(m.ty)) {
-			if (this.scissorActive) {
-				// drain pending vertices under the active scissor first
-				this.currentBatcher?.flush();
-				this.scissorActive = false;
-				this.applyScissor();
-			}
 			return;
 		}
 
@@ -2822,12 +3524,32 @@ export default class WebGPURenderer extends Renderer {
 		const aabb = this.clipAABB;
 		aabb.clear();
 		aabb.addFrame(x, y, x + width, y + height, m);
-		let sx = Math.floor(aabb.min.x);
-		let sy = Math.floor(aabb.min.y);
-		let sw = Math.ceil(aabb.max.x - sx);
-		let sh = Math.ceil(aabb.max.y - sy);
+		// on whole pixels unless `subPixel` is set: each edge rounded to its
+		// nearest, as any draw is (see _pixelSnapBegin). Otherwise, or turned,
+		// the box covering every pixel the clip touches
+		const snap = this._snapsToPixels();
+		let sx = snap ? Math.round(aabb.min.x) : Math.floor(aabb.min.x);
+		let sy = snap ? Math.round(aabb.min.y) : Math.floor(aabb.min.y);
+		let sw = snap ? Math.round(aabb.max.x) - sx : Math.ceil(aabb.max.x - sx);
+		let sh = snap ? Math.round(aabb.max.y) - sy : Math.ceil(aabb.max.y - sy);
 
-		// full-canvas coverage → caller intent is "no clip"
+		// a clip inside a clip is the overlap of the two, as Canvas's
+		// `context.clip()` is; `save()` / `restore()` bring the outer back
+		if (this.scissorActive) {
+			const cs = this.currentScissor;
+			const left = Math.max(sx, cs[0]);
+			const top = Math.max(sy, cs[1]);
+			const right = Math.min(sx + sw, cs[0] + cs[2]);
+			const bottom = Math.min(sy + sh, cs[1] + cs[3]);
+			sx = left;
+			sy = top;
+			// no overlap: an empty scissor, so nothing draws
+			sw = Math.max(0, right - left);
+			sh = Math.max(0, bottom - top);
+		}
+
+		// full-canvas coverage → caller intent is "no clip" (with a clip
+		// already active, only when that clip covered the canvas too)
 		if (
 			sx <= 0 &&
 			sy <= 0 &&
@@ -2843,6 +3565,22 @@ export default class WebGPURenderer extends Renderer {
 		}
 
 		this.setScissorRect(sx, sy, sw, sh);
+	}
+
+	/**
+	 * Put back the clip a renderable's effect pass was begun under, for its
+	 * composite to land inside it: a camera's view on the screen, a
+	 * clipping container. The pass drops it (see `beginPostEffect`) to
+	 * capture the whole canvas, and the `restore()` that ends the pass
+	 * would only put it back once the composite has drawn.
+	 * @ignore
+	 * @internal
+	 */
+	_resumeSavedClip() {
+		const saved = this.renderState.peekScissor();
+		if (saved !== null) {
+			this.setScissorRect(saved[0], saved[1], saved[2], saved[3]);
+		}
 	}
 
 	/**
@@ -2989,12 +3727,7 @@ export default class WebGPURenderer extends Renderer {
 		this.maskLevel++;
 		if (this.maskLevel > 0xff) {
 			this.maskLevel = 0xff;
-			if (this.maskDepthWarned !== true) {
-				this.maskDepthWarned = true;
-				console.warn(
-					"melonJS: setMask nesting deeper than 255 — mask level clamped",
-				);
-			}
+			warnOnce("melonJS: setMask nesting deeper than 255 — mask level clamped");
 		}
 
 		// write phase: every fragment of the mask shape increments the
@@ -3121,14 +3854,25 @@ export default class WebGPURenderer extends Renderer {
 			this.fillArc(x, y, radius, start, end, antiClockwise);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(
+			x - radius,
+			y - radius,
+			radius * 2,
+			radius * 2,
+			this.lineWidth / 2,
+		);
 		this.setBatcher("primitive");
 		this.path2D.beginPath();
 		this.path2D.arc(x, y, radius, start, end, antiClockwise);
 		this.currentBatcher.drawVertices("line-list", this.path2D.points);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
-	 * Fill an arc at the specified coordinates with given radius, start and end points
+	 * Fill an arc at the specified coordinates with given radius, start and end points.
+	 * The angles are read like `CanvasRenderingContext2D.arc`: an end before
+	 * the start wraps round, and a span of 2π or more is the whole circle.
 	 * @param {number} x - arc center point x-axis
 	 * @param {number} y - arc center point y-axis
 	 * @param {number} radius - arc radius
@@ -3149,28 +3893,37 @@ export default class WebGPURenderer extends Renderer {
 			);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(
+			x - radius,
+			y - radius,
+			radius * 2,
+			radius * 2,
+		);
 		this.setBatcher("primitive");
-		let diff = Math.abs(end - start);
-		if (antiClockwise) {
-			diff = Math.PI * 2 - diff;
+		const diff = arcSweep(start, end, antiClockwise);
+		if (diff > 0) {
+			const segments = Math.max(
+				4,
+				Math.round((diff * radius) / this.path2D.arcResolution),
+			);
+			// the fan always runs clockwise: an anticlockwise arc from `start`
+			// covers the same angles as a clockwise one ending at `start`
+			const startAngle = antiClockwise ? start - diff : start;
+			this.currentBatcher.drawVertices(
+				"triangle-list",
+				generateTriangleFan(
+					x,
+					y,
+					radius,
+					radius,
+					startAngle,
+					startAngle + diff,
+					segments,
+				),
+			);
 		}
-		const segments = Math.max(
-			4,
-			Math.round((diff * radius) / this.path2D.arcResolution),
-		);
-		const startAngle = antiClockwise ? end : start;
-		this.currentBatcher.drawVertices(
-			"triangle-list",
-			generateTriangleFan(
-				x,
-				y,
-				radius,
-				radius,
-				startAngle,
-				startAngle + diff,
-				segments,
-			),
-		);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3186,10 +3939,19 @@ export default class WebGPURenderer extends Renderer {
 			this.fillEllipse(x, y, w, h);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(
+			x - w,
+			y - h,
+			w * 2,
+			h * 2,
+			this.lineWidth / 2,
+		);
 		this.setBatcher("primitive");
 		this.path2D.beginPath();
 		this.path2D.ellipse(x, y, w, h, 0, 0, 360);
 		this.currentBatcher.drawVertices("line-list", this.path2D.points);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3212,6 +3974,8 @@ export default class WebGPURenderer extends Renderer {
 			);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(x - w, y - h, w * 2, h * 2);
 		this.setBatcher("primitive");
 		const segments = Math.max(
 			8,
@@ -3221,6 +3985,7 @@ export default class WebGPURenderer extends Renderer {
 			"triangle-list",
 			generateTriangleFan(x, y, w, h, 0, Math.PI * 2, segments),
 		);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3231,6 +3996,14 @@ export default class WebGPURenderer extends Renderer {
 	 * @param {number} endY - the end y coordinate
 	 */
 	strokeLine(startX, startY, endX, endY) {
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(
+			Math.min(startX, endX),
+			Math.min(startY, endY),
+			Math.abs(endX - startX),
+			Math.abs(endY - startY),
+			this.lineWidth / 2,
+		);
 		this.setBatcher("primitive");
 		const dash = this.renderState.lineDash;
 		if (dash.length > 0) {
@@ -3244,6 +4017,7 @@ export default class WebGPURenderer extends Renderer {
 			this.path2D.lineTo(endX, endY);
 			this.currentBatcher.drawVertices("line-list", this.path2D.points);
 		}
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3271,6 +4045,16 @@ export default class WebGPURenderer extends Renderer {
 		const len = points.length;
 
 		this.translate(poly.pos.x, poly.pos.y);
+		// the box the points drawn cover, local to the polygon
+		const box = pointsBox(poly.points);
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(
+			box[0],
+			box[1],
+			box[2],
+			box[3],
+			this.lineWidth / 2,
+		);
 
 		this.setBatcher("primitive");
 		this.path2D.beginPath();
@@ -3309,6 +4093,7 @@ export default class WebGPURenderer extends Renderer {
 			);
 		}
 
+		this._pixelSnapEnd(snapped);
 		this.translate(-poly.pos.x, -poly.pos.y);
 	}
 
@@ -3321,6 +4106,10 @@ export default class WebGPURenderer extends Renderer {
 			const bounds = poly.getBounds();
 			// translate to polygon's local space so gradient coords match
 			this.translate(poly.pos.x, poly.pos.y);
+			// on whole pixels unless `subPixel` is set: the mask and the
+			// gradient over it alike
+			const box = pointsBox(poly.points);
+			const snapped = this._pixelSnapBegin(box[0], box[1], box[2], box[3]);
 			this.gradientMask(
 				() => {
 					// draw polygon vertices directly (already translated)
@@ -3345,11 +4134,16 @@ export default class WebGPURenderer extends Renderer {
 				bounds.width,
 				bounds.height,
 			);
+			this._pixelSnapEnd(snapped);
 			this.translate(-poly.pos.x, -poly.pos.y);
 			return;
 		}
 		this.setBatcher("primitive");
 		this.translate(poly.pos.x, poly.pos.y);
+		// the box the points drawn cover, local to the polygon
+		const box = pointsBox(poly.points);
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(box[0], box[1], box[2], box[3]);
 		const indices = poly.getIndices();
 		const points = poly.points;
 		const verts = this.polyVerts;
@@ -3368,6 +4162,7 @@ export default class WebGPURenderer extends Renderer {
 		}
 
 		this.currentBatcher.drawVertices("triangle-list", verts, len);
+		this._pixelSnapEnd(snapped);
 		this.translate(-poly.pos.x, -poly.pos.y);
 	}
 
@@ -3384,6 +4179,14 @@ export default class WebGPURenderer extends Renderer {
 			this.fillRect(x, y, width, height);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(
+			x,
+			y,
+			width,
+			height,
+			this.lineWidth / 2,
+		);
 		this.setBatcher("primitive");
 		this.path2D.beginPath();
 		this.path2D.rect(x, y, width, height);
@@ -3404,6 +4207,7 @@ export default class WebGPURenderer extends Renderer {
 				),
 			);
 		}
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3433,6 +4237,8 @@ export default class WebGPURenderer extends Renderer {
 			);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(x, y, width, height);
 		this.setBatcher("primitive");
 		// 2 triangles directly — avoids path2D + earcut overhead
 		const right = x + width;
@@ -3451,6 +4257,7 @@ export default class WebGPURenderer extends Renderer {
 		pts[5].x = x;
 		pts[5].y = bottom;
 		this.currentBatcher.drawVertices("triangle-list", pts);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3467,10 +4274,19 @@ export default class WebGPURenderer extends Renderer {
 			this.fillRoundRect(x, y, width, height, radius);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(
+			x,
+			y,
+			width,
+			height,
+			this.lineWidth / 2,
+		);
 		this.setBatcher("primitive");
 		this.path2D.beginPath();
 		this.path2D.roundRect(x, y, width, height, radius);
 		this.currentBatcher.drawVertices("line-list", this.path2D.points);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3494,6 +4310,8 @@ export default class WebGPURenderer extends Renderer {
 			);
 			return;
 		}
+		// on whole pixels unless `subPixel` is set (see _pixelSnapBegin)
+		const snapped = this._pixelSnapBegin(x, y, width, height);
 		this.setBatcher("primitive");
 		const r = Math.min(radius, width / 2, height / 2);
 		const verts = [];
@@ -3568,6 +4386,7 @@ export default class WebGPURenderer extends Renderer {
 		);
 
 		this.currentBatcher.drawVertices("triangle-list", verts);
+		this._pixelSnapEnd(snapped);
 	}
 
 	/**
@@ -3812,13 +4631,8 @@ export default class WebGPURenderer extends Renderer {
 			usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
 		});
 
-		if (wanted && !granted && this._hdrOutputRefusalWarned !== true) {
-			/**
-			 * @ignore
-			 * @internal
-			 */
-			this._hdrOutputRefusalWarned = true;
-			console.warn(
+		if (wanted && !granted) {
+			warnOnce(
 				"hdrOutput: true was requested but hdr is off, so the effect chain has nothing above 1 to present — presenting in SDR",
 			);
 		}
@@ -3879,7 +4693,12 @@ export default class WebGPURenderer extends Renderer {
 	/**
 	 * Set the default texture filter at runtime, decoupled from
 	 * {@link WebGPURenderer#setAntiAlias} — same re-pairing mechanism.
-	 * @param {"auto"|"nearest"|"linear"} [mode="auto"] - `"auto"` follows `antiAlias`
+	 * @param {"auto"|"nearest"|"linear"|"linear-mipmap"} [mode="auto"] - `"auto"` follows `antiAlias`
+	 * @example
+	 * // smooth, and from the mipmaps wherever something is drawn small
+	 * app.renderer.setTextureFilter("linear-mipmap");
+	 * // back to the antiAlias setting
+	 * app.renderer.setTextureFilter("auto");
 	 */
 	setTextureFilter(mode = "auto") {
 		super.setTextureFilter(mode);
@@ -3890,6 +4709,13 @@ export default class WebGPURenderer extends Renderer {
 		// each embeds samplers resolved from the default filter
 		this.batchers.get("litQuad")?.clearMaterialCache();
 		this.batchers.get("quad")?.clearMaterialCache();
+		// the sprite shaders read the frame clamp mode from the frame
+		// globals (under "linear-mipmap" a sprite keeps its samples inside
+		// its frame): a fresh slot carries it, pushed even when no pass is
+		// open, which happens mid-frame too (a post effect, a mask, a flush)
+		if (this.uniformRing !== null) {
+			this.pushFrameGlobals();
+		}
 	}
 
 	/**
@@ -3938,6 +4764,11 @@ export default class WebGPURenderer extends Renderer {
 			batcher.init(this);
 		}
 		emit(ONCONTEXT_RESTORED, this);
+		// everything warmed died with the old device, and the loader only
+		// warms on a preload, which the game has long finished
+		if (this.settings.prewarm === true) {
+			this.prewarm().catch(() => {});
+		}
 	}
 
 	/**
@@ -3987,6 +4818,13 @@ export default class WebGPURenderer extends Renderer {
 		 * @internal
 		 */
 		this._toneMapEffect = undefined;
+		// the ambient-light effect, created by the first soft-cutout pass
+		this._ambientShader?.destroy?.();
+		/**
+		 * @ignore
+		 * @internal
+		 */
+		this._ambientShader = undefined;
 
 		// advanced-blend resources, all lazily created: a game that never used
 		// one of the six modes has nothing here to release

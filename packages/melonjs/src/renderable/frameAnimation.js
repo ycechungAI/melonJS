@@ -71,6 +71,13 @@ export default class FrameAnimation {
 		 */
 		this.resetAnim = undefined;
 
+		/**
+		 * called with each frame index playback reaches (the `onFrame` option)
+		 * @ignore
+		 * @internal
+		 */
+		this.onFrame = undefined;
+
 		/** current frame info @type {object} */
 		this.current = {
 			// the current animation name
@@ -112,6 +119,16 @@ export default class FrameAnimation {
 		 * @internal
 		 */
 		this._animDone = false;
+
+		/**
+		 * whether a one-frame animation still runs its frame timer, because the
+		 * end of its cycle can stop or switch it (`loop: false`, `next`, or a
+		 * legacy callback that may return `false`). A plain looping one-frame
+		 * animation has nothing to step, so it stays idle.
+		 * @ignore
+		 * @internal
+		 */
+		this._stepSingleFrame = false;
 	}
 
 	/**
@@ -134,6 +151,7 @@ export default class FrameAnimation {
 		let counter = 0;
 
 		if (typeof host.textureAtlas !== "object") {
+			this._refreshCurrent(name);
 			return 0;
 		}
 
@@ -186,7 +204,51 @@ export default class FrameAnimation {
 		}
 		this.anim[name].length = counter;
 
+		this._refreshCurrent(name);
+
 		return counter;
+	}
+
+	/**
+	 * Re-sync the playback state after `addAnimation()` redefined `name`.
+	 *
+	 * `current.length` is copied from the definition by `setCurrentAnimation`,
+	 * and re-selecting the current id is a no-op, so redefining the animation
+	 * that is playing (the documented "slower animation" idiom re-adds an id)
+	 * left the old length behind: a shorter strip then stepped to an index
+	 * past its end and the next `update()` read `undefined.delay`.
+	 *
+	 * The playing frame is kept when it still exists and re-applied (its
+	 * region may have changed); past the new end, playback restarts on frame
+	 * 0, or holds the new last frame if a play-once run had already finished.
+	 * The timer and the `setCurrentAnimation` options are kept; `onFrame` is
+	 * not called, since redefining is not playback reaching a frame.
+	 * @ignore
+	 * @internal
+	 * @param {string} name - the animation id that was just (re)defined
+	 */
+	_refreshCurrent(name) {
+		if (!this.isCurrentAnimation(name)) {
+			return;
+		}
+		const current = this.current;
+		const length = this.anim[name].length;
+		current.length = length;
+		if (length === 0) {
+			// nothing to show or step (`_isStepping` is false): keep the last
+			// drawn region, and an index that is valid once frames come back
+			current.idx = 0;
+			this.dt = 0;
+			return;
+		}
+		if (current.idx < length) {
+			this.setAnimationFrame(current.idx);
+		} else if (this._animDone) {
+			this.setAnimationFrame(length - 1);
+		} else {
+			this.dt = 0;
+			this.setAnimationFrame(0);
+		}
 	}
 
 	/**
@@ -259,11 +321,24 @@ export default class FrameAnimation {
 				} else {
 					this.resetAnim = undefined;
 				}
+				// a one-frame animation only steps when its cycle end matters:
+				// to complete (`loop: false`), chain (`next`), or give a legacy
+				// callback the chance to return `false`. A looping one does not
+				// step, so its per-cycle `onComplete` (and `onended`) never fire
+				this._stepSingleFrame =
+					opts.legacyFn === true ||
+					typeof opts.next === "string" ||
+					opts.loop === false;
+				this.onFrame = opts.onFrame;
 				// `setAnimationFrame(0)` applies frame 0 → `_applyFrame`, which is
 				// where the host marks itself dirty (the engine never touches it).
 				this.setAnimationFrame(0);
 				if (!preserve_dt) {
 					this.dt = 0;
+				}
+				// the first frame is reached too
+				if (typeof this.onFrame === "function") {
+					this.onFrame(0);
 				}
 			}
 		} else {
@@ -416,7 +491,7 @@ export default class FrameAnimation {
 		if (!this._isCurrentAnimationLive()) {
 			return changed;
 		}
-		if (!this.animationpause && !this._animDone && this.current.length > 1) {
+		if (!this.animationpause && !this._animDone && this._isStepping()) {
 			let duration = this.getAnimationFrameObjectByIndex(
 				this.current.idx,
 			).delay;
@@ -426,10 +501,15 @@ export default class FrameAnimation {
 			while (this.dt >= duration) {
 				changed = true;
 				this.dt -= duration;
+				// what was playing, to tell whether a callback below replaced it
+				const playing = this.current.name;
+				const onFrame = this.onFrame;
 
-				const nextFrame =
-					this.current.length > 1 ? this.current.idx + 1 : this.current.idx;
-				this.setAnimationFrame(nextFrame);
+				// a one-frame animation stays on its frame: each elapsed delay
+				// is a full cycle, with nothing to redraw
+				if (this.current.length > 1) {
+					this.setAnimationFrame(this.current.idx + 1);
+				}
 
 				// Switch animation if we reach the end of the strip and a callback is defined
 				if (this.current.idx === 0) {
@@ -451,13 +531,27 @@ export default class FrameAnimation {
 							break;
 						}
 						if (keepPlaying === false) {
-							// Reset to last frame
-							this.setAnimationFrame(this.current.length - 1);
+							// Reset to last frame (already there for a one-frame one)
+							if (this.current.idx !== this.current.length - 1) {
+								this.setAnimationFrame(this.current.length - 1);
+							}
 
 							// Bail early without skipping any more frames.
 							this.dt %= duration;
 							break;
 						}
+					}
+				}
+				// the frame playback reached, unless a callback above switched to
+				// another animation, which reported its own first frame
+				if (
+					typeof onFrame === "function" &&
+					this.current.name === playing &&
+					this.onFrame === onFrame
+				) {
+					onFrame(this.current.idx);
+					if (!this._isCurrentAnimationLive()) {
+						break;
 					}
 				}
 				// Get next frame duration
@@ -470,9 +564,31 @@ export default class FrameAnimation {
 					this.dt = 0;
 					break;
 				}
+
+				// a callback above may have switched to a looping one-frame
+				// animation, which has nothing to step: stop here instead of
+				// spinning its cycle end until `dt` is drained
+				if (!this._isStepping()) {
+					break;
+				}
 			}
 		}
 		return changed;
+	}
+
+	/**
+	 * whether the current animation advances over time: any animation with
+	 * more than one frame, or a one-frame one whose cycle end can stop or
+	 * switch it (see `_stepSingleFrame`).
+	 * @ignore
+	 * @internal
+	 * @returns {boolean} true if `update()` should run the frame timer
+	 */
+	_isStepping() {
+		return (
+			this.current.length > 1 ||
+			(this.current.length === 1 && this._stepSingleFrame)
+		);
 	}
 
 	/**
