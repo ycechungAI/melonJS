@@ -6,7 +6,29 @@
 - Loader: asset bundles, to load and free a level's assets together: `loader.preload({ common: […], level1: […] })`, then `loader.load("level1")` / `loader.unload("level1")`; an asset shared by several bundles is fetched once and freed with the last ([#1656](https://github.com/melonjs/melonJS/issues/1656))
 
 ### Fixed
-- Loader: unloading an image also frees its GPU texture on WebGL and WebGPU, and its tinted copies on Canvas
+- Application: one very slow update no longer freezes the game for good (since 20.12, a heavy first frame could)
+- 3D: `GLTFModel#scale()` works instead of throwing
+- 3D: a `GLTFModel` follows `pos`, `depth`, `rotate` and `scale` when no animation is playing
+- 3D: a container's children are drawn at its depth under `Camera3d`
+- 3D: lit meshes in a moved or rotated container are lit where they are
+- 3D: `Camera3d` no longer culls a frame late after the camera moves
+- Sprite: `addAnimation()` skips frames the texture lacks, with a warning, instead of crashing later
+- UI: a widget removed while hovered gets its `onOut()`
+- Input: keys held when the window loses the focus are released
+- Input: a region with only a `"pointerup"` callback receives it
+- Input: each finger on a multi-touch region gets its own `pointerup`
+- Input: the mouse wheel no longer releases a key bound with `bindPointer()`
+- Input: the pointer position stays right after browser zoom or a move to another screen
+- Input: `Draggable` follows the pointer under a scrolled or zoomed camera
+- Audio: `setVolume()` is applied once, not twice
+- Audio: `playTrack()` on a paused track restarts it
+- Audio: `pauseTrack()` / `resumeTrack()` act on the track only
+- Audio: `stop(name)` keeps the clip's `on.end` callback
+- Audio: a sound following a pooled object stops when the object is recycled
+- Tiled: tile layers use the map's render order
+- Tiled: the camera reaches every painted tile of an infinite map
+- Tiled: the isometric `drawTile()` places tiles where the layer does
+- Loader: unloading an image also frees its GPU texture
 
 ## [20.13.0] (melonJS 2) - _2026-11-06_
 
