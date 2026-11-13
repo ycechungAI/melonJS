@@ -1,6 +1,6 @@
 ---
 name: melonjs-tilemaps
-description: "Use this skill for Tiled maps in melonJS — loading TMX/TSX levels, spawning entities from Tiled objects, collision shapes authored in Tiled, isometric and hexagonal maps, and image layers, and reading or changing tiles while the game runs. Covers registerTiledObjectClass and the pool.register name contract, camera bounds, compressed maps needing the inflate plugin, and the level director API. Triggers on: Tiled, TMX, TSX, tilemap, setTile, clearTile, cellAt, getTile, getTileById, change a tile, tile at run time, game board, grid, tile properties at run time, getTileProperties, map properties, level.load, level.load async, await level.load, tileset, ImageLayer, isometric, hexagonal, staggered, pool.register, Collectable, Trigger, object layer, collision layer, parallax, registerTiledObjectClass, registerTiledObjectFactory, TMXObject, resolvedProperty, resolvedProperties, tile class, tile properties."
+description: "Use this skill for Tiled maps in melonJS — loading TMX/TSX levels, spawning entities from Tiled objects, collision shapes authored in Tiled, isometric and hexagonal maps, and image layers, and reading or changing tiles while the game runs. Covers registerTiledObjectClass and the pool.register name contract, camera bounds, compressed maps needing the inflate plugin, and the level director API. Triggers on: Tiled, TMX, TSX, tilemap, setTile, clearTile, cellAt, getTile, getTileById, change a tile, tile at run time, game board, grid, tile properties at run time, getTileProperties, map properties, level.load, level.load async, await level.load, tileset, ImageLayer, infinite map, render order, isometric, hexagonal, staggered, pool.register, Collectable, Trigger, object layer, collision layer, parallax, registerTiledObjectClass, registerTiledObjectFactory, TMXObject, resolvedProperty, resolvedProperties, tile class, tile properties."
 license: MIT
 ---
 
@@ -40,6 +40,14 @@ the only two type strings the loader knows. The *file* can be `.tmx` / `.tsx`
 on the type. `type: "tmj"` throws `unknown or invalid resource type`. You can
 also skip `src` and pass the map inline via `data`, as the parsed JSON object
 of a Tiled JSON export (not an XML string).
+
+**Prefer JSON where there is no DOM.** XML maps and tilesets are parsed with
+`DOMParser`, which only a page has: in a Web Worker, or on nx.js (the Nintendo
+Switch, see `melonjs-platforms`), loading one fails, and `preload()` rejects
+with "Failed loading resource …" whose `cause` (also logged to the console)
+says to export it as JSON. Export the map *and* its external tilesets as
+`.tmj` / `.tsj` (Tiled: File → Export As, or set JSON as the format in the
+project).
 
 `level.load(levelId, options)` accepts `container` (default `game.world`),
 `onLoaded` (default `game.onLevelLoaded`), `flatten` (default `game.mergeGroup`),
@@ -187,9 +195,12 @@ authored against melonJS 1.x finds them where it looks.
 
 A `Trigger` forwards a **fixed list** of settings to `level.load()` — not
 whatever you pass it. Today that list is `container`, `onLoaded`, `flatten`,
-`setViewportBounds` and the glTF scene options (`scale`, `rightHanded`,
-`lights`, `lightIntensityScale`, `castGroundShadow`, `shadowGroundY`); see the
-3D assets skill. Anything outside it is **dropped silently**, which is worth
+`setViewportBounds` and the glTF scene options: `scale`, `rightHanded`,
+`lights`, `lightIntensityScale` and the ground-shadow settings
+(`castGroundShadow`, `shadowGroundY`, `shadowOpacity`, `shadowScale`,
+`shadowOffset`, `shadowStretch`, `shadowDirectionX`, `shadowDirectionZ`,
+`shadowGroundNormal`, `shadowLight`, but not `shadowGroundPoint`); see the 3D
+assets skill. Anything outside it is **dropped silently**, which is worth
 knowing before you spend an afternoon on a map that loads at the wrong scale.
 `async` is excluded deliberately — the trigger needs to sequence its own
 transition.
@@ -245,9 +256,6 @@ const b = level.getCurrentLevel().getBounds();
 app.viewport.setBounds(b.left, b.top, b.width, b.height);
 ```
 
-The viewport bounds still cover only the map's `width` x `height`: set them
-yourself to scroll to tiles painted outside it.
-
 A `Tile` carries `tileId` (its **global** id), `col`, `row` and `tileset`.
 Tiled shows a tile's *local* id in the tileset editor; the global id is
 `tileset.firstgid + localId`, and only the global one works with `setTile`.
@@ -292,7 +300,8 @@ their own (`title`, not `name`).
 
 ## Camera bounds
 
-`level.load` sets the viewport bounds to the map size for you —
+`level.load` sets the viewport bounds to the map's bounds for you (on an
+infinite map, every painted tile, see above) —
 `setViewportBounds` defaults to `true`, and the handler is re-run on every
 viewport resize, centring the map when it is smaller than the screen. You only
 need to do it by hand when you opted out:
@@ -436,14 +445,17 @@ per-pixel GID lookup in the fragment shader. It requires **all** of:
 - `world.gpuTilemap !== false` (the `gpuTilemap` application setting, default `true`),
 - an **orthogonal** layer — isometric, hexagonal, staggered and oblique always
   fall back,
-- no collection-of-image tileset, no non-zero `tileoffset`, and tile overflow
-  within the shader's 4-cell limit.
+- no collection-of-image tileset, no non-zero `tileoffset`, a tileset tile
+  render size of "Tile size" (`tilerendersize`, not "Map grid size"), and tile
+  overflow within the shader's 4-cell limit.
 
-When a layer falls back, melonJS `console.warn`s once with the reason. Practical
-consequences: fewer tilesets means fewer batches (one packed tileset beats
-several small ones), and on the Canvas fallback large maps get noticeably
-slower. `world.preRender` (or a `preRender` layer property in Tiled) opts an
-unanimated layer into the offscreen-bake path instead.
+When a layer falls back, melonJS `console.warn`s the reason each time the
+layer is activated (once per page when the renderer has no GPU tile support at
+all), and says nothing while `gpuTilemap` is off. Practical consequences:
+fewer tilesets means fewer batches (one packed tileset beats several small
+ones), and on the Canvas fallback large maps get noticeably slower.
+`world.preRender` (or a `preRender` layer property in Tiled) opts an unanimated
+layer into the offscreen-bake path instead.
 
 ## Symptom → cause
 
@@ -467,6 +479,7 @@ unanimated layer into the offscreen-bake path instead.
 | a property set on a tile is undefined on the object's `settings` | tile properties are not copied onto `settings`: read them with `settings.resolvedProperty(name)` |
 | objects placed from a classed tile come out as plain sprites | that class is not registered, it is a built-in name, or the object has a class or a registered name of its own, which come first |
 | missing tiles or a blank map | the `.tsx` or tileset image was not preloaded |
+| a map fails to load with "needs DOMParser" (in the error's `cause` and the console) | an XML `.tmx` / `.tsx` loaded where there is no DOM (a Web Worker, nx.js): export the map and its tilesets as JSON (`.tmj` / `.tsj`) |
 | a tileset's transparent color (`trans`) still shows (the console says it could not be applied) | the image cannot be read back: an image the game made itself from another origin without CORS (an `<img>` with no `crossOrigin`) cannot be, so load it with the loader, which only loads an image another origin's server allows (its CORS headers) and can always read back; and a compressed texture cannot be changed: export it with an alpha channel instead |
 | `cellAt` returns `null` (or the wrong tile) for a cell that has one | it was given pixels: `cellAt`, `setTile` and `clearTile` take column and row, only `getTile` takes world pixels |
 | `setTile` shows the wrong tile, or nothing | it was given Tiled's local tile id: use the global id, `tileset.firstgid + localId`, through `getTileById` |
@@ -475,6 +488,8 @@ unanimated layer into the offscreen-bake path instead.
 | an infinite map's tiles sit in the wrong row, or tiles left of or above the origin are missing | an older melonJS ignored where the chunks start (update); and loop from `layer.startx` / `layer.starty`, not 0, to reach cells left of or above the origin |
 | on a staggered map `getTile` gives the neighbouring tile on every row but the first, or a scrolled view draws nothing | a bug of older melonJS versions in the staggered renderer: update |
 | on an isometric (or staggered, oblique) map `getTile` gives an edge tile for a point just outside the tiles | an older melonJS rounded a fractional column or row toward 0: update |
+| on an isometric map a tile drawn by hand with the map renderer's `drawTile()` lands away from where the layer draws that cell | before 20.14 the isometric `drawTile()` placed it differently from the layer: update |
+| a repeating `ImageLayer` slides off the screen once the camera has moved far enough | before 20.12 its repeat did not follow the camera: update |
 | tiles of a second tileset draw from the first tileset's image (that first one has a `margin`) | an older melonJS let its gid range overrun into the next tileset (update): the range is the `tilecount` Tiled saved |
 | a layer is `undefined` from `getChildByName(name)[0]` | the level is not in the world yet (await `level.load(id, { async: true })`), or the name differs from the layer's in Tiled |
 | a tile set or cleared at run time does not block or free movement | tile layers carry no collision: collision comes from collision object layers |

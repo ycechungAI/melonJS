@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.7.0 - _2026-11-13_
+
+### Changed
+- `capabilities.constraints` is `false`: melonJS's shared joints (`world.addJoint()`, melonJS 20.15) are not supported on matter, and `world.addJoint()` throws there (the adapter's own `addJoint()` returns `null`). matter's own constraints are still reached through `adapter.matter`
+
+## 1.6.0 - _2026-11-12_
+
+### Added
+- `MatterAdapter.load()` and `MatterAdapter.create(options)`, the static API every melonJS physics adapter shares; `new MatterAdapter(options)` is unchanged
+
+### Fixed
+- `raycast()` finds a body made of several shapes, or a concave outline matter splits into parts; it returned `null`
+- The shape-level hooks (`onShapeCollisionStart`, `Active`, `End`) get the same normal as `onCollisionStart`; it pointed the other way
+- `capabilities.continuousCollisionDetection` is `false`: matter-js has none, and `subSteps` is the remedy for fast bodies
+- The start-up version check requires melonJS 20.0 or later, as the peer dependency does; it accepted 19.5
+- A shape contact carries `overlapN`, `overlapV` and the Z fields its type declares, as on the builtin adapter
+- `getMaxVelocity()` reads a body with no cap as `Infinity`, not `{ 0, 0 }`, and returns a copy
+- `addBody()` sets `renderable.isKinematic` to `false`, as the builtin adapter does, so a renderable with a body receives pointer events
+- A body still touching one that is removed gets its `onCollisionEnd`
+- `raycast()` skips a body the ray starts inside, as the other adapters do
+- A body removed by its partner's collision handler is no longer told about that contact
+
 ## 1.5.3 - _2026-11-09_
 
 ### Fixed

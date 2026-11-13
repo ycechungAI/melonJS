@@ -1,9 +1,30 @@
 # Changelog
 
-## [20.14.0] (melonJS 2) - _unreleased_
+## [20.15.0] (melonJS 2) - _2026-11-13_
+
+### Added
+- Physics: `world.addJoint()` and `world.removeJoint()` join two bodies with a hinge, rope, weld or slider joint, the same way on every adapter that has joints (planck and Rapier); joints are rebuilt by `world.setAdapter()` and removed with their bodies. On an adapter without joints (the built-in and matter) `addJoint()` throws
+- Save: `save.setStorage()` keeps the saved keys somewhere other than `localStorage`, which stays the default, in anything with `getItem`, `setItem` and `removeItem`; `save.createCloudStorage()` makes one out of a platform's cloud save (YouTube Playables, Facebook Instant Games), held in memory and saved back one write at a time
+- Device: `device.setFocusEvents(false)` stops the browser window reporting the game's focus, for a game whose host says when it runs (a web game portal's SDK, a native wrapper): the host's callbacks emit `event.BLUR` and `event.FOCUS` instead, and `pauseOnBlur`, `stopOnBlur` and `resumeOnFocus` still decide what the game does
+
+### Fixed
+- Physics: `world.setAdapter()` builds each body again at the angle it had; a turned body came back upright
+- Physics: a renderable moved to another container of the same world keeps its body as it was; on matter, planck and Rapier the body was built again, at rest and upright
+- Save: a page whose `localStorage` is `null`, as in some sandboxed frames (YouTube Playables' SDK Test Suite runs games in one), no longer stops melonJS at boot; `save` keeps its keys in memory there, as where cookies are blocked
+- Platforms: fixed a regression where melonJS no longer ran on WeChat Mini Games: images load through the runtime's `Image` where `createImageBitmap` is missing, WebGL is found without a global `WebGL2RenderingContext`, and pausing or muting no longer throws where `HTMLAudioElement` is not defined
+- Rendering: the canvas given in the application's `canvas` setting is the one drawn to, even on a page with a `<canvas id="canvas">`, which was used instead
+
+## [20.14.0] (melonJS 2) - _2026-11-12_
 
 ### Added
 - Loader: asset bundles, to load and free a level's assets together: `loader.preload({ common: […], level1: […] })`, then `loader.load("level1")` / `loader.unload("level1")`; an asset shared by several bundles is fetched once and freed with the last ([#1656](https://github.com/melonjs/melonJS/issues/1656))
+- Physics: `world.setAdapter()` switches the physics adapter of a running game, rebuilding every body from its `bodyDef`
+- Physics: every adapter class has `load()` and `create()` (`PhysicsAdapterClass`), so `await X.create(options)` makes any adapter the same way
+- [nx.js](https://github.com/TooTallNate/nx.js) (the Nintendo Switch homebrew framework) and Web Workers (experimental): melonJS runs with no DOM, drawing to a canvas passed as `settings.canvas`; JSON Tiled maps, touch and audio work
+- Loader: the error a failed asset rejects `preload()` with keeps the parser's own error as its `cause`
+
+### Changed
+- Physics: `world.adapter` is read-only; switch adapters with `world.setAdapter()`
 
 ### Fixed
 - Application: one very slow update no longer freezes the game for good (since 20.12, a heavy first frame could)
@@ -12,6 +33,10 @@
 - 3D: a container's children are drawn at its depth under `Camera3d`
 - 3D: lit meshes in a moved or rotated container are lit where they are
 - 3D: `Camera3d` no longer culls a frame late after the camera moves
+- 3D: a normalized `Mesh` no longer rewrites the vertex array it was given, which shrank later meshes and scenes of the same model
+- 3D: on the Canvas renderer, a textured mesh with an MTL material draws its texture instead of a white silhouette
+- 3D: on the Canvas renderer, a mesh's near side is drawn over its far side, not the other way round
+- 3D: on the Canvas renderer, low-poly palette models are shaded along their texture as on the GPU renderers, with no seams between triangles
 - Sprite: `addAnimation()` skips frames the texture lacks, with a warning, instead of crashing later
 - UI: a widget removed while hovered gets its `onOut()`
 - Input: keys held when the window loses the focus are released
@@ -28,7 +53,12 @@
 - Tiled: tile layers use the map's render order
 - Tiled: the camera reaches every painted tile of an infinite map
 - Tiled: the isometric `drawTile()` places tiles where the layer does
+- Tiled: an XML map (`.tmx`, `.tsx`) loaded where there is no `DOMParser` fails with an error saying to export it as JSON (`.tmj`, `.tsj`), instead of "DOMParser is not defined"
 - Loader: unloading an image also frees its GPU texture
+- Physics: a renderable with a `bodyDef` receives pointer events under the matter and planck adapters, as on the built-in
+- Physics: the built-in `isGrounded()` needs a surface under the body; one never stepped, or held in mid-air, read as grounded
+- Physics: the built-in `raycast()` skips a body the ray starts inside, as the other adapters do
+- Physics: a body removed by its partner's collision handler is no longer told about that contact
 
 ## [20.13.0] (melonJS 2) - _2026-11-06_
 
